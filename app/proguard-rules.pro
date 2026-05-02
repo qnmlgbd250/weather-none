@@ -1,21 +1,54 @@
-# Moshi - keep all model classes and their generic signatures
+# === Disable R8 optimization (breaks Moshi generic type resolution) ===
+-dontoptimize
+
+# === Moshi JSON serialization ===
 -keepattributes Signature
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeVisibleParameterAnnotations
+
+# Keep ALL model data classes and their members
 -keep class com.skypulse.weather.model.** { *; }
--keepclassmembers class com.skypulse.weather.model.** { *; }
--dontwarn com.skypulse.weather.model.**
 
-# Moshi reflection adapter
+# Keep ALL Moshi classes (required for codegen adapter discovery via @JsonClass annotation)
+-keep class com.squareup.moshi.** { *; }
+-dontwarn com.squareup.moshi.**
+
+# === Kotlin ===
 -keep class kotlin.Metadata { *; }
+-keep class kotlin.reflect.jvm.internal.** { *; }
 -dontwarn kotlin.reflect.jvm.internal.**
+-dontwarn kotlin.**
 
-# Retrofit
--keepattributes *Annotation*
+# === Retrofit ===
+-keepattributes Exceptions
 -keep class retrofit2.** { *; }
 -keepclasseswithmembers class * {
     @retrofit2.http.* <methods>;
 }
+# Keep API interface with ALL members and signatures (R8 strips Signature from interfaces)
+-keep,allowobfuscation class com.skypulse.weather.api.** { *; }
+-keepclassmembers,allowobfuscation class com.skypulse.weather.api.** { *; }
+-dontwarn retrofit2.**
 
-# OkHttp
+# === OkHttp ===
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**
+
+# === Accompanist ===
+-keep class com.google.accompanist.** { *; }
+-dontwarn com.google.accompanist.**
+
+# === Google Play Services ===
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.android.gms.**
+
+# === Kotlin Coroutines ===
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
+
+# === AndroidX ===
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.activity.** { *; }
+-dontwarn androidx.lifecycle.**
+-dontwarn androidx.activity.**

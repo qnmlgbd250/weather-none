@@ -12,8 +12,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 12
-        versionName = "1.1.3"
+        versionCode = 18
+        versionName = "1.3.4"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -25,7 +25,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"
             )
         }
