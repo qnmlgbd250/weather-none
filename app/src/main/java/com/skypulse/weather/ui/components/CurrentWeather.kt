@@ -107,6 +107,7 @@ fun CurrentWeather(
     realtime: RealtimeWeather?,
     todayHigh: Double?,
     todayLow: Double?,
+    onRefresh: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -146,10 +147,20 @@ fun CurrentWeather(
             .padding(top = paddingDp)
             .padding(horizontal = 20.dp)
     ) {
-        // Temperature centered
+        // Temperature centered — tap to refresh
         val tempValue = realtime?.temperature?.toInt()?.toString() ?: "--"
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (onRefresh != null)
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onRefresh
+                        )
+                    else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
             Box(contentAlignment = Alignment.TopEnd) {
