@@ -122,7 +122,7 @@ private fun DailyForecastItem(
         ) {
             WeatherIcon(
                 iconType = weatherInfo.icon,
-                size = 24.dp
+                size = 32.dp
             )
         }
 

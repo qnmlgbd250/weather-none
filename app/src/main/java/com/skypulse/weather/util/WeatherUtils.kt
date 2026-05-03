@@ -16,25 +16,25 @@ object WeatherUtils {
     fun getWeatherInfo(skycon: String?, hour: Int = 12): WeatherInfo {
         val isDay = hour in 6..18
         return when (skycon) {
-            "CLEAR_DAY" -> WeatherInfo("晴", "sun", true)
-            "CLEAR_NIGHT" -> WeatherInfo("晴", "moon", false)
-            "PARTLY_CLOUDY_DAY" -> WeatherInfo("多云", "cloud_sun", true)
-            "PARTLY_CLOUDY_NIGHT" -> WeatherInfo("多云", "cloud_moon", false)
-            "CLOUDY" -> WeatherInfo("阴", "cloud", isDay)
+            "CLEAR_DAY" -> WeatherInfo("晴", "clear-day", true)
+            "CLEAR_NIGHT" -> WeatherInfo("晴", "clear-night", false)
+            "PARTLY_CLOUDY_DAY" -> WeatherInfo("多云", "partly-cloudy-day", true)
+            "PARTLY_CLOUDY_NIGHT" -> WeatherInfo("多云", "partly-cloudy-night", false)
+            "CLOUDY" -> WeatherInfo("阴", "overcast", isDay)
             "LIGHT_HAZE" -> WeatherInfo("轻度霾", "haze", isDay)
             "MODERATE_HAZE" -> WeatherInfo("中度霾", "haze", isDay)
             "HEAVY_HAZE" -> WeatherInfo("重度霾", "haze", isDay)
-            "LIGHT_RAIN" -> WeatherInfo("小雨", "rain_light", isDay)
+            "LIGHT_RAIN" -> WeatherInfo("小雨", "drizzle", isDay)
             "MODERATE_RAIN" -> WeatherInfo("中雨", "rain", isDay)
-            "HEAVY_RAIN" -> WeatherInfo("大雨", "rain_heavy", isDay)
-            "STORM_RAIN" -> WeatherInfo("暴雨", "storm", isDay)
+            "HEAVY_RAIN" -> WeatherInfo("大雨", "extreme-rain", isDay)
+            "STORM_RAIN" -> WeatherInfo("暴雨", "thunderstorms-rain", isDay)
             "FOG" -> WeatherInfo("雾", "fog", isDay)
-            "LIGHT_SNOW" -> WeatherInfo("小雪", "snow_light", isDay)
+            "LIGHT_SNOW" -> WeatherInfo("小雪", "snow", isDay)
             "MODERATE_SNOW" -> WeatherInfo("中雪", "snow", isDay)
-            "HEAVY_SNOW" -> WeatherInfo("大雪", "snow_heavy", isDay)
-            "STORM_SNOW" -> WeatherInfo("暴雪", "storm", isDay)
+            "HEAVY_SNOW" -> WeatherInfo("大雪", "extreme-snow", isDay)
+            "STORM_SNOW" -> WeatherInfo("暴雪", "extreme-snow", isDay)
             "WIND" -> WeatherInfo("大风", "wind", isDay)
-            else -> WeatherInfo("未知", "cloud", isDay)
+            else -> WeatherInfo("未知", "overcast", isDay)
         }
     }
 

@@ -79,12 +79,13 @@ private fun HourlyTemperatureChart(
 
     val minTemp = tempValues.min()
     val maxTemp = tempValues.max()
-    val tempRange = (maxTemp - minTemp).coerceAtLeast(1.0)
+    val rawRange = maxTemp - minTemp
+    val padding = rawRange * 0.15
+    val paddedMin = minTemp - padding
+    val paddedMax = maxTemp + padding
+    val tempRange = (paddedMax - paddedMin).coerceAtLeast(1.0)
 
     val precipValues = precipitation?.map { it.value ?: 0.0 } ?: List(temperatures.size) { 0.0 }
-    val maxPrecip = precipValues.maxOrNull()?.coerceAtLeast(0.1) ?: 1.0
-
-    // Probability from precipitation entries (API returns 0-100)
     val probValues = precipitation?.map { it.probability ?: 0.0 }
         ?: List(temperatures.size) { 0.0 }
 
@@ -110,162 +111,106 @@ private fun HourlyTemperatureChart(
             val itemCount = temperatures.size
             val step = size.width / itemCount
             val halfStep = step / 2f
+            val canvasH = size.height
 
-            val points = tempValues.mapIndexed { index, temp ->
-                val x = halfStep + index * step
-                val normalizedY = ((temp - minTemp) / tempRange).toFloat()
-                val y = size.height - 28.dp.toPx() - normalizedY * (size.height - 52.dp.toPx())
-                Offset(x, y)
+            // Curve area: top portion of canvas
+            val curveAreaBottom = canvasH * 0.70f
+            val curveTop = 20.dp.toPx()
+
+            // Catmull-Rom spline
+            val splinePoints = (0 until itemCount).map { i ->
+                val x = halfStep + i * step
+                val normalizedY = ((tempValues[i] - paddedMin) / tempRange).toFloat()
+                val y = curveAreaBottom - normalizedY * (curveAreaBottom - curveTop)
+                Offset(x, y.coerceIn(curveTop, curveAreaBottom))
             }
-
-            // --- Precipitation bars ---
-            data class PrecipSegment(val startIdx: Int, val endIdx: Int)
-
-            val segments = mutableListOf<PrecipSegment>()
-            var segStart = -1
-            for (i in 0 until itemCount) {
-                if (precipValues[i] > 0.01) {
-                    if (segStart == -1) segStart = i
-                } else {
-                    if (segStart != -1) {
-                        segments.add(PrecipSegment(segStart, i - 1))
-                        segStart = -1
-                    }
-                }
-            }
-            if (segStart != -1) segments.add(PrecipSegment(segStart, itemCount - 1))
 
             fun sampleSplineY(x: Float): Float {
-                for (j in 0 until itemCount - 1) {
-                    if (x <= points[j + 1].x || j == itemCount - 2) {
-                        val p0 = points[j]
-                        val p1 = points[j + 1]
-                        val t = if (p1.x != p0.x) ((x - p0.x) / (p1.x - p0.x)).coerceIn(0f, 1f) else 0f
-                        val u = 1f - t
-                        return u * u * u * p0.y +
-                            3f * u * u * t * p0.y +
-                            3f * u * t * t * p1.y +
-                            t * t * t * p1.y
+                if (splinePoints.isEmpty()) return curveAreaBottom
+                if (x <= splinePoints.first().x) return splinePoints.first().y
+                if (x >= splinePoints.last().x) return splinePoints.last().y
+
+                for (j in 0 until splinePoints.size - 1) {
+                    if (x <= splinePoints[j + 1].x) {
+                        val p0 = splinePoints[maxOf(0, j - 1)]
+                        val p1 = splinePoints[j]
+                        val p2 = splinePoints[j + 1]
+                        val p3 = splinePoints[minOf(splinePoints.size - 1, j + 2)]
+
+                        val t = if (p2.x != p1.x) ((x - p1.x) / (p2.x - p1.x)).coerceIn(0f, 1f) else 0f
+                        val t2 = t * t
+                        val t3 = t2 * t
+
+                        val tau = 0.35f
+                        val h00 = (2f * t3 - 3f * t2 + 1f)
+                        val h10 = (t3 - 2f * t2 + t) * tau
+                        val h01 = (-2f * t3 + 3f * t2)
+                        val h11 = (t3 - t2) * tau
+                        val y = h00 * p1.y + h10 * (p2.y - p0.y) + h01 * p2.y + h11 * (p3.y - p1.y)
+                        return y.coerceIn(curveTop, curveAreaBottom)
                     }
                 }
-                return points.last().y
+                return splinePoints.last().y
             }
 
-            for (seg in segments) {
-                val leftX = if (seg.startIdx == 0) 0f
-                    else (points[seg.startIdx - 1].x + points[seg.startIdx].x) / 2f
-                val rightX = if (seg.endIdx == itemCount - 1) size.width
-                    else (points[seg.endIdx].x + points[seg.endIdx + 1].x) / 2f
+            // --- Colored bars per hour with gradient (curve top → transparent bottom) ---
+            for (i in 0 until itemCount) {
+                val leftX = if (i == 0) 0f else (splinePoints[i - 1].x + splinePoints[i].x) / 2f
+                val rightX = if (i == itemCount - 1) size.width
+                    else (splinePoints[i].x + splinePoints[i + 1].x) / 2f
 
-                val segMaxPrecip = (seg.startIdx..seg.endIdx).maxOf { precipValues[it] }
-                val intensityRatio = (segMaxPrecip / maxPrecip).toFloat().coerceIn(0f, 1f)
-                val barAlpha = (0.15f + intensityRatio * 0.3f).coerceIn(0.15f, 0.4f)
+                val skycon = skyconValues[i]
+                val barColor = when {
+                    skycon == null -> Color(0xFF78909C)
+                    skycon.contains("PARTLY_CLOUDY") -> Color(0xFFF1F8FF)
+                    skycon.contains("CLEAR") -> Color(0xFFFFFCF7)
+                    skycon.contains("CLOUDY") -> Color(0xFFF6F7F9)
+                    skycon.contains("STORM_RAIN") -> Color(0xFF1565C0)
+                    skycon.contains("HEAVY_RAIN") -> Color(0xFF1E88E5)
+                    skycon.contains("RAIN") -> Color(0xFF64B5F6)
+                    skycon.contains("STORM_SNOW") -> Color(0xFF90A4AE)
+                    skycon.contains("HEAVY_SNOW") -> Color(0xFFB0BEC5)
+                    skycon.contains("SNOW") -> Color(0xFFCFD8DC)
+                    skycon.contains("HAZE") || skycon == "FOG" -> Color(0xFFA1887F)
+                    skycon == "WIND" -> Color(0xFF4DB6AC)
+                    else -> Color(0xFF78909C)
+                }
+
+                val barSteps = ((rightX - leftX) / (0.5f * density)).toInt().coerceIn(20, 300)
+                val barTopY = splinePoints[i].y.coerceAtMost(
+                    if (i < itemCount - 1) splinePoints[i + 1].y else splinePoints[i].y
+                )
 
                 val barPath = Path().apply {
-                    moveTo(leftX, size.height)
-                    val steps = ((rightX - leftX) / (1.5f * density)).toInt().coerceIn(10, 200)
-                    for (s in 0..steps) {
-                        val t = s.toFloat() / steps
+                    moveTo(leftX, canvasH)
+                    for (s in 0..barSteps) {
+                        val t = s.toFloat() / barSteps
                         val x = leftX + (rightX - leftX) * t
                         lineTo(x, sampleSplineY(x))
                     }
-                    lineTo(rightX, size.height)
-                    close()
-                }
-                drawPath(barPath, PrecipitationBlue.copy(alpha = barAlpha))
-
-                // Text inside bars: group by same skycon
-                data class TextGroup(val startIdx: Int, val endIdx: Int, val skycon: String?)
-
-                val textGroups = mutableListOf<TextGroup>()
-                var groupStart = seg.startIdx
-                var groupSkycon = skyconValues.getOrNull(seg.startIdx)
-                for (i in (seg.startIdx + 1)..seg.endIdx) {
-                    val curSkycon = skyconValues.getOrNull(i)
-                    if (curSkycon != groupSkycon) {
-                        textGroups.add(TextGroup(groupStart, i - 1, groupSkycon))
-                        groupStart = i
-                        groupSkycon = curSkycon
-                    }
-                }
-                textGroups.add(TextGroup(groupStart, seg.endIdx, groupSkycon))
-
-                for (group in textGroups) {
-                    if (group.skycon == null) continue
-                    val weatherInfo = WeatherUtils.getWeatherInfo(group.skycon)
-                    val rainLabel = weatherInfo.description
-
-                    if (group.skycon?.contains("RAIN") != true &&
-                        group.skycon?.contains("STORM") != true &&
-                        group.skycon?.contains("SNOW") != true
-                    ) continue
-
-                    // Max probability in this group (already 0-100)
-                    val groupMaxProb = (group.startIdx..group.endIdx)
-                        .map { probValues[it] }.maxOrNull() ?: 0.0
-                    val probText = if (groupMaxProb >= 1.0) "${groupMaxProb.toInt()}%" else ""
-
-                    val gLeftX = if (group.startIdx == 0) 0f
-                        else (points[group.startIdx - 1].x + points[group.startIdx].x) / 2f
-                    val gRightX = if (group.endIdx == itemCount - 1) size.width
-                        else (points[group.endIdx].x + points[group.endIdx + 1].x) / 2f
-                    val centerX = (gLeftX + gRightX) / 2f
-
-                    val curveYAtCenter = sampleSplineY(centerX)
-                    val centerY = (curveYAtCenter + size.height) / 2f
-
-                    val lineStyle = TextStyle(fontSize = 9.sp, color = Color.White.copy(alpha = 0.9f))
-                    val rainResult = textMeasurer.measure(AnnotatedString(rainLabel), style = lineStyle)
-
-                    val groupWidth = gRightX - gLeftX
-                    if (groupWidth < rainResult.size.width * 0.8f) continue
-
-                    val rainX = centerX - rainResult.size.width / 2f
-                    val lineSpacing = 2.dp.toPx()
-                    val totalTextHeight = if (probText.isNotEmpty()) {
-                        val probResult = textMeasurer.measure(AnnotatedString(probText), style = lineStyle)
-                        rainResult.size.height.toFloat() + lineSpacing + probResult.size.height.toFloat()
-                    } else {
-                        rainResult.size.height.toFloat()
-                    }
-                    val startY = centerY - totalTextHeight / 2f
-
-                    drawText(rainResult, topLeft = Offset(rainX, startY))
-
-                    if (probText.isNotEmpty()) {
-                        val probResult = textMeasurer.measure(AnnotatedString(probText), style = lineStyle)
-                        val probX = centerX - probResult.size.width / 2f
-                        drawText(
-                            probResult,
-                            topLeft = Offset(probX, startY + rainResult.size.height + lineSpacing)
-                        )
-                    }
-                }
-            }
-
-            // --- Gradient fill under curve ---
-            if (points.size >= 2) {
-                val fillPath = Path().apply {
-                    moveTo(points.first().x, size.height)
-                    points.forEach { lineTo(it.x, it.y) }
-                    lineTo(points.last().x, size.height)
+                    lineTo(rightX, canvasH)
                     close()
                 }
                 drawPath(
-                    path = fillPath,
+                    path = barPath,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.25f),
-                            Color.White.copy(alpha = 0.0f)
-                        )
+                            barColor,
+                            barColor.copy(alpha = 0f)
+                        ),
+                        startY = barTopY,
+                        endY = canvasH
                     )
                 )
+            }
 
+            // --- Curve line on top of bars ---
+            if (splinePoints.size >= 2) {
                 val linePath = Path().apply {
-                    moveTo(points.first().x, points.first().y)
-                    for (i in 1 until points.size) {
-                        val prev = points[i - 1]
-                        val curr = points[i]
+                    moveTo(splinePoints.first().x, splinePoints.first().y)
+                    for (i in 1 until splinePoints.size) {
+                        val prev = splinePoints[i - 1]
+                        val curr = splinePoints[i]
                         val cx = (prev.x + curr.x) / 2f
                         cubicTo(cx, prev.y, cx, curr.y, curr.x, curr.y)
                     }
@@ -282,7 +227,7 @@ private fun HourlyTemperatureChart(
             }
 
             // --- Dots and temperature labels ---
-            points.forEachIndexed { index, point ->
+            splinePoints.forEachIndexed { index, point ->
                 drawCircle(Color.White, 3.dp.toPx(), point)
                 drawCircle(Color.White.copy(alpha = 0.3f), 6.dp.toPx(), point)
 
@@ -295,6 +240,50 @@ private fun HourlyTemperatureChart(
                     result,
                     topLeft = Offset(point.x - result.size.width / 2, point.y - result.size.height - 6.dp.toPx())
                 )
+            }
+
+            // --- Weather text in lower part of bars ---
+            val labelStyle = TextStyle(fontSize = 9.sp, color = Color.White.copy(alpha = 0.9f))
+            val labelCenterY = curveAreaBottom + (canvasH - curveAreaBottom) * 0.45f
+
+            for (i in 0 until itemCount) {
+                val skycon = skyconValues[i] ?: continue
+                val leftX = if (i == 0) 0f else (splinePoints[i - 1].x + splinePoints[i].x) / 2f
+                val rightX = if (i == itemCount - 1) size.width
+                    else (splinePoints[i].x + splinePoints[i + 1].x) / 2f
+                val centerX = (leftX + rightX) / 2f
+
+                val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
+                val weatherLabel = weatherInfo.description
+                val weatherResult = textMeasurer.measure(AnnotatedString(weatherLabel), style = labelStyle)
+
+                val isPrecip = skycon.contains("RAIN") || skycon.contains("STORM") || skycon.contains("SNOW")
+                val prob = probValues[i]
+                val probText = if (isPrecip && prob >= 1.0) "${prob.toInt()}%" else ""
+
+                val lineSpacing = 2.dp.toPx()
+                val totalTextHeight = if (probText.isNotEmpty()) {
+                    val probResult = textMeasurer.measure(AnnotatedString(probText), style = labelStyle)
+                    weatherResult.size.height.toFloat() + lineSpacing + probResult.size.height.toFloat()
+                } else {
+                    weatherResult.size.height.toFloat()
+                }
+
+                val barWidth = rightX - leftX
+                if (barWidth < weatherResult.size.width * 0.7f) continue
+
+                val textStartY = labelCenterY - totalTextHeight / 2f
+                val weatherX = centerX - weatherResult.size.width / 2f
+                drawText(weatherResult, topLeft = Offset(weatherX, textStartY))
+
+                if (probText.isNotEmpty()) {
+                    val probResult = textMeasurer.measure(AnnotatedString(probText), style = labelStyle)
+                    val probX = centerX - probResult.size.width / 2f
+                    drawText(
+                        probResult,
+                        topLeft = Offset(probX, textStartY + weatherResult.size.height + lineSpacing)
+                    )
+                }
             }
         }
 
@@ -312,7 +301,7 @@ private fun HourlyTemperatureChart(
                     modifier = Modifier.width(itemWidthDp),
                     contentAlignment = Alignment.Center
                 ) {
-                    WeatherIcon(iconType = info.icon, size = 22.dp)
+                    WeatherIcon(iconType = info.icon, size = 30.dp)
                 }
             }
         }
