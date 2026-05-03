@@ -1,6 +1,9 @@
 package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -25,6 +28,7 @@ fun CurrentWeather(
     todayHigh: Double?,
     todayLow: Double?,
     isLocating: Boolean = false,
+    showRefreshSuccess: Boolean = false,
     onLocationClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -101,6 +105,21 @@ fun CurrentWeather(
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )
+        }
+
+        Box(modifier = Modifier.height(18.dp)) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showRefreshSuccess,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Text(
+                    text = "更新成功",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

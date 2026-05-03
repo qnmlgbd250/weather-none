@@ -160,21 +160,21 @@ private fun HourlyTemperatureChart(
                     else (splinePoints[i].x + splinePoints[i + 1].x) / 2f
 
                 val skycon = skyconValues[i]
-                val barColor = when {
-                    skycon == null -> Color(0xFF78909C)
-                    skycon.contains("PARTLY_CLOUDY") -> Color(0xFFF1F8FF)
-                    skycon.contains("CLEAR") -> Color(0xFFFFFCF7)
-                    skycon.contains("CLOUDY") -> Color(0xFFF6F7F9)
-                    skycon.contains("STORM_RAIN") -> Color(0xFF455A64)
-                    skycon.contains("HEAVY_RAIN") -> Color(0xFF546E7A)
-                    skycon.contains("RAIN") -> Color(0xFF78909C)
-                    skycon.contains("STORM_SNOW") -> Color(0xFF90A4AE)
-                    skycon.contains("HEAVY_SNOW") -> Color(0xFFB0BEC5)
-                    skycon.contains("SNOW") -> Color(0xFFCFD8DC)
-                    skycon.contains("HAZE") || skycon == "FOG" -> Color(0xFFA1887F)
-                    skycon == "WIND" -> Color(0xFF4DB6AC)
-                    else -> Color(0xFF78909C)
+                // Fixed alpha, vary gray brightness: lighter = clearer, darker = stormier
+                val gray = when {
+                    skycon == null -> 0.60f
+                    skycon.contains("CLEAR") -> 0.75f
+                    skycon.contains("PARTLY_CLOUDY") -> 0.65f
+                    skycon.contains("CLOUDY") -> 0.55f
+                    skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> 0.45f
+                    skycon.contains("RAIN") || skycon.contains("SNOW") -> 0.35f
+                    skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> 0.25f
+                    skycon.contains("STORM") -> 0.15f
+                    skycon.contains("HAZE") || skycon == "FOG" -> 0.45f
+                    skycon == "WIND" -> 0.55f
+                    else -> 0.55f
                 }
+                val barColor = Color(gray, gray, gray, 0.25f)
 
                 val barSteps = ((rightX - leftX) / (0.5f * density)).toInt().coerceIn(20, 300)
                 // Sample the spline across the full bar width to find the true top

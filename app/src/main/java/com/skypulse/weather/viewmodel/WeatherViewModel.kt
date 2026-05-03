@@ -45,6 +45,9 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val _isLocating = MutableStateFlow(false)
     val isLocating: StateFlow<Boolean> = _isLocating.asStateFlow()
 
+    private val _showRefreshSuccess = MutableStateFlow(false)
+    val showRefreshSuccess: StateFlow<Boolean> = _showRefreshSuccess.asStateFlow()
+
     private val _lastFetchTime = MutableStateFlow(0L)
     val lastFetchTime: StateFlow<Long> = _lastFetchTime.asStateFlow()
 
@@ -120,10 +123,13 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Silent refresh — no UI indicators (for background/auto refresh) */
+    /** Silent refresh — no spinner, but shows brief success toast */
     fun silentRefresh() {
         viewModelScope.launch {
             doFetchWeather()
+            _showRefreshSuccess.value = true
+            delay(2000)
+            _showRefreshSuccess.value = false
         }
     }
 

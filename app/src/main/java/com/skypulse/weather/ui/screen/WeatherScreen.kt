@@ -35,14 +35,14 @@ fun WeatherScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val isManualRefreshing by viewModel.isManualRefreshing.collectAsState()
     val isLocating by viewModel.isLocating.collectAsState()
-    val lastFetchTime by viewModel.lastFetchTime.collectAsState()
+    val showRefreshSuccess by viewModel.showRefreshSuccess.collectAsState()
     val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
 
     // Track when app went to background for auto-refresh
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Auto-refresh when returning from background if 10+ minutes have passed
+    // Silent refresh every time app returns from background
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -51,11 +51,7 @@ fun WeatherScreen(
                 }
                 Lifecycle.Event.ON_RESUME -> {
                     if (backgroundTimestamp > 0L) {
-                        val elapsed = System.currentTimeMillis() - backgroundTimestamp
-                        val timeSinceLastFetch = System.currentTimeMillis() - lastFetchTime
-                        if (elapsed >= 10 * 60 * 1000L || timeSinceLastFetch >= 10 * 60 * 1000L) {
-                            viewModel.silentRefresh()
-                        }
+                        viewModel.silentRefresh()
                         backgroundTimestamp = 0L
                     }
                 }
@@ -104,6 +100,7 @@ fun WeatherScreen(
                         WeatherContent(
                             state = state,
                             isLocating = isLocating,
+                            showRefreshSuccess = showRefreshSuccess,
                             onLocationClick = { viewModel.relocateAndRefresh() }
                         )
                         CustomPullRefreshIndicator(
@@ -138,6 +135,7 @@ fun WeatherScreen(
 private fun WeatherContent(
     state: WeatherUiState.Success,
     isLocating: Boolean = false,
+    showRefreshSuccess: Boolean = false,
     onLocationClick: () -> Unit = {}
 ) {
     val result = state.weather.result
@@ -160,6 +158,7 @@ private fun WeatherContent(
             todayHigh = todayTemp?.max,
             todayLow = todayTemp?.min,
             isLocating = isLocating,
+            showRefreshSuccess = showRefreshSuccess,
             onLocationClick = onLocationClick
         )
 
