@@ -37,6 +37,17 @@ fun WeatherBackground(
     val color1 = animateColor(targetColors.getOrElse(0) { Color(0xFF1976D2) }, animProgress)
     val color2 = animateColor(targetColors.getOrElse(1) { Color(0xFF64B5F6) }, animProgress)
 
+    val rainIntensity = remember(skycon) {
+        when {
+            skycon == null -> 0f
+            skycon.contains("STORM_RAIN") -> 1.0f
+            skycon.contains("HEAVY_RAIN") -> 0.75f
+            skycon.contains("MODERATE_RAIN") -> 0.5f
+            skycon.contains("RAIN") -> 0.25f
+            else -> 0f
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -48,6 +59,12 @@ fun WeatherBackground(
                 )
             )
     ) {
+        if (rainIntensity > 0f) {
+            RainEffect(
+                intensity = rainIntensity,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         content()
     }
 }

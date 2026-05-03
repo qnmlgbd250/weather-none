@@ -12,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -30,7 +33,40 @@ fun WeatherScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
+    val isManualRefreshing by viewModel.isManualRefreshing.collectAsState()
+    val isLocating by viewModel.isLocating.collectAsState()
+    val lastFetchTime by viewModel.lastFetchTime.collectAsState()
     val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+
+    // Track when app went to background for auto-refresh
+    var backgroundTimestamp by remember { mutableLongStateOf(0L) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Auto-refresh when returning from background if 10+ minutes have passed
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    backgroundTimestamp = System.currentTimeMillis()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (backgroundTimestamp > 0L) {
+                        val elapsed = System.currentTimeMillis() - backgroundTimestamp
+                        val timeSinceLastFetch = System.currentTimeMillis() - lastFetchTime
+                        if (elapsed >= 10 * 60 * 1000L || timeSinceLastFetch >= 10 * 60 * 1000L) {
+                            viewModel.silentRefresh()
+                        }
+                        backgroundTimestamp = 0L
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     LaunchedEffect(locationPermission.status.isGranted) {
         if (locationPermission.status.isGranted) {
@@ -65,9 +101,13 @@ fun WeatherScreen(
                             .fillMaxSize()
                             .pullRefresh(pullRefreshState)
                     ) {
-                        WeatherContent(state = state)
+                        WeatherContent(
+                            state = state,
+                            isLocating = isLocating,
+                            onLocationClick = { viewModel.relocateAndRefresh() }
+                        )
                         CustomPullRefreshIndicator(
-                            refreshing = isRefreshing,
+                            refreshing = isManualRefreshing,
                             state = pullRefreshState,
                             modifier = Modifier.align(Alignment.TopCenter)
                         )
@@ -96,7 +136,9 @@ fun WeatherScreen(
 
 @Composable
 private fun WeatherContent(
-    state: WeatherUiState.Success
+    state: WeatherUiState.Success,
+    isLocating: Boolean = false,
+    onLocationClick: () -> Unit = {}
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
@@ -116,7 +158,9 @@ private fun WeatherContent(
             realtime = realtime,
             locationName = state.locationName,
             todayHigh = todayTemp?.max,
-            todayLow = todayTemp?.min
+            todayLow = todayTemp?.min,
+            isLocating = isLocating,
+            onLocationClick = onLocationClick
         )
 
         Spacer(modifier = Modifier.height(24.dp))

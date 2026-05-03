@@ -165,9 +165,9 @@ private fun HourlyTemperatureChart(
                     skycon.contains("PARTLY_CLOUDY") -> Color(0xFFF1F8FF)
                     skycon.contains("CLEAR") -> Color(0xFFFFFCF7)
                     skycon.contains("CLOUDY") -> Color(0xFFF6F7F9)
-                    skycon.contains("STORM_RAIN") -> Color(0xFF1565C0)
-                    skycon.contains("HEAVY_RAIN") -> Color(0xFF1E88E5)
-                    skycon.contains("RAIN") -> Color(0xFF64B5F6)
+                    skycon.contains("STORM_RAIN") -> Color(0xFF455A64)
+                    skycon.contains("HEAVY_RAIN") -> Color(0xFF546E7A)
+                    skycon.contains("RAIN") -> Color(0xFF78909C)
                     skycon.contains("STORM_SNOW") -> Color(0xFF90A4AE)
                     skycon.contains("HEAVY_SNOW") -> Color(0xFFB0BEC5)
                     skycon.contains("SNOW") -> Color(0xFFCFD8DC)
@@ -177,9 +177,13 @@ private fun HourlyTemperatureChart(
                 }
 
                 val barSteps = ((rightX - leftX) / (0.5f * density)).toInt().coerceIn(20, 300)
-                val barTopY = splinePoints[i].y.coerceAtMost(
-                    if (i < itemCount - 1) splinePoints[i + 1].y else splinePoints[i].y
-                )
+                // Sample the spline across the full bar width to find the true top
+                var barTopY = splinePoints[i].y
+                for (s in 0..barSteps) {
+                    val t = s.toFloat() / barSteps
+                    val sx = leftX + (rightX - leftX) * t
+                    barTopY = minOf(barTopY, sampleSplineY(sx))
+                }
 
                 val barPath = Path().apply {
                     moveTo(leftX, canvasH)

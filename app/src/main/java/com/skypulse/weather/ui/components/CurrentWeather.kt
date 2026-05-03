@@ -1,6 +1,8 @@
 package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.LocationOn
@@ -22,6 +24,8 @@ fun CurrentWeather(
     locationName: String,
     todayHigh: Double?,
     todayLow: Double?,
+    isLocating: Boolean = false,
+    onLocationClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -63,16 +67,34 @@ fun CurrentWeather(
     ) {
         // Location row
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (onLocationClick != null)
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onLocationClick
+                        )
+                    else Modifier
+                ),
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Outlined.LocationOn,
-                contentDescription = null,
-                tint = TextSecondary,
-                modifier = Modifier.size(20.dp)
-            )
+            if (isLocating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = TextSecondary
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = "校正位置",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = locationName,

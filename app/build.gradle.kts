@@ -12,8 +12,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 26
-        versionName = "1.4.7"
+        versionCode = 34
+        versionName = "1.5.2"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -58,6 +58,7 @@ android {
 dependencies {
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.ktx)
+    implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
 

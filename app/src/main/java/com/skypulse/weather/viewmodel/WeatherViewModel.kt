@@ -5,7 +5,9 @@ import android.location.Geocoder
 import android.location.Location
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.WeatherRepository
 import kotlinx.coroutines.delay
@@ -36,6 +38,71 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    // Only true during manual pull-to-refresh — drives the spinner/checkmark UI
+    private val _isManualRefreshing = MutableStateFlow(false)
+    val isManualRefreshing: StateFlow<Boolean> = _isManualRefreshing.asStateFlow()
+
+    private val _isLocating = MutableStateFlow(false)
+    val isLocating: StateFlow<Boolean> = _isLocating.asStateFlow()
+
+    private val _lastFetchTime = MutableStateFlow(0L)
+    val lastFetchTime: StateFlow<Long> = _lastFetchTime.asStateFlow()
+
+    /** Force re-acquire GPS location, then refresh weather */
+    @Suppress("MissingPermission")
+    fun relocateAndRefresh() {
+        viewModelScope.launch {
+            _isLocating.value = true
+            try {
+                // Try fresh GPS location with 10s timeout, fallback to cached location
+                val location = try {
+                    val request = CurrentLocationRequest.Builder()
+                        .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                        .setMaxUpdateAgeMillis(0)
+                        .build()
+                    kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                        kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+                            fusedLocationClient.getCurrentLocation(request, null)
+                                .addOnSuccessListener { cont.resume(it) {} }
+                                .addOnFailureListener { cont.resume(null) {} }
+                        }
+                    } ?: getLastLocation() // timeout -> fallback to cached
+                } catch (_: Exception) {
+                    getLastLocation()
+                }
+                val lon: Double
+                val lat: Double
+                val locationName: String
+                if (location != null) {
+                    lon = location.longitude
+                    lat = location.latitude
+                    locationName = getLocationName(location.latitude, location.longitude)
+                } else {
+                    lon = 116.4074
+                    lat = 39.9042
+                    locationName = "北京市 (默认)"
+                }
+                val result = fetchWithRetry(lon, lat)
+                result.fold(
+                    onSuccess = { response ->
+                        _lastFetchTime.value = System.currentTimeMillis()
+                        _uiState.value = WeatherUiState.Success(
+                            weather = response,
+                            locationName = locationName
+                        )
+                    },
+                    onFailure = { e ->
+                        _uiState.value = WeatherUiState.Error(mapError(e))
+                    }
+                )
+            } catch (e: Exception) {
+                _uiState.value = WeatherUiState.Error("定位失败，请稍后重试")
+            } finally {
+                _isLocating.value = false
+            }
+        }
+    }
+
     fun fetchWeather() {
         viewModelScope.launch {
             _uiState.value = WeatherUiState.Loading
@@ -46,8 +113,17 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() {
         viewModelScope.launch {
             _isRefreshing.value = true
+            _isManualRefreshing.value = true
             doFetchWeather()
             _isRefreshing.value = false
+            _isManualRefreshing.value = false
+        }
+    }
+
+    /** Silent refresh — no UI indicators (for background/auto refresh) */
+    fun silentRefresh() {
+        viewModelScope.launch {
+            doFetchWeather()
         }
     }
 
@@ -71,6 +147,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             val result = fetchWithRetry(lon, lat)
             result.fold(
                 onSuccess = { response ->
+                    _lastFetchTime.value = System.currentTimeMillis()
                     _uiState.value = WeatherUiState.Success(
                         weather = response,
                         locationName = locationName
