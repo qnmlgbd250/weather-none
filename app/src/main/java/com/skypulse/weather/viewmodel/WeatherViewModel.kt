@@ -27,7 +27,15 @@ sealed class WeatherUiState {
     data class Error(val message: String) : WeatherUiState()
 }
 
+enum class RefreshPhase {
+    Idle, Refreshing, Success
+}
+
 class WeatherViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        private const val API_COOLDOWN_MS = 30_000L // 30s cooldown between API calls
+    }
 
     private val repository = WeatherRepository()
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
@@ -38,15 +46,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    // Only true during manual pull-to-refresh — drives the spinner/checkmark UI
-    private val _isManualRefreshing = MutableStateFlow(false)
-    val isManualRefreshing: StateFlow<Boolean> = _isManualRefreshing.asStateFlow()
+    // Pull-to-refresh status phase: Idle → Refreshing → Success
+    private val _refreshPhase = MutableStateFlow(RefreshPhase.Idle)
+    val refreshPhase: StateFlow<RefreshPhase> = _refreshPhase.asStateFlow()
 
     private val _isLocating = MutableStateFlow(false)
     val isLocating: StateFlow<Boolean> = _isLocating.asStateFlow()
-
-    private val _showRefreshSuccess = MutableStateFlow(false)
-    val showRefreshSuccess: StateFlow<Boolean> = _showRefreshSuccess.asStateFlow()
 
     private val _lastFetchTime = MutableStateFlow(0L)
     val lastFetchTime: StateFlow<Long> = _lastFetchTime.asStateFlow()
@@ -57,7 +62,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             _isLocating.value = true
             try {
-                // Try fresh GPS location with 10s timeout, fallback to cached location
                 val location = try {
                     val request = CurrentLocationRequest.Builder()
                         .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
@@ -69,7 +73,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                                 .addOnSuccessListener { cont.resume(it) {} }
                                 .addOnFailureListener { cont.resume(null) {} }
                         }
-                    } ?: getLastLocation() // timeout -> fallback to cached
+                    } ?: getLastLocation()
                 } catch (_: Exception) {
                     getLastLocation()
                 }
@@ -85,19 +89,29 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                     lat = 39.9042
                     locationName = "北京市 (默认)"
                 }
-                val result = fetchWithRetry(lon, lat)
-                result.fold(
-                    onSuccess = { response ->
-                        _lastFetchTime.value = System.currentTimeMillis()
-                        _uiState.value = WeatherUiState.Success(
-                            weather = response,
-                            locationName = locationName
-                        )
-                    },
-                    onFailure = { e ->
-                        _uiState.value = WeatherUiState.Error(mapError(e))
+
+                val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
+                if (sinceLast < API_COOLDOWN_MS) {
+                    // Update location name only, skip API call
+                    val current = _uiState.value
+                    if (current is WeatherUiState.Success) {
+                        _uiState.value = current.copy(locationName = locationName)
                     }
-                )
+                } else {
+                    val result = fetchWithRetry(lon, lat)
+                    result.fold(
+                        onSuccess = { response ->
+                            _lastFetchTime.value = System.currentTimeMillis()
+                            _uiState.value = WeatherUiState.Success(
+                                weather = response,
+                                locationName = locationName
+                            )
+                        },
+                        onFailure = { e ->
+                            _uiState.value = WeatherUiState.Error(mapError(e))
+                        }
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.value = WeatherUiState.Error("定位失败，请稍后重试")
             } finally {
@@ -116,20 +130,34 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            _isManualRefreshing.value = true
-            doFetchWeather()
+            _refreshPhase.value = RefreshPhase.Refreshing
+            val startTime = System.currentTimeMillis()
+            val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
+            if (sinceLast < API_COOLDOWN_MS) {
+                // Data is fresh — skip API call, just show success
+                delay(800)
+            } else {
+                doFetchWeather()
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed < 1500) delay(1500 - elapsed)
+            }
             _isRefreshing.value = false
-            _isManualRefreshing.value = false
+            _refreshPhase.value = RefreshPhase.Success
+            delay(2000)
+            _refreshPhase.value = RefreshPhase.Idle
         }
     }
 
-    /** Silent refresh — no spinner, but shows brief success toast */
+    /** Silent refresh — shows brief success text only */
     fun silentRefresh() {
         viewModelScope.launch {
-            doFetchWeather()
-            _showRefreshSuccess.value = true
+            val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
+            if (sinceLast >= API_COOLDOWN_MS) {
+                doFetchWeather()
+            }
+            _refreshPhase.value = RefreshPhase.Success
             delay(2000)
-            _showRefreshSuccess.value = false
+            _refreshPhase.value = RefreshPhase.Idle
         }
     }
 

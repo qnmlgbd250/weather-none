@@ -8,8 +8,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
+import com.skypulse.weather.viewmodel.RefreshPhase
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,14 +24,89 @@ import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
 
 @Composable
+fun LocationHeader(
+    locationName: String,
+    isLocating: Boolean = false,
+    refreshPhase: RefreshPhase = RefreshPhase.Idle,
+    onLocationClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(horizontal = 20.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (onLocationClick != null)
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onLocationClick
+                        )
+                    else Modifier
+                ),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isLocating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = TextSecondary
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = "校正位置",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = locationName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+        }
+
+        Box(modifier = Modifier.height(20.dp).padding(start = 3.dp)) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = refreshPhase != RefreshPhase.Idle,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (refreshPhase == RefreshPhase.Refreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 1.5.dp,
+                            color = TextSecondary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = TextSecondary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(9.dp))
+                    Text(
+                        text = if (refreshPhase == RefreshPhase.Refreshing) "正在更新数据" else "更新成功",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary.copy(alpha = 0.6f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun CurrentWeather(
     realtime: RealtimeWeather?,
-    locationName: String,
     todayHigh: Double?,
     todayLow: Double?,
-    isLocating: Boolean = false,
-    showRefreshSuccess: Boolean = false,
-    onLocationClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -69,68 +146,12 @@ fun CurrentWeather(
             .padding(top = paddingDp)
             .padding(horizontal = 20.dp)
     ) {
-        // Location row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (onLocationClick != null)
-                        Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onLocationClick
-                        )
-                    else Modifier
-                ),
-            horizontalArrangement = Arrangement.Start,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (isLocating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = TextSecondary
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = "校正位置",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = locationName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
-            )
-        }
-
-        Box(modifier = Modifier.height(18.dp)) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = showRefreshSuccess,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Text(
-                    text = "更新成功",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Temperature centered - number is the visual anchor, degree overlaid
+        // Temperature centered
         val tempValue = realtime?.temperature?.toInt()?.toString() ?: "--"
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-            // Inner box wraps content so TopEnd is relative to the number, not screen
             Box(contentAlignment = Alignment.TopEnd) {
                 Text(
                     text = tempValue,
@@ -153,7 +174,6 @@ fun CurrentWeather(
             }
         }
 
-        // Low / High below temperature
         if (todayLow != null || todayHigh != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -171,7 +191,6 @@ fun CurrentWeather(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        // Info blocks row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
