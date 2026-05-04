@@ -73,7 +73,8 @@ private fun MinutelyBarChart(
     data: List<Double>,
     modifier: Modifier = Modifier
 ) {
-    val maxVal = data.max().coerceAtLeast(0.1)
+    // Fixed scale: 2.5 mm/h = moderate rain = 100% fill
+    val maxVal = 2.5
 
     val barWidthDp = BAR_WIDTH_DP.dp
     val barGapDp = BAR_GAP_DP.dp
