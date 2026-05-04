@@ -90,28 +90,19 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                     locationName = "北京市 (默认)"
                 }
 
-                val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
-                if (sinceLast < API_COOLDOWN_MS) {
-                    // Update location name only, skip API call
-                    val current = _uiState.value
-                    if (current is WeatherUiState.Success) {
-                        _uiState.value = current.copy(locationName = locationName)
+                val result = fetchWithRetry(lon, lat)
+                result.fold(
+                    onSuccess = { response ->
+                        _lastFetchTime.value = System.currentTimeMillis()
+                        _uiState.value = WeatherUiState.Success(
+                            weather = response,
+                            locationName = locationName
+                        )
+                    },
+                    onFailure = { e ->
+                        _uiState.value = WeatherUiState.Error(mapError(e))
                     }
-                } else {
-                    val result = fetchWithRetry(lon, lat)
-                    result.fold(
-                        onSuccess = { response ->
-                            _lastFetchTime.value = System.currentTimeMillis()
-                            _uiState.value = WeatherUiState.Success(
-                                weather = response,
-                                locationName = locationName
-                            )
-                        },
-                        onFailure = { e ->
-                            _uiState.value = WeatherUiState.Error(mapError(e))
-                        }
-                    )
-                }
+                )
             } catch (e: Exception) {
                 _uiState.value = WeatherUiState.Error("定位失败，请稍后重试")
             } finally {

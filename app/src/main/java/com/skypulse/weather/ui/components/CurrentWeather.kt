@@ -47,19 +47,30 @@ fun LocationHeader(
             horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isLocating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = TextSecondary
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = "校正位置",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
+            Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isLocating,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = TextSecondary
+                    )
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !isLocating,
+                    enter = fadeIn(),
+                    exit = fadeOut()
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.LocationOn,
+                        contentDescription = "校正位置",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(6.dp))
             Text(

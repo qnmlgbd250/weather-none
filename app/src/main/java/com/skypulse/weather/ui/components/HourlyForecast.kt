@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -160,24 +160,24 @@ private fun HourlyTemperatureChart(
                     else (splinePoints[i].x + splinePoints[i + 1].x) / 2f
 
                 val skycon = skyconValues[i]
-                // Fixed alpha, vary gray brightness: lighter = clearer, darker = stormier
-                val gray = when {
-                    skycon == null -> 0.60f
-                    skycon.contains("CLEAR") -> 0.75f
-                    skycon.contains("PARTLY_CLOUDY") -> 0.65f
-                    skycon.contains("CLOUDY") -> 0.55f
-                    skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> 0.45f
-                    skycon.contains("RAIN") || skycon.contains("SNOW") -> 0.35f
-                    skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> 0.25f
-                    skycon.contains("STORM") -> 0.15f
-                    skycon.contains("HAZE") || skycon == "FOG" -> 0.45f
-                    skycon == "WIND" -> 0.55f
-                    else -> 0.55f
+                // Adapt gray + alpha to background: lighter bg → darker bars, darker bg → lighter bars
+                // Gray: darker weather → lower value. Alpha: darker bg → higher for visibility.
+                val (gray, alpha) = when {
+                    skycon == null -> 0.50f to 0.30f
+                    skycon.contains("STORM") -> 0.20f to 0.38f
+                    skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> 0.28f to 0.36f
+                    skycon.contains("RAIN") || skycon.contains("SNOW") -> 0.35f to 0.33f
+                    skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> 0.42f to 0.30f
+                    skycon.contains("CLOUDY") -> 0.48f to 0.28f
+                    skycon.contains("PARTLY_CLOUDY") -> 0.58f to 0.25f
+                    skycon.contains("HAZE") || skycon == "FOG" -> 0.42f to 0.30f
+                    skycon == "WIND" -> 0.50f to 0.28f
+                    skycon.contains("CLEAR") -> 0.65f to 0.22f
+                    else -> 0.50f to 0.28f
                 }
-                val barColor = Color(gray, gray, gray, 0.25f)
+                val barColor = Color(gray, gray, gray, alpha)
 
                 val barSteps = ((rightX - leftX) / (0.5f * density)).toInt().coerceIn(20, 300)
-                // Sample the spline across the full bar width to find the true top
                 var barTopY = splinePoints[i].y
                 for (s in 0..barSteps) {
                     val t = s.toFloat() / barSteps
