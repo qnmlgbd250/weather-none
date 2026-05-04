@@ -29,6 +29,7 @@ private val SIDE_PADDING = 8
 @Composable
 fun HourlyForecastCard(
     hourly: HourlyForecast?,
+    currentSkycon: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourly?.temperature.isNullOrEmpty()) return
@@ -60,7 +61,8 @@ fun HourlyForecastCard(
             HourlyTemperatureChart(
                 temperatures = temps.take(24),
                 skycons = data.skycon?.take(24),
-                precipitation = data.precipitation?.take(24)
+                precipitation = data.precipitation?.take(24),
+                currentSkycon = currentSkycon
             )
         }
     }
@@ -70,8 +72,14 @@ fun HourlyForecastCard(
 private fun HourlyTemperatureChart(
     temperatures: List<HourlyValue>,
     skycons: List<HourlySkycon>?,
-    precipitation: List<HourlyValue>?
+    precipitation: List<HourlyValue>?,
+    currentSkycon: String? = null
 ) {
+    // Sunny/daytime background → lighter bars for cloudy/rainy weather
+    val isBrightBg = remember(currentSkycon) {
+        val isDay = WeatherUtils.isCurrentlyDay()
+        isDay && (currentSkycon == null || currentSkycon.contains("CLEAR") || currentSkycon.contains("PARTLY_CLOUDY"))
+    }
     val textMeasurer = rememberTextMeasurer()
 
     val tempValues = temperatures.mapNotNull { it.value }
@@ -162,7 +170,7 @@ private fun HourlyTemperatureChart(
                 val skycon = skyconValues[i]
                 // Adapt gray + alpha to background: lighter bg → darker bars, darker bg → lighter bars
                 // Gray: darker weather → lower value. Alpha: darker bg → higher for visibility.
-                val (gray, alpha) = when {
+                val (baseGray, baseAlpha) = when {
                     skycon == null -> 0.50f to 0.30f
                     skycon.contains("STORM") -> 0.20f to 0.38f
                     skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> 0.28f to 0.36f
@@ -175,6 +183,11 @@ private fun HourlyTemperatureChart(
                     skycon.contains("CLEAR") -> 0.65f to 0.22f
                     else -> 0.50f to 0.28f
                 }
+                // In bright daytime background, reduce alpha for non-clear weather
+                val alpha = if (isBrightBg && !skycon.orEmpty().contains("CLEAR")) {
+                    (baseAlpha - 0.06f).coerceAtLeast(0.15f)
+                } else baseAlpha
+                val gray = baseGray
                 val barColor = Color(gray, gray, gray, alpha)
 
                 val barSteps = ((rightX - leftX) / (0.5f * density)).toInt().coerceIn(20, 300)

@@ -179,6 +179,7 @@ private fun WeatherContent(
 
             HourlyForecastCard(
                 hourly = result?.hourly,
+                currentSkycon = result?.realtime?.skycon,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
