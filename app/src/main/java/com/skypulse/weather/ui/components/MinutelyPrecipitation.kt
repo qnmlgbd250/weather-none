@@ -96,6 +96,8 @@ private fun MinutelyBarChart(
             val totalW = barCount * barW + (barCount - 1) * gapW
             val startX = ((chartW - totalW) / 2f).coerceAtLeast(0f)
 
+            val grayFrame = Color.White.copy(alpha = 0.12f)
+
             for (i in 0 until barCount) {
                 val value = data[i]
                 val fillRatio = (value / maxVal).toFloat().coerceIn(0f, 1f)
@@ -103,7 +105,15 @@ private fun MinutelyBarChart(
                 val fillH = chartH * fillRatio
                 val fillTop = chartH - fillH
 
-                // Shadow effect (layered semi-transparent rects)
+                // Gray frame (full height, always visible)
+                drawRoundRect(
+                    color = grayFrame,
+                    topLeft = Offset(left, 0f),
+                    size = Size(barW, chartH),
+                    cornerRadius = corner
+                )
+
+                // Shadow + blue fill for bars with precipitation
                 if (fillRatio > 0f) {
                     val shadowAlpha = (0.15f + 0.25f * fillRatio).coerceIn(0.15f, 0.4f)
                     val shadowColor = Color(0xFF92DDFE).copy(alpha = shadowAlpha)
@@ -116,10 +126,7 @@ private fun MinutelyBarChart(
                             cornerRadius = CornerRadius(barW / 2f + expand)
                         )
                     }
-                }
 
-                // Fill from bottom
-                if (fillRatio > 0f) {
                     val fillAlpha = (0.4f + 0.6f * fillRatio).coerceIn(0.4f, 1f)
                     drawRoundRect(
                         color = Color(0xFF92DDFE).copy(alpha = fillAlpha),
