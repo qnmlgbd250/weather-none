@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun DailyForecastCard(
@@ -97,6 +100,7 @@ private fun DailyForecastItem(
 ) {
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
     val weekday = if (isFirst) "今天" else WeatherUtils.formatWeekday(dateStr)
+    val dateLabel = formatMonthDay(dateStr)
 
     Row(
         modifier = Modifier
@@ -104,13 +108,19 @@ private fun DailyForecastItem(
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Day name
-        Text(
-            text = weekday,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary,
-            modifier = Modifier.width(48.dp)
-        )
+        // Day name + date
+        Column(modifier = Modifier.width(48.dp)) {
+            Text(
+                text = weekday,
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextPrimary
+            )
+            Text(
+                text = dateLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = TextSecondary
+            )
+        }
 
         // Weather icon - clipped to prevent animation overflow
         Box(
@@ -204,5 +214,18 @@ private fun TemperatureRangeBar(
             size = Size(activeWidth, barHeight),
             cornerRadius = CornerRadius(cornerRadius)
         )
+    }
+}
+
+private fun formatMonthDay(dateStr: String?): String {
+    if (dateStr == null) return ""
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val date = inputFormat.parse(dateStr) ?: return ""
+        val cal = Calendar.getInstance()
+        cal.time = date
+        "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}"
+    } catch (e: Exception) {
+        ""
     }
 }
