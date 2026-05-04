@@ -9,9 +9,9 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    const val CAIYUN_TOKEN = "yOKjcoYSmAtwCp5K"
+    const val CAIYUN_TOKEN = "Y2FpeXVuIGFuZHJpb2QgYXBp"
 
-    private const val BASE_URL = "https://api.caiyunapp.com/"
+    private const val BASE_URL = "https://wrapper.cyapi.cn/"
 
     private val moshi = Moshi.Builder()
         .build()

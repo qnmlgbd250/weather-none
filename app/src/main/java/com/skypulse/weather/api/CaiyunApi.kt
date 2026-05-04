@@ -7,7 +7,7 @@ import retrofit2.http.Query
 
 interface CaiyunApi {
 
-    @GET("v2.6/{token}/{lon},{lat}/weather")
+    @GET("v2.7/{token}/{lon},{lat}/weather")
     suspend fun getWeather(
         @Path("token") token: String,
         @Path("lon") longitude: Double,

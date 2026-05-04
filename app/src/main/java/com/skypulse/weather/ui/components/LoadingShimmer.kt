@@ -91,7 +91,7 @@ fun LoadingShimmer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(180.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(shimmerBrush)
             )
         }

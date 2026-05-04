@@ -42,7 +42,7 @@ fun DailyForecastCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "3日预报",
+                text = "多日预报",
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary
             )

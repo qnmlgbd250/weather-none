@@ -164,6 +164,19 @@ private fun WeatherContent(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
+            val minutelyData = result?.minutely?.precipitation_2h
+            val showMinutely = !minutelyData.isNullOrEmpty() && minutelyData.any { it != 0.0 }
+
+            if (showMinutely) {
+                MinutelyPrecipitationCard(
+                    minutely = result?.minutely,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             HourlyForecastCard(
                 hourly = result?.hourly,
                 modifier = Modifier

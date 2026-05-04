@@ -19,7 +19,7 @@ fun GlassCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(Color.White.copy(alpha = 0.15f))
             .background(
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
