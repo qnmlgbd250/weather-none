@@ -14,18 +14,20 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
+    isSunnyDay: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val cardColor = if (isSunnyDay) Color(0xFF467CD6) else Color.White
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.15f))
+            .background(cardColor.copy(alpha = if (isSunnyDay) 0.25f else 0.15f))
             .background(
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.2f),
-                        Color.White.copy(alpha = 0.05f)
+                        cardColor.copy(alpha = if (isSunnyDay) 0.3f else 0.2f),
+                        cardColor.copy(alpha = if (isSunnyDay) 0.1f else 0.05f)
                     )
                 )
             ),

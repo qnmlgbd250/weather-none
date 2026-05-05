@@ -20,6 +20,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
 import com.skypulse.weather.viewmodel.WeatherViewModel
@@ -125,6 +126,11 @@ private fun WeatherContent(
     val realtime = result?.realtime
     val todayTemp = result?.daily?.temperature?.firstOrNull()
 
+    val isSunnyDay = remember(realtime?.skycon) {
+        val isDay = WeatherUtils.isCurrentlyDay()
+        isDay && (realtime?.skycon == null || realtime.skycon.contains("CLEAR") || realtime.skycon.contains("PARTLY_CLOUDY"))
+    }
+
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -153,7 +159,7 @@ private fun WeatherContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             result?.forecastKeypoint?.let { keypoint ->
-                GlassCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+                GlassCard(modifier = Modifier.padding(horizontal = 16.dp), isSunnyDay = isSunnyDay) {
                     Text(
                         text = keypoint,
                         style = MaterialTheme.typography.bodyMedium,
@@ -170,6 +176,7 @@ private fun WeatherContent(
             if (showMinutely) {
                 MinutelyPrecipitationCard(
                     minutely = result?.minutely,
+                    isSunnyDay = isSunnyDay,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
@@ -180,6 +187,7 @@ private fun WeatherContent(
             HourlyForecastCard(
                 hourly = result?.hourly,
                 currentSkycon = result?.realtime?.skycon,
+                isSunnyDay = isSunnyDay,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
@@ -189,6 +197,7 @@ private fun WeatherContent(
 
             DailyForecastCard(
                 daily = result?.daily,
+                isSunnyDay = isSunnyDay,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)

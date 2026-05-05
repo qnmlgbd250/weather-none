@@ -25,7 +25,8 @@ import java.util.Locale
 @Composable
 fun DailyForecastCard(
     daily: DailyForecast?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSunnyDay: Boolean = false
 ) {
     if (daily?.temperature.isNullOrEmpty()) return
     val forecast = daily ?: return
@@ -41,7 +42,8 @@ fun DailyForecastCard(
     LaunchedEffect(Unit) { visible = true }
 
     GlassCard(
-        modifier = modifier.alpha(alpha)
+        modifier = modifier.alpha(alpha),
+        isSunnyDay = isSunnyDay
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -73,7 +75,8 @@ fun DailyForecastCard(
                     minTemp = temp.min,
                     globalMin = globalMin,
                     globalRange = globalRange,
-                    isFirst = index == 0
+                    isFirst = index == 0,
+                    isSunnyDay = isSunnyDay
                 )
 
                 if (index < temperatures.size - 1) {
@@ -96,7 +99,8 @@ private fun DailyForecastItem(
     minTemp: Double?,
     globalMin: Double,
     globalRange: Double,
-    isFirst: Boolean
+    isFirst: Boolean,
+    isSunnyDay: Boolean = false
 ) {
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
     val weekday = if (isFirst) "今天" else WeatherUtils.formatWeekday(dateStr)
@@ -179,7 +183,6 @@ private fun TemperatureRangeBar(
     val startFraction = ((minTemp - globalMin) / globalRange).toFloat().coerceIn(0f, 1f)
     val endFraction = ((maxTemp - globalMin) / globalRange).toFloat().coerceIn(0f, 1f)
 
-    // Temperature-based color
     val avgTemp = (minTemp + maxTemp) / 2
     val barColor = when {
         avgTemp < 0 -> Color(0xFF90CAF9)

@@ -30,7 +30,8 @@ private val SIDE_PADDING = 8
 fun HourlyForecastCard(
     hourly: HourlyForecast?,
     currentSkycon: String? = null,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isSunnyDay: Boolean = false
 ) {
     if (hourly?.temperature.isNullOrEmpty()) return
     val data = hourly ?: return
@@ -46,7 +47,8 @@ fun HourlyForecastCard(
     LaunchedEffect(Unit) { visible = true }
 
     GlassCard(
-        modifier = modifier.alpha(alpha)
+        modifier = modifier.alpha(alpha),
+        isSunnyDay = isSunnyDay
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
@@ -168,27 +170,58 @@ private fun HourlyTemperatureChart(
                     else (splinePoints[i].x + splinePoints[i + 1].x) / 2f
 
                 val skycon = skyconValues[i]
-                // Adapt gray + alpha to background: lighter bg → darker bars, darker bg → lighter bars
-                // Gray: darker weather → lower value. Alpha: darker bg → higher for visibility.
-                val (baseGray, baseAlpha) = when {
-                    skycon == null -> 0.50f to 0.30f
-                    skycon.contains("STORM") -> 0.20f to 0.38f
-                    skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> 0.28f to 0.36f
-                    skycon.contains("RAIN") || skycon.contains("SNOW") -> 0.35f to 0.33f
-                    skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> 0.42f to 0.30f
-                    skycon.contains("CLOUDY") -> 0.48f to 0.28f
-                    skycon.contains("PARTLY_CLOUDY") -> 0.58f to 0.25f
-                    skycon.contains("HAZE") || skycon == "FOG" -> 0.42f to 0.30f
-                    skycon == "WIND" -> 0.50f to 0.28f
-                    skycon.contains("CLEAR") -> 0.65f to 0.22f
-                    else -> 0.50f to 0.28f
+                // Weather-type gradient colors: top (brighter) → bottom (deeper)
+                val (topColor, bottomColor) = if (isBrightBg) {
+                    when {
+                        skycon == null ->
+                            Color(0xFF467CD6).copy(alpha = 0.30f) to Color(0xFF2E5AAC).copy(alpha = 0.18f)
+                        skycon.contains("STORM") ->
+                            Color(0xFF1A3A7A).copy(alpha = 0.45f) to Color(0xFF0D1F4A).copy(alpha = 0.30f)
+                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") ->
+                            Color(0xFF2E5AAC).copy(alpha = 0.42f) to Color(0xFF1A3A7A).copy(alpha = 0.28f)
+                        skycon.contains("RAIN") || skycon.contains("SNOW") ->
+                            Color(0xFF467CD6).copy(alpha = 0.38f) to Color(0xFF2E5AAC).copy(alpha = 0.24f)
+                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") ->
+                            Color(0xFF6FA0E8).copy(alpha = 0.34f) to Color(0xFF467CD6).copy(alpha = 0.20f)
+                        skycon.contains("CLOUDY") ->
+                            Color(0xFF8AA4C4).copy(alpha = 0.28f) to Color(0xFF6A8AAA).copy(alpha = 0.16f)
+                        skycon.contains("PARTLY_CLOUDY") ->
+                            Color(0xFFE8A832).copy(alpha = 0.25f) to Color(0xFFC48820).copy(alpha = 0.15f)
+                        skycon.contains("HAZE") || skycon == "FOG" ->
+                            Color(0xFF9A8A76).copy(alpha = 0.30f) to Color(0xFF7A6A56).copy(alpha = 0.18f)
+                        skycon == "WIND" ->
+                            Color(0xFF5AACB8).copy(alpha = 0.28f) to Color(0xFF3A8A98).copy(alpha = 0.16f)
+                        skycon.contains("CLEAR") ->
+                            Color(0xFFF0C040).copy(alpha = 0.25f) to Color(0xFFD4A020).copy(alpha = 0.15f)
+                        else ->
+                            Color(0xFF467CD6).copy(alpha = 0.28f) to Color(0xFF2E5AAC).copy(alpha = 0.16f)
+                    }
+                } else {
+                    when {
+                        skycon == null ->
+                            Color(0xFF7AAAFF).copy(alpha = 0.35f) to Color(0xFF467CD6).copy(alpha = 0.20f)
+                        skycon.contains("STORM") ->
+                            Color(0xFFB080FF).copy(alpha = 0.50f) to Color(0xFF7040C0).copy(alpha = 0.35f)
+                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") ->
+                            Color(0xFF6080E0).copy(alpha = 0.45f) to Color(0xFF304898).copy(alpha = 0.30f)
+                        skycon.contains("RAIN") || skycon.contains("SNOW") ->
+                            Color(0xFF70A0F0).copy(alpha = 0.40f) to Color(0xFF4070B8).copy(alpha = 0.26f)
+                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") ->
+                            Color(0xFF80B8FF).copy(alpha = 0.35f) to Color(0xFF5090D0).copy(alpha = 0.22f)
+                        skycon.contains("CLOUDY") ->
+                            Color(0xFF8898B0).copy(alpha = 0.30f) to Color(0xFF607088).copy(alpha = 0.18f)
+                        skycon.contains("PARTLY_CLOUDY") ->
+                            Color(0xFFD0B878).copy(alpha = 0.30f) to Color(0xFFA89058).copy(alpha = 0.18f)
+                        skycon.contains("HAZE") || skycon == "FOG" ->
+                            Color(0xFF908878).copy(alpha = 0.30f) to Color(0xFF706858).copy(alpha = 0.18f)
+                        skycon == "WIND" ->
+                            Color(0xFF60C0D0).copy(alpha = 0.32f) to Color(0xFF4090A0).copy(alpha = 0.20f)
+                        skycon.contains("CLEAR") ->
+                            Color(0xFFFFD860).copy(alpha = 0.32f) to Color(0xFFD0A830).copy(alpha = 0.20f)
+                        else ->
+                            Color(0xFF7AAAFF).copy(alpha = 0.30f) to Color(0xFF467CD6).copy(alpha = 0.18f)
+                    }
                 }
-                // In bright daytime background, reduce alpha for non-clear weather
-                val alpha = if (isBrightBg && !skycon.orEmpty().contains("CLEAR")) {
-                    (baseAlpha - 0.06f).coerceAtLeast(0.15f)
-                } else baseAlpha
-                val gray = baseGray
-                val barColor = Color(gray, gray, gray, alpha)
 
                 val barSteps = ((rightX - leftX) / (0.5f * density)).toInt().coerceIn(20, 300)
                 var barTopY = splinePoints[i].y
@@ -212,8 +245,9 @@ private fun HourlyTemperatureChart(
                     path = barPath,
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            barColor,
-                            barColor.copy(alpha = 0f)
+                            topColor,
+                            bottomColor,
+                            bottomColor.copy(alpha = 0f)
                         ),
                         startY = barTopY,
                         endY = canvasH
