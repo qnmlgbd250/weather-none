@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter
 import com.skypulse.weather.model.MinutelyForecast
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
+import kotlin.math.pow
 
 private const val BAR_COUNT = 48
 private const val BAR_WIDTH_DP = 3f
@@ -74,8 +75,8 @@ private fun MinutelyBarChart(
     data: List<Double>,
     modifier: Modifier = Modifier
 ) {
-    // Fixed scale: 2.5 mm/h = moderate rain = 100% fill
-    val maxVal = 2.5
+    // Perceptual scale: moderate rain (~2.5mm/h) = 90% fill, lower values expand
+    // 0→0%, 0.05→5%, 0.1→8%, 0.3→18%, 0.5→30%, 1.0→52%, 2.0→78%, 2.5→90%, 4.0→95%, 8.0+→100%
 
     val barWidthDp = BAR_WIDTH_DP.dp
     val barGapDp = BAR_GAP_DP.dp
@@ -102,9 +103,17 @@ private fun MinutelyBarChart(
 
             for (i in 0 until barCount) {
                 val value = data[i]
-                val fillRatio = (value / maxVal).toFloat().coerceIn(0f, 1f)
+                val fillRatio = when {
+                    value <= 0.0 -> 0f
+                    value <= 0.1 -> (value / 0.1 * 0.08f).toFloat()                   // 0%~8%
+                    value <= 0.5 -> (0.08f + (value - 0.1) / 0.4 * 0.22f).toFloat()   // 8%~30%
+                    value <= 2.5 -> (0.30f + (value - 0.5) / 2.0 * 0.60f).toFloat()   // 30%~90%
+                    else -> (0.90f + (value - 2.5) / 5.5 * 0.10f).coerceIn(0.90, 1.0).toFloat() // 90%~100%
+                }
+                // Power curve: expand light rain visual area, compress heavy rain
+                val visualRatio = if (fillRatio > 0f) fillRatio.pow(0.55f) else 0f
                 val left = startX + i * step
-                val fillH = chartH * fillRatio
+                val fillH = chartH * visualRatio
                 val fillTop = chartH - fillH
 
                 // Gray frame (full height, always visible)
@@ -116,8 +125,8 @@ private fun MinutelyBarChart(
                 )
 
                 // Shadow + blue fill for bars with precipitation
-                if (fillRatio > 0f) {
-                    val shadowAlpha = (0.15f + 0.25f * fillRatio).coerceIn(0.15f, 0.4f)
+                if (visualRatio > 0f) {
+                    val shadowAlpha = (0.15f + 0.25f * visualRatio).coerceIn(0.15f, 0.4f)
                     val shadowColor = Color(0xFF92DDFE).copy(alpha = shadowAlpha)
                     for (s in 1..3) {
                         val expand = s * 0.8f
@@ -129,7 +138,7 @@ private fun MinutelyBarChart(
                         )
                     }
 
-                    val fillAlpha = (0.4f + 0.6f * fillRatio).coerceIn(0.4f, 1f)
+                    val fillAlpha = (0.4f + 0.6f * visualRatio).coerceIn(0.4f, 1f)
                     drawRoundRect(
                         color = Color(0xFF92DDFE).copy(alpha = fillAlpha),
                         topLeft = Offset(left, fillTop),

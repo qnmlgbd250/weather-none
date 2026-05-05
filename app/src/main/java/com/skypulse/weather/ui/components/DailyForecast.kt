@@ -2,7 +2,9 @@ package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,15 +14,18 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Locale
+
+private const val DAY_WIDTH = 56
 
 @Composable
 fun DailyForecastCard(
@@ -41,194 +46,234 @@ fun DailyForecastCard(
 
     LaunchedEffect(Unit) { visible = true }
 
+    val allTemps = temperatures.flatMap { t -> listOfNotNull(t.max, t.min) }
+    val globalMin = allTemps.minOrNull() ?: 0.0
+    val globalMax = allTemps.maxOrNull() ?: 1.0
+
+    val itemWidth = DAY_WIDTH.dp
+    val totalWidth = (temperatures.size * DAY_WIDTH).dp
+
     GlassCard(
         modifier = modifier.alpha(alpha),
         isSunnyDay = isSunnyDay
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
                 text = "多日预报",
                 style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary
+                color = TextPrimary,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Calculate global min/max for temperature range bar
-            val allTemps = temperatures.flatMap { temp ->
-                val values = mutableListOf<Double>()
-                temp.max?.let { values.add(it) }
-                temp.min?.let { values.add(it) }
-                values
-            }
-            val globalMin = allTemps.minOrNull() ?: 0.0
-            val globalMax = allTemps.maxOrNull() ?: 1.0
-            val globalRange = (globalMax - globalMin).coerceAtLeast(1.0)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+            ) {
+                Spacer(modifier = Modifier.width(8.dp))
 
-            temperatures.forEachIndexed { index, temp ->
-                val skycon = forecast.skycon?.getOrNull(index)?.value
-
-                DailyForecastItem(
-                    dateStr = temp.date,
-                    skycon = skycon,
-                    maxTemp = temp.max,
-                    minTemp = temp.min,
-                    globalMin = globalMin,
-                    globalRange = globalRange,
-                    isFirst = index == 0,
-                    isSunnyDay = isSunnyDay
-                )
-
-                if (index < temperatures.size - 1) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        color = Color.White.copy(alpha = 0.1f),
-                        thickness = 0.5.dp
+                temperatures.forEachIndexed { index, temp ->
+                    val skycon = forecast.skycon?.getOrNull(index)?.value
+                    DailyColumn(
+                        dateStr = temp.date,
+                        skycon = skycon,
+                        maxTemp = temp.max,
+                        minTemp = temp.min,
+                        globalMin = globalMin,
+                        globalMax = globalMax,
+                        isFirst = index == 0,
+                        itemWidth = itemWidth
                     )
                 }
+
+                Spacer(modifier = Modifier.width(8.dp))
             }
         }
     }
 }
 
 @Composable
-private fun DailyForecastItem(
+private fun DailyColumn(
     dateStr: String?,
     skycon: String?,
     maxTemp: Double?,
     minTemp: Double?,
     globalMin: Double,
-    globalRange: Double,
+    globalMax: Double,
     isFirst: Boolean,
-    isSunnyDay: Boolean = false
+    itemWidth: Dp
 ) {
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
     val weekday = if (isFirst) "今天" else WeatherUtils.formatWeekday(dateStr)
-    val dateLabel = formatMonthDay(dateStr)
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+    val dateLabel = formatShortDate(dateStr)
+
+    Column(
+        modifier = Modifier.width(itemWidth),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Day name + date
-        Column(modifier = Modifier.width(48.dp)) {
-            Text(
-                text = weekday,
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextPrimary
-            )
-            Text(
-                text = dateLabel,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
-        }
+        // --- Date + Weekday ---
+        Text(
+            text = weekday,
+            style = MaterialTheme.typography.labelSmall,
+            color = TextPrimary
+        )
+        Text(
+            text = dateLabel,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            color = TextSecondary
+        )
 
-        // Weather icon - clipped to prevent animation overflow
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // --- Weather icon ---
         Box(
             modifier = Modifier
-                .width(40.dp)
-                .height(28.dp)
+                .size(28.dp)
                 .clipToBounds(),
             contentAlignment = Alignment.Center
         ) {
-            WeatherIcon(
-                iconType = weatherInfo.icon,
-                size = 32.dp
-            )
+            WeatherIcon(iconType = weatherInfo.icon, size = 28.dp)
         }
 
-        // Min temp
+        // --- Weather description ---
         Text(
-            text = WeatherUtils.formatTemperature(minTemp),
-            style = MaterialTheme.typography.bodyMedium,
+            text = weatherInfo.description,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
             color = TextSecondary,
-            modifier = Modifier.width(40.dp),
-            textAlign = TextAlign.End
+            maxLines = 1,
+            textAlign = TextAlign.Center
         )
 
-        // Temperature range bar
-        TemperatureRangeBar(
-            minTemp = minTemp,
-            maxTemp = maxTemp,
-            globalMin = globalMin,
-            globalRange = globalRange,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp)
-        )
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // Max temp
-        Text(
-            text = WeatherUtils.formatTemperature(maxTemp),
-            style = MaterialTheme.typography.bodyMedium,
+        // --- Max temp ---
+        TempText(
+            value = maxTemp,
             color = TextPrimary,
-            modifier = Modifier.width(40.dp)
+            style = MaterialTheme.typography.bodySmall
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // --- Vertical temperature bar ---
+        VerticalTempBar(
+            maxTemp = maxTemp,
+            minTemp = minTemp,
+            globalMin = globalMin,
+            globalMax = globalMax,
+            modifier = Modifier
+                .width(6.dp)
+                .height(48.dp)
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // --- Min temp ---
+        TempText(
+            value = minTemp,
+            color = TextPrimary,
+            style = MaterialTheme.typography.bodySmall
         )
     }
 }
 
 @Composable
-private fun TemperatureRangeBar(
-    minTemp: Double?,
+private fun TempText(
+    value: Double?,
+    color: Color,
+    style: TextStyle
+) {
+    if (value == null) return
+    val numStr = value.toInt().toString()
+
+    // Report width = number-only width so parent centers the number.
+    // Degree sign overflows to the right and doesn't affect centering.
+    androidx.compose.ui.layout.SubcomposeLayout { constraints ->
+        val numPlaceable = subcompose("num") {
+            Text(text = numStr, style = style, color = color)
+        }.first().measure(constraints.copy(maxWidth = Int.MAX_VALUE))
+
+        val degPlaceable = subcompose("deg") {
+            Text(
+                text = "°",
+                style = style.copy(fontSize = style.fontSize * 0.7f),
+                color = color.copy(alpha = 0.7f)
+            )
+        }.first().measure(constraints.copy(maxWidth = Int.MAX_VALUE))
+
+        val h = maxOf(numPlaceable.height, degPlaceable.height)
+
+        layout(numPlaceable.width, h) {
+            numPlaceable.place(0, 0)
+            degPlaceable.place(numPlaceable.width, 0)
+        }
+    }
+}
+
+@Composable
+private fun VerticalTempBar(
     maxTemp: Double?,
+    minTemp: Double?,
     globalMin: Double,
-    globalRange: Double,
+    globalMax: Double,
     modifier: Modifier = Modifier
 ) {
-    if (minTemp == null || maxTemp == null) return
+    if (maxTemp == null || minTemp == null) return
+    val globalRange = (globalMax - globalMin).coerceAtLeast(1.0)
 
-    val startFraction = ((minTemp - globalMin) / globalRange).toFloat().coerceIn(0f, 1f)
-    val endFraction = ((maxTemp - globalMin) / globalRange).toFloat().coerceIn(0f, 1f)
-
-    val avgTemp = (minTemp + maxTemp) / 2
-    val barColor = when {
-        avgTemp < 0 -> Color(0xFF90CAF9)
-        avgTemp < 10 -> Color(0xFF64B5F6)
-        avgTemp < 20 -> Color(0xFF4FC3F7)
-        avgTemp < 30 -> Color(0xFFFFD54F)
-        avgTemp < 35 -> Color(0xFFFFB74D)
-        else -> Color(0xFFEF5350)
-    }
-
-    Canvas(
-        modifier = modifier.height(8.dp)
-    ) {
-        val barHeight = size.height
-        val barWidth = size.width
-        val cornerRadius = barHeight / 2
+    Canvas(modifier = modifier) {
+        val barW = size.width
+        val barH = size.height
+        val corner = barW / 2f
 
         // Background track
         drawRoundRect(
-            color = Color.White.copy(alpha = 0.1f),
-            cornerRadius = CornerRadius(cornerRadius),
-            size = Size(barWidth, barHeight)
+            color = Color.White.copy(alpha = 0.08f),
+            cornerRadius = CornerRadius(corner),
+            size = Size(barW, barH)
         )
 
-        // Active range
-        val activeLeft = startFraction * barWidth
-        val activeWidth = (endFraction - startFraction).coerceAtLeast(0.02f) * barWidth
+        // Position within range: top = hottest, bottom = coldest
+        val topFraction = (1f - ((maxTemp - globalMin) / globalRange)).toFloat().coerceIn(0f, 1f)
+        val bottomFraction = (1f - ((minTemp - globalMin) / globalRange)).toFloat().coerceIn(0f, 1f)
+
+        val activeTop = topFraction * barH
+        val activeHeight = (bottomFraction - topFraction).coerceAtLeast(0.04f) * barH
+
+        // Color based on average temperature
+        val avgTemp = (maxTemp + minTemp) / 2
+        val warmColor = when {
+            avgTemp < 0 -> Color(0xFF90CAF9)
+            avgTemp < 10 -> Color(0xFF64B5F6)
+            avgTemp < 20 -> Color(0xFF4FC3F7)
+            avgTemp < 30 -> Color(0xFFFFD54F)
+            avgTemp < 35 -> Color(0xFFFFB74D)
+            else -> Color(0xFFEF5350)
+        }
 
         drawRoundRect(
-            color = barColor,
-            topLeft = Offset(activeLeft, 0f),
-            size = Size(activeWidth, barHeight),
-            cornerRadius = CornerRadius(cornerRadius)
+            brush = Brush.verticalGradient(
+                colors = listOf(warmColor, warmColor.copy(alpha = 0.5f)),
+                startY = activeTop,
+                endY = activeTop + activeHeight
+            ),
+            topLeft = Offset(0f, activeTop),
+            size = Size(barW, activeHeight),
+            cornerRadius = CornerRadius(corner)
         )
     }
 }
 
-private fun formatMonthDay(dateStr: String?): String {
+private fun formatShortDate(dateStr: String?): String {
     if (dateStr == null) return ""
     return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val date = inputFormat.parse(dateStr) ?: return ""
-        val cal = Calendar.getInstance()
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val date = fmt.parse(dateStr) ?: return ""
+        val cal = java.util.Calendar.getInstance()
         cal.time = date
-        "${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.DAY_OF_MONTH)}"
-    } catch (e: Exception) {
-        ""
-    }
+        "${cal.get(java.util.Calendar.MONTH) + 1}/${cal.get(java.util.Calendar.DAY_OF_MONTH)}"
+    } catch (_: Exception) { "" }
 }
