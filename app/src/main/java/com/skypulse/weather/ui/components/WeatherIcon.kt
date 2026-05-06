@@ -16,6 +16,7 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 fun WeatherIcon(
     iconType: String,
     size: Dp = 80.dp,
+    animated: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val composition by rememberLottieComposition(
@@ -23,11 +24,11 @@ fun WeatherIcon(
     )
     val progress by animateLottieCompositionAsState(
         composition = composition,
-        iterations = LottieConstants.IterateForever
+        iterations = if (animated) LottieConstants.IterateForever else 1
     )
     LottieAnimation(
         composition = composition,
-        progress = { progress },
+        progress = { if (animated) progress else 0.5f },
         modifier = modifier.size(size)
     )
 }

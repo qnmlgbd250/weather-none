@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.sin
 import kotlin.random.Random
@@ -30,7 +31,7 @@ fun RainEffect(
     val density = LocalDensity.current
     val strokeWidthPx = with(density) { (1.5f + intensity * 1f).dp.toPx() }
 
-    val dropCount = (15 + intensity * 50).toInt()
+    val dropCount = (8 + intensity * 28).toInt()
     val baseSpeed = 800f + intensity * 1700f
     val minLength = 15f + intensity * 20f
     val maxLength = 25f + intensity * 30f
@@ -66,6 +67,7 @@ fun RainEffect(
                 drop.x += sin(drop.angle * 0.01745f) * drop.speed * deltaTime * 0.3f
             }
             tick++
+            delay(33)
         }
     }
 

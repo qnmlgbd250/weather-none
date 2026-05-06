@@ -6,6 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -15,7 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.TextPrimary
@@ -33,7 +34,14 @@ fun WeatherScreen(
     val uiState by viewModel.uiState.collectAsState()
     val refreshPhase by viewModel.refreshPhase.collectAsState()
     val isLocating by viewModel.isLocating.collectAsState()
-    val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    val locationPermissions = rememberMultiplePermissionsState(
+        permissions = listOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    )
+    val hasLocationPermission = locationPermissions.permissions.any { it.status.isGranted }
+    var useDefaultLocation by rememberSaveable { mutableStateOf(false) }
 
     // Track when app went to background for auto-refresh
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
@@ -61,8 +69,9 @@ fun WeatherScreen(
         }
     }
 
-    LaunchedEffect(locationPermission.status.isGranted) {
-        if (locationPermission.status.isGranted) {
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            useDefaultLocation = false
             viewModel.fetchWeather()
         }
     }
@@ -97,17 +106,30 @@ fun WeatherScreen(
                 is WeatherUiState.Error -> {
                     ErrorContent(
                         message = state.message,
-                        onRetry = { viewModel.fetchWeather() }
+                        onRetry = {
+                            if (hasLocationPermission && !useDefaultLocation) {
+                                viewModel.fetchWeather()
+                            } else {
+                                viewModel.fetchDefaultWeather()
+                            }
+                        },
+                        onUseDefault = {
+                            useDefaultLocation = true
+                            viewModel.fetchDefaultWeather()
+                        }
                     )
                 }
             }
 
             // Permission request overlay
-            if (!locationPermission.status.isGranted) {
+            if (!hasLocationPermission && !useDefaultLocation) {
                 PermissionRequestContent(
-                    shouldShowRationale = locationPermission.status.shouldShowRationale,
-                    onRequestPermission = { locationPermission.launchPermissionRequest() },
-                    onUseDefault = { viewModel.fetchWeather() }
+                    shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
+                    onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
+                    onUseDefault = {
+                        useDefaultLocation = true
+                        viewModel.fetchDefaultWeather()
+                    }
                 )
             }
         }
@@ -211,7 +233,8 @@ private fun WeatherContent(
 @Composable
 private fun ErrorContent(
     message: String,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onUseDefault: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -241,6 +264,12 @@ private fun ErrorContent(
             )
         ) {
             Text("重试")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        TextButton(onClick = onUseDefault) {
+            Text("使用默认位置", color = TextSecondary)
         }
     }
 }

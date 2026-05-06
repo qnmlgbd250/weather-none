@@ -1,6 +1,5 @@
 package com.skypulse.weather.ui.components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -20,22 +19,8 @@ fun WeatherBackground(
     val isDay = WeatherUtils.isCurrentlyDay()
     val targetColors = WeatherUtils.getWeatherGradient(skycon, isDay)
 
-    val infiniteTransition = rememberInfiniteTransition(label = "bg")
-
-    // Animate gradient shift
-    val animProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(8000, easing = EaseInOut),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "gradient_shift"
-    )
-
-    // Interpolate colors
-    val color1 = animateColor(targetColors.getOrElse(0) { Color(0xFF1976D2) }, animProgress)
-    val color2 = animateColor(targetColors.getOrElse(1) { Color(0xFF64B5F6) }, animProgress)
+    val color1 = targetColors.getOrElse(0) { Color(0xFF1976D2) }
+    val color2 = targetColors.getOrElse(1) { Color(0xFF64B5F6) }
 
     val rainIntensity = remember(skycon) {
         when {
@@ -68,16 +53,3 @@ fun WeatherBackground(
         content()
     }
 }
-
-private fun animateColor(base: Color, progress: Float): Color {
-    // Subtle brightness shift
-    val brightnessShift = sin(progress * Math.PI).toFloat() * 0.05f
-    return Color(
-        red = (base.red + brightnessShift).coerceIn(0f, 1f),
-        green = (base.green + brightnessShift).coerceIn(0f, 1f),
-        blue = (base.blue + brightnessShift).coerceIn(0f, 1f),
-        alpha = base.alpha
-    )
-}
-
-private fun sin(value: Double): Float = kotlin.math.sin(value).toFloat()

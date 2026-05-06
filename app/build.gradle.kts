@@ -1,8 +1,22 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use(::load)
+    }
+}
+
+val amapApiKey = providers.gradleProperty("AMAP_API_KEY")
+    .orElse(localProperties.getProperty("AMAP_API_KEY", ""))
+    .get()
+val escapedAmapApiKey = amapApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
     namespace = "com.skypulse.weather"
@@ -12,12 +26,15 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 71
-        versionName = "1.7.20"
+        versionCode = 72
+        versionName = "1.7.21"
 
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
+        buildConfigField("String", "AMAP_API_KEY", "\"$escapedAmapApiKey\"")
     }
 
     buildTypes {
@@ -42,6 +59,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -77,6 +95,7 @@ dependencies {
     implementation(libs.okhttp.logging)
 
     implementation(libs.play.services.location)
+    implementation(libs.amap.location)
     implementation(libs.accompanist.permissions)
     implementation(libs.lottie.compose)
 
