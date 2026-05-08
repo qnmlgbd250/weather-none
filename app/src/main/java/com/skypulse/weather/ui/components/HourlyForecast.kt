@@ -84,13 +84,13 @@ private fun HourlyTemperatureChart(
     }
     val textMeasurer = rememberTextMeasurer()
 
-    val tempValues = temperatures.mapNotNull { it.value }
+    val tempValues = temperatures.mapNotNull { it.value?.let { v -> kotlin.math.round(v) } }
     if (tempValues.isEmpty()) return
 
     val minTemp = tempValues.min()
     val maxTemp = tempValues.max()
     val rawRange = maxTemp - minTemp
-    val padding = rawRange * 0.15
+    val padding = (rawRange * 0.15).coerceAtLeast(1.0)
     val paddedMin = minTemp - padding
     val paddedMax = maxTemp + padding
     val tempRange = (paddedMax - paddedMin).coerceAtLeast(1.0)
@@ -127,47 +127,75 @@ private fun HourlyTemperatureChart(
             val curveAreaBottom = canvasH * 0.70f
             val curveTop = 20.dp.toPx()
 
-            // Catmull-Rom spline
-            val splinePoints = (0 until itemCount).map { i ->
+            // Calculate points
+            val points = (0 until itemCount).map { i ->
                 val x = halfStep + i * step
                 val normalizedY = ((tempValues[i] - paddedMin) / tempRange).toFloat()
                 val y = curveAreaBottom - normalizedY * (curveAreaBottom - curveTop)
                 Offset(x, y.coerceIn(curveTop, curveAreaBottom))
             }
 
-            fun sampleSplineY(x: Float): Float {
-                if (splinePoints.isEmpty()) return curveAreaBottom
-                if (x <= splinePoints.first().x) return splinePoints.first().y
-                if (x >= splinePoints.last().x) return splinePoints.last().y
+            // Calculate tangents (slopes) for Monotone Cubic Interpolation
+            // m[i] is the tangent at points[i]
+            val tangents = FloatArray(itemCount)
+            val segmentSlopes = FloatArray(itemCount - 1)
+            for (i in 0 until itemCount - 1) {
+                segmentSlopes[i] = (points[i + 1].y - points[i].y) / (points[i + 1].x - points[i].x)
+            }
 
-                for (j in 0 until splinePoints.size - 1) {
-                    if (x <= splinePoints[j + 1].x) {
-                        val p0 = splinePoints[maxOf(0, j - 1)]
-                        val p1 = splinePoints[j]
-                        val p2 = splinePoints[j + 1]
-                        val p3 = splinePoints[minOf(splinePoints.size - 1, j + 2)]
-
-                        val t = if (p2.x != p1.x) ((x - p1.x) / (p2.x - p1.x)).coerceIn(0f, 1f) else 0f
-                        val t2 = t * t
-                        val t3 = t2 * t
-
-                        val tau = 0.35f
-                        val h00 = (2f * t3 - 3f * t2 + 1f)
-                        val h10 = (t3 - 2f * t2 + t) * tau
-                        val h01 = (-2f * t3 + 3f * t2)
-                        val h11 = (t3 - t2) * tau
-                        val y = h00 * p1.y + h10 * (p2.y - p0.y) + h01 * p2.y + h11 * (p3.y - p1.y)
-                        return y.coerceIn(curveTop, curveAreaBottom)
+            for (i in 0 until itemCount) {
+                when {
+                    i == 0 -> tangents[i] = segmentSlopes[0]
+                    i == itemCount - 1 -> tangents[i] = segmentSlopes[itemCount - 2]
+                    else -> {
+                        val s0 = segmentSlopes[i - 1]
+                        val s1 = segmentSlopes[i]
+                        // If signs differ, it's a local extremum -> zero tangent
+                        if (s0 * s1 <= 0) {
+                            tangents[i] = 0f
+                        } else {
+                            // Arithmetic mean of adjacent slopes
+                            tangents[i] = (s0 + s1) / 2f
+                        }
                     }
                 }
-                return splinePoints.last().y
+            }
+
+            // Function to sample Y at any X using the cubic segments
+            fun sampleSplineY(x: Float): Float {
+                if (points.isEmpty()) return curveAreaBottom
+                if (x <= points.first().x) return points.first().y
+                if (x >= points.last().x) return points.last().y
+
+                for (i in 0 until points.size - 1) {
+                    if (x <= points[i + 1].x) {
+                        val p0 = points[i]
+                        val p1 = points[i + 1]
+                        val m0 = tangents[i]
+                        val m1 = tangents[i + 1]
+                        
+                        val t = (x - p0.x) / (p1.x - p0.x)
+                        val t2 = t * t
+                        val t3 = t2 * t
+                        
+                        // Hermite basis functions
+                        val h00 = 2 * t3 - 3 * t2 + 1
+                        val h10 = t3 - 2 * t2 + t
+                        val h01 = -2 * t3 + 3 * t2
+                        val h11 = t3 - t2
+                        
+                        val dx = p1.x - p0.x
+                        return h00 * p0.y + h10 * m0 * dx + h01 * p1.y + h11 * m1 * dx
+                    }
+                }
+                return points.last().y
             }
 
             // --- Colored bars per hour with gradient (curve top → transparent bottom) ---
             for (i in 0 until itemCount) {
-                val leftX = if (i == 0) 0f else (splinePoints[i - 1].x + splinePoints[i].x) / 2f
+                val leftX = if (i == 0) 0f else (points[i - 1].x + points[i].x) / 2f
                 val rightX = if (i == itemCount - 1) size.width
-                    else (splinePoints[i].x + splinePoints[i + 1].x) / 2f
+                    else (points[i].x + points[i + 1].x) / 2f
 
                 val skycon = skyconValues[i]
                 // Weather-type gradient colors: top (brighter) → bottom (deeper)
@@ -223,8 +251,8 @@ private fun HourlyTemperatureChart(
                     }
                 }
 
-                val barSteps = ((rightX - leftX) / (0.5f * density)).toInt().coerceIn(20, 300)
-                var barTopY = splinePoints[i].y
+                val barSteps = ((rightX - leftX) / (2f * density)).toInt().coerceIn(10, 50)
+                var barTopY = points[i].y
                 for (s in 0..barSteps) {
                     val t = s.toFloat() / barSteps
                     val sx = leftX + (rightX - leftX) * t
@@ -255,15 +283,24 @@ private fun HourlyTemperatureChart(
                 )
             }
 
-            // --- Curve line on top of bars ---
-            if (splinePoints.size >= 2) {
+            // --- Curve line on top of bars (Monotone Cubic Spline) ---
+            if (points.size >= 2) {
                 val linePath = Path().apply {
-                    moveTo(splinePoints.first().x, splinePoints.first().y)
-                    for (i in 1 until splinePoints.size) {
-                        val prev = splinePoints[i - 1]
-                        val curr = splinePoints[i]
-                        val cx = (prev.x + curr.x) / 2f
-                        cubicTo(cx, prev.y, cx, curr.y, curr.x, curr.y)
+                    moveTo(points.first().x, points.first().y)
+                    for (i in 0 until points.size - 1) {
+                        val p0 = points[i]
+                        val p1 = points[i + 1]
+                        val m0 = tangents[i]
+                        val m1 = tangents[i + 1]
+                        val dx = p1.x - p0.x
+                        
+                        // Control points for Cubic Bézier
+                        val cp1x = p0.x + dx / 3f
+                        val cp1y = p0.y + m0 * dx / 3f
+                        val cp2x = p1.x - dx / 3f
+                        val cp2y = p1.y - m1 * dx / 3f
+                        
+                        cubicTo(cp1x, cp1y, cp2x, cp2y, p1.x, p1.y)
                     }
                 }
                 drawPath(
@@ -278,7 +315,7 @@ private fun HourlyTemperatureChart(
             }
 
             // --- Dots and temperature labels ---
-            splinePoints.forEachIndexed { index, point ->
+            points.forEachIndexed { index, point ->
                 drawCircle(Color.White, 3.dp.toPx(), point)
                 drawCircle(Color.White.copy(alpha = 0.3f), 6.dp.toPx(), point)
 
@@ -299,9 +336,9 @@ private fun HourlyTemperatureChart(
 
             for (i in 0 until itemCount) {
                 val skycon = skyconValues[i] ?: continue
-                val leftX = if (i == 0) 0f else (splinePoints[i - 1].x + splinePoints[i].x) / 2f
+                val leftX = if (i == 0) 0f else (points[i - 1].x + points[i].x) / 2f
                 val rightX = if (i == itemCount - 1) size.width
-                    else (splinePoints[i].x + splinePoints[i + 1].x) / 2f
+                    else (points[i].x + points[i + 1].x) / 2f
                 val centerX = (leftX + rightX) / 2f
 
                 val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
