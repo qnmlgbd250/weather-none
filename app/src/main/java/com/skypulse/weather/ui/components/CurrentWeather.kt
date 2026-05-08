@@ -121,6 +121,7 @@ fun CurrentWeather(
     onRefresh: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var visible by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
@@ -159,7 +160,7 @@ fun CurrentWeather(
             .padding(horizontal = 20.dp)
     ) {
         // Temperature centered — tap to refresh
-        val tempValue = realtime?.temperature?.toInt()?.toString() ?: "--"
+        val tempValue = WeatherUtils.formatTemperature(realtime?.temperature).replace("°", "")
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -168,7 +169,10 @@ fun CurrentWeather(
                         Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = onRefresh
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                onRefresh()
+                            }
                         )
                     else Modifier
                 ),

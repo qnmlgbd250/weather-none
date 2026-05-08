@@ -187,30 +187,11 @@ private fun TempText(
     style: TextStyle
 ) {
     if (value == null) return
-    val numStr = value.toInt().toString()
-
-    // Report width = number-only width so parent centers the number.
-    // Degree sign overflows to the right and doesn't affect centering.
-    androidx.compose.ui.layout.SubcomposeLayout { constraints ->
-        val numPlaceable = subcompose("num") {
-            Text(text = numStr, style = style, color = color)
-        }.first().measure(constraints.copy(maxWidth = Int.MAX_VALUE))
-
-        val degPlaceable = subcompose("deg") {
-            Text(
-                text = "°",
-                style = style.copy(fontSize = style.fontSize * 0.7f),
-                color = color.copy(alpha = 0.7f)
-            )
-        }.first().measure(constraints.copy(maxWidth = Int.MAX_VALUE))
-
-        val h = maxOf(numPlaceable.height, degPlaceable.height)
-
-        layout(numPlaceable.width, h) {
-            numPlaceable.place(0, 0)
-            degPlaceable.place(numPlaceable.width, 0)
-        }
-    }
+    Text(
+        text = WeatherUtils.formatTemperature(value),
+        style = style,
+        color = color
+    )
 }
 
 @Composable
@@ -243,20 +224,13 @@ private fun VerticalTempBar(
         val activeTop = topFraction * barH
         val activeHeight = (bottomFraction - topFraction).coerceAtLeast(0.04f) * barH
 
-        // Color based on average temperature
-        val avgTemp = (maxTemp + minTemp) / 2
-        val warmColor = when {
-            avgTemp < 0 -> Color(0xFF90CAF9)
-            avgTemp < 10 -> Color(0xFF64B5F6)
-            avgTemp < 20 -> Color(0xFF4FC3F7)
-            avgTemp < 30 -> Color(0xFFFFD54F)
-            avgTemp < 35 -> Color(0xFFFFB74D)
-            else -> Color(0xFFEF5350)
-        }
+        // Smooth color gradient based on temperature
+        val topColor = WeatherUtils.getTemperatureColor(maxTemp)
+        val bottomColor = WeatherUtils.getTemperatureColor(minTemp)
 
         drawRoundRect(
             brush = Brush.verticalGradient(
-                colors = listOf(warmColor, warmColor.copy(alpha = 0.5f)),
+                colors = listOf(topColor, bottomColor),
                 startY = activeTop,
                 endY = activeTop + activeHeight
             ),

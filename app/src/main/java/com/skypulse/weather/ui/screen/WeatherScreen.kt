@@ -149,8 +149,7 @@ private fun WeatherContent(
     val todayTemp = result?.daily?.temperature?.firstOrNull()
 
     val isSunnyDay = remember(realtime?.skycon) {
-        val isDay = WeatherUtils.isCurrentlyDay()
-        isDay && (realtime?.skycon == null || realtime.skycon.contains("CLEAR") || realtime.skycon.contains("PARTLY_CLOUDY"))
+        WeatherUtils.isBrightBackground(realtime?.skycon)
     }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {

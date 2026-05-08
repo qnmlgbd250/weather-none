@@ -55,7 +55,36 @@ object WeatherUtils {
 
     fun formatTemperature(temp: Double?): String {
         if (temp == null) return "--"
-        return "${temp.toInt()}°"
+        return "${kotlin.math.round(temp).toInt()}°"
+    }
+
+    fun isBrightBackground(skycon: String?): Boolean {
+        val isDay = isCurrentlyDay()
+        return isDay && (skycon == null || skycon.contains("CLEAR") || skycon.contains("PARTLY_CLOUDY"))
+    }
+
+    fun getTemperatureColor(temp: Double?): Color {
+        if (temp == null) return Color.White
+        val t = temp.toFloat()
+        return when {
+            t < -10f -> Color(0xFF90CAF9) // Very cold
+            t < 0f -> lerpColor(Color(0xFF90CAF9), Color(0xFF64B5F6), (t + 10f) / 10f)
+            t < 10f -> lerpColor(Color(0xFF64B5F6), Color(0xFF4FC3F7), t / 10f)
+            t < 20f -> lerpColor(Color(0xFF4FC3F7), Color(0xFFFFD54F), (t - 10f) / 10f)
+            t < 30f -> lerpColor(Color(0xFFFFD54F), Color(0xFFFFB74D), (t - 20f) / 10f)
+            t < 40f -> lerpColor(Color(0xFFFFB74D), Color(0xFFEF5350), (t - 30f) / 10f)
+            else -> Color(0xFFEF5350) // Very hot
+        }
+    }
+
+    private fun lerpColor(start: Color, end: Color, fraction: Float): Color {
+        val f = fraction.coerceIn(0f, 1f)
+        return Color(
+            red = start.red + (end.red - start.red) * f,
+            green = start.green + (end.green - start.green) * f,
+            blue = start.blue + (end.blue - start.blue) * f,
+            alpha = start.alpha + (end.alpha - start.alpha) * f
+        )
     }
 
     fun formatHumidity(humidity: Double?): String {
