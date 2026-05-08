@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -187,11 +188,28 @@ private fun TempText(
     style: TextStyle
 ) {
     if (value == null) return
-    Text(
-        text = WeatherUtils.formatTemperature(value),
-        style = style,
-        color = color
-    )
+    val tempStr = WeatherUtils.formatTemperature(value).replace("°", "")
+
+    Layout(
+        content = {
+            Text(text = tempStr, style = style, color = color)
+            Text(
+                text = "°",
+                style = style.copy(fontSize = style.fontSize * 0.7f),
+                color = color.copy(alpha = 0.7f)
+            )
+        }
+    ) { measurables, constraints ->
+        val tempPlaceable = measurables[0].measure(constraints)
+        val degPlaceable = measurables[1].measure(constraints)
+
+        // Only report the width of the temperature digits.
+        // The degree sign will be drawn to the right but won't shift the center point.
+        layout(tempPlaceable.width, maxOf(tempPlaceable.height, degPlaceable.height)) {
+            tempPlaceable.placeRelative(0, 0)
+            degPlaceable.placeRelative(tempPlaceable.width, 0)
+        }
+    }
 }
 
 @Composable
