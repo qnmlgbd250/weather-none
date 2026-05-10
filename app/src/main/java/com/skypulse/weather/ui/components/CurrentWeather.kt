@@ -201,10 +201,18 @@ fun CurrentWeather(
         }
 
         if (todayLow != null || todayHigh != null) {
+            val weatherInfo = WeatherUtils.getWeatherInfo(realtime?.skycon)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = weatherInfo.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 val lowText = WeatherUtils.formatTemperature(todayLow)
                 val highText = WeatherUtils.formatTemperature(todayHigh)
                 Text(
