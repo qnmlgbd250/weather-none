@@ -52,28 +52,27 @@ fun DailyForecastCard(
     val globalMax = allTemps.maxOrNull() ?: 1.0
 
     val itemWidth = DAY_WIDTH.dp
-    val totalWidth = (temperatures.size * DAY_WIDTH).dp
 
     GlassCard(
         modifier = modifier.alpha(alpha),
         isSunnyDay = isSunnyDay
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 18.dp)) {
             Text(
                 text = "多日预报",
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
             ) {
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 temperatures.forEachIndexed { index, temp ->
                     val skycon = forecast.skycon?.getOrNull(index)?.value
@@ -89,7 +88,7 @@ fun DailyForecastCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
             }
         }
     }
@@ -123,11 +122,11 @@ private fun DailyColumn(
         )
         Text(
             text = dateLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
             color = TextSecondary
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // --- Weather icon ---
         Box(
@@ -142,13 +141,13 @@ private fun DailyColumn(
         // --- Weather description ---
         Text(
             text = weatherInfo.description,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
             color = TextSecondary,
             maxLines = 1,
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // --- Max temp ---
         TempText(
@@ -157,7 +156,7 @@ private fun DailyColumn(
             style = MaterialTheme.typography.bodySmall
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // --- Vertical temperature bar ---
         VerticalTempBar(
@@ -167,10 +166,10 @@ private fun DailyColumn(
             globalMax = globalMax,
             modifier = Modifier
                 .width(6.dp)
-                .height(48.dp)
+                .height(44.dp)
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // --- Min temp ---
         TempText(

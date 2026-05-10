@@ -24,7 +24,7 @@ import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
 
 private const val HOUR_WIDTH = 56
-private val SIDE_PADDING = 8
+private val SIDE_PADDING = 12
 
 @Composable
 fun HourlyForecastCard(
@@ -55,15 +55,13 @@ fun HourlyForecastCard(
                 text = "逐小时预报",
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                modifier = Modifier.padding(horizontal = 20.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             HourlyTemperatureChart(
-                temperatures = temps.take(24),
-                skycons = data.skycon?.take(24),
-                precipitation = data.precipitation?.take(24),
+                hourlyData = data,
                 currentSkycon = currentSkycon
             )
         }
@@ -72,12 +70,13 @@ fun HourlyForecastCard(
 
 @Composable
 private fun HourlyTemperatureChart(
-    temperatures: List<HourlyValue>,
-    skycons: List<HourlySkycon>?,
-    precipitation: List<HourlyValue>?,
+    hourlyData: HourlyForecast,
     currentSkycon: String? = null
 ) {
-    // Sunny/daytime background → lighter bars for cloudy/rainy weather
+    val temperatures = hourlyData.temperature?.take(24) ?: return
+    val skycons = hourlyData.skycon?.take(24)
+    val precipitation = hourlyData.precipitation?.take(24)
+
     val isBrightBg = remember(currentSkycon) {
         val isDay = WeatherUtils.isCurrentlyDay()
         isDay && (currentSkycon == null || currentSkycon.contains("CLEAR") || currentSkycon.contains("PARTLY_CLOUDY"))
@@ -95,16 +94,12 @@ private fun HourlyTemperatureChart(
     val paddedMax = maxTemp + padding
     val tempRange = (paddedMax - paddedMin).coerceAtLeast(1.0)
 
-    val precipValues = precipitation?.map { it.value ?: 0.0 } ?: List(temperatures.size) { 0.0 }
-    val probValues = precipitation?.map { it.probability ?: 0.0 }
-        ?: List(temperatures.size) { 0.0 }
-
+    val probValues = precipitation?.map { it.probability ?: 0.0 } ?: List(temperatures.size) { 0.0 }
     val skyconValues = skycons?.map { it.value } ?: List(temperatures.size) { null }
 
     val itemWidthDp = HOUR_WIDTH.dp
     val sidePad = SIDE_PADDING.dp
-    val contentWidth = (temperatures.size * HOUR_WIDTH).dp
-    val totalWidth = contentWidth + sidePad * 2
+    val totalWidth = (temperatures.size * HOUR_WIDTH).dp + sidePad * 2
     val chartHeight = 140.dp
 
     Column(
@@ -123,11 +118,9 @@ private fun HourlyTemperatureChart(
             val halfStep = step / 2f
             val canvasH = size.height
 
-            // Curve area: top portion of canvas
             val curveAreaBottom = canvasH * 0.70f
             val curveTop = 20.dp.toPx()
 
-            // Calculate points
             val points = (0 until itemCount).map { i ->
                 val x = halfStep + i * step
                 val normalizedY = ((tempValues[i] - paddedMin) / tempRange).toFloat()
@@ -135,8 +128,6 @@ private fun HourlyTemperatureChart(
                 Offset(x, y.coerceIn(curveTop, curveAreaBottom))
             }
 
-            // Calculate tangents (slopes) for Monotone Cubic Interpolation
-            // m[i] is the tangent at points[i]
             val tangents = FloatArray(itemCount)
             val segmentSlopes = FloatArray(itemCount - 1)
             for (i in 0 until itemCount - 1) {
@@ -150,40 +141,23 @@ private fun HourlyTemperatureChart(
                     else -> {
                         val s0 = segmentSlopes[i - 1]
                         val s1 = segmentSlopes[i]
-                        // If signs differ, it's a local extremum -> zero tangent
-                        if (s0 * s1 <= 0) {
-                            tangents[i] = 0f
-                        } else {
-                            // Arithmetic mean of adjacent slopes
-                            tangents[i] = (s0 + s1) / 2f
-                        }
+                        tangents[i] = if (s0 * s1 <= 0) 0f else (s0 + s1) / 2f
                     }
                 }
             }
 
-            // Function to sample Y at any X using the cubic segments
             fun sampleSplineY(x: Float): Float {
                 if (points.isEmpty()) return curveAreaBottom
                 if (x <= points.first().x) return points.first().y
                 if (x >= points.last().x) return points.last().y
-
                 for (i in 0 until points.size - 1) {
                     if (x <= points[i + 1].x) {
-                        val p0 = points[i]
-                        val p1 = points[i + 1]
-                        val m0 = tangents[i]
-                        val m1 = tangents[i + 1]
-                        
+                        val p0 = points[i]; val p1 = points[i + 1]
+                        val m0 = tangents[i]; val m1 = tangents[i + 1]
                         val t = (x - p0.x) / (p1.x - p0.x)
-                        val t2 = t * t
-                        val t3 = t2 * t
-                        
-                        // Hermite basis functions
-                        val h00 = 2 * t3 - 3 * t2 + 1
-                        val h10 = t3 - 2 * t2 + t
-                        val h01 = -2 * t3 + 3 * t2
-                        val h11 = t3 - t2
-                        
+                        val t2 = t * t; val t3 = t2 * t
+                        val h00 = 2 * t3 - 3 * t2 + 1; val h10 = t3 - 2 * t2 + t
+                        val h01 = -2 * t3 + 3 * t2; val h11 = t3 - t2
                         val dx = p1.x - p0.x
                         return h00 * p0.y + h10 * m0 * dx + h01 * p1.y + h11 * m1 * dx
                     }
@@ -191,204 +165,109 @@ private fun HourlyTemperatureChart(
                 return points.last().y
             }
 
-            // --- Colored bars per hour with gradient (curve top → transparent bottom) ---
             for (i in 0 until itemCount) {
                 val leftX = if (i == 0) 0f else (points[i - 1].x + points[i].x) / 2f
-                val rightX = if (i == itemCount - 1) size.width
-                    else (points[i].x + points[i + 1].x) / 2f
-
+                val rightX = if (i == itemCount - 1) size.width else (points[i].x + points[i + 1].x) / 2f
                 val skycon = skyconValues[i]
-                // Weather-type gradient colors: top (brighter) → bottom (deeper)
                 val (topColor, bottomColor) = if (isBrightBg) {
                     when {
-                        skycon == null ->
-                            Color(0xFF467CD6).copy(alpha = 0.30f) to Color(0xFF2E5AAC).copy(alpha = 0.18f)
-                        skycon.contains("STORM") ->
-                            Color(0xFF1A3A7A).copy(alpha = 0.45f) to Color(0xFF0D1F4A).copy(alpha = 0.30f)
-                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") ->
-                            Color(0xFF2E5AAC).copy(alpha = 0.42f) to Color(0xFF1A3A7A).copy(alpha = 0.28f)
-                        skycon.contains("RAIN") || skycon.contains("SNOW") ->
-                            Color(0xFF467CD6).copy(alpha = 0.38f) to Color(0xFF2E5AAC).copy(alpha = 0.24f)
-                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") ->
-                            Color(0xFF6FA0E8).copy(alpha = 0.34f) to Color(0xFF467CD6).copy(alpha = 0.20f)
-                        skycon.contains("CLOUDY") ->
-                            Color(0xFF8AA4C4).copy(alpha = 0.28f) to Color(0xFF6A8AAA).copy(alpha = 0.16f)
-                        skycon.contains("PARTLY_CLOUDY") ->
-                            Color(0xFFE8A832).copy(alpha = 0.25f) to Color(0xFFC48820).copy(alpha = 0.15f)
-                        skycon.contains("HAZE") || skycon == "FOG" ->
-                            Color(0xFF9A8A76).copy(alpha = 0.30f) to Color(0xFF7A6A56).copy(alpha = 0.18f)
-                        skycon == "WIND" ->
-                            Color(0xFF5AACB8).copy(alpha = 0.28f) to Color(0xFF3A8A98).copy(alpha = 0.16f)
-                        skycon.contains("CLEAR") ->
-                            Color(0xFFF0C040).copy(alpha = 0.25f) to Color(0xFFD4A020).copy(alpha = 0.15f)
-                        else ->
-                            Color(0xFF467CD6).copy(alpha = 0.28f) to Color(0xFF2E5AAC).copy(alpha = 0.16f)
+                        skycon == null -> Color(0xFF467CD6).copy(alpha = 0.30f) to Color(0xFF2E5AAC).copy(alpha = 0.18f)
+                        skycon.contains("STORM") -> Color(0xFF1A3A7A).copy(alpha = 0.45f) to Color(0xFF0D1F4A).copy(alpha = 0.30f)
+                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> Color(0xFF2E5AAC).copy(alpha = 0.42f) to Color(0xFF1A3A7A).copy(alpha = 0.28f)
+                        skycon.contains("RAIN") || skycon.contains("SNOW") -> Color(0xFF467CD6).copy(alpha = 0.38f) to Color(0xFF2E5AAC).copy(alpha = 0.24f)
+                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> Color(0xFF6FA0E8).copy(alpha = 0.34f) to Color(0xFF467CD6).copy(alpha = 0.20f)
+                        skycon.contains("CLOUDY") -> Color(0xFF8AA4C4).copy(alpha = 0.28f) to Color(0xFF6A8AAA).copy(alpha = 0.16f)
+                        skycon.contains("PARTLY_CLOUDY") -> Color(0xFFE8A832).copy(alpha = 0.25f) to Color(0xFFC48820).copy(alpha = 0.15f)
+                        skycon.contains("HAZE") || skycon == "FOG" -> Color(0xFF9A8A76).copy(alpha = 0.30f) to Color(0xFF7A6A56).copy(alpha = 0.18f)
+                        skycon == "WIND" -> Color(0xFF5AACB8).copy(alpha = 0.28f) to Color(0xFF3A8A98).copy(alpha = 0.16f)
+                        skycon.contains("CLEAR") -> Color(0xFFF0C040).copy(alpha = 0.25f) to Color(0xFFD4A020).copy(alpha = 0.15f)
+                        else -> Color(0xFF467CD6).copy(alpha = 0.28f) to Color(0xFF2E5AAC).copy(alpha = 0.16f)
                     }
                 } else {
                     when {
-                        skycon == null ->
-                            Color(0xFF7AAAFF).copy(alpha = 0.35f) to Color(0xFF467CD6).copy(alpha = 0.20f)
-                        skycon.contains("STORM") ->
-                            Color(0xFFB080FF).copy(alpha = 0.50f) to Color(0xFF7040C0).copy(alpha = 0.35f)
-                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") ->
-                            Color(0xFF6080E0).copy(alpha = 0.45f) to Color(0xFF304898).copy(alpha = 0.30f)
-                        skycon.contains("RAIN") || skycon.contains("SNOW") ->
-                            Color(0xFF70A0F0).copy(alpha = 0.40f) to Color(0xFF4070B8).copy(alpha = 0.26f)
-                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") ->
-                            Color(0xFF80B8FF).copy(alpha = 0.35f) to Color(0xFF5090D0).copy(alpha = 0.22f)
-                        skycon.contains("CLOUDY") ->
-                            Color(0xFF8898B0).copy(alpha = 0.30f) to Color(0xFF607088).copy(alpha = 0.18f)
-                        skycon.contains("PARTLY_CLOUDY") ->
-                            Color(0xFFD0B878).copy(alpha = 0.30f) to Color(0xFFA89058).copy(alpha = 0.18f)
-                        skycon.contains("HAZE") || skycon == "FOG" ->
-                            Color(0xFF908878).copy(alpha = 0.30f) to Color(0xFF706858).copy(alpha = 0.18f)
-                        skycon == "WIND" ->
-                            Color(0xFF60C0D0).copy(alpha = 0.32f) to Color(0xFF4090A0).copy(alpha = 0.20f)
-                        skycon.contains("CLEAR") ->
-                            Color(0xFFFFD860).copy(alpha = 0.32f) to Color(0xFFD0A830).copy(alpha = 0.20f)
-                        else ->
-                            Color(0xFF7AAAFF).copy(alpha = 0.30f) to Color(0xFF467CD6).copy(alpha = 0.18f)
+                        skycon == null -> Color(0xFF7AAAFF).copy(alpha = 0.35f) to Color(0xFF467CD6).copy(alpha = 0.20f)
+                        skycon.contains("STORM") -> Color(0xFFB080FF).copy(alpha = 0.50f) to Color(0xFF7040C0).copy(alpha = 0.35f)
+                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> Color(0xFF6080E0).copy(alpha = 0.45f) to Color(0xFF304898).copy(alpha = 0.30f)
+                        skycon.contains("RAIN") || skycon.contains("SNOW") -> Color(0xFF70A0F0).copy(alpha = 0.40f) to Color(0xFF4070B8).copy(alpha = 0.26f)
+                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> Color(0xFF80B8FF).copy(alpha = 0.35f) to Color(0xFF5090D0).copy(alpha = 0.22f)
+                        skycon.contains("CLOUDY") -> Color(0xFF8898B0).copy(alpha = 0.30f) to Color(0xFF607088).copy(alpha = 0.18f)
+                        skycon.contains("PARTLY_CLOUDY") -> Color(0xFFD0B878).copy(alpha = 0.30f) to Color(0xFFA89058).copy(alpha = 0.18f)
+                        skycon.contains("HAZE") || skycon == "FOG" -> Color(0xFF908878).copy(alpha = 0.30f) to Color(0xFF706858).copy(alpha = 0.18f)
+                        skycon == "WIND" -> Color(0xFF60C0D0).copy(alpha = 0.32f) to Color(0xFF4090A0).copy(alpha = 0.20f)
+                        skycon.contains("CLEAR") -> Color(0xFFFFD860).copy(alpha = 0.32f) to Color(0xFFD0A830).copy(alpha = 0.20f)
+                        else -> Color(0xFF7AAAFF).copy(alpha = 0.30f) to Color(0xFF467CD6).copy(alpha = 0.18f)
                     }
                 }
 
                 val barSteps = ((rightX - leftX) / (2f * density)).toInt().coerceIn(10, 50)
                 var barTopY = points[i].y
                 for (s in 0..barSteps) {
-                    val t = s.toFloat() / barSteps
-                    val sx = leftX + (rightX - leftX) * t
-                    barTopY = minOf(barTopY, sampleSplineY(sx))
+                    val x = leftX + (rightX - leftX) * (s.toFloat() / barSteps)
+                    barTopY = minOf(barTopY, sampleSplineY(x))
                 }
 
                 val barPath = Path().apply {
                     moveTo(leftX, canvasH)
                     for (s in 0..barSteps) {
-                        val t = s.toFloat() / barSteps
-                        val x = leftX + (rightX - leftX) * t
+                        val x = leftX + (rightX - leftX) * (s.toFloat() / barSteps)
                         lineTo(x, sampleSplineY(x))
                     }
-                    lineTo(rightX, canvasH)
-                    close()
+                    lineTo(rightX, canvasH); close()
                 }
-                drawPath(
-                    path = barPath,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            topColor,
-                            bottomColor,
-                            bottomColor.copy(alpha = 0f)
-                        ),
-                        startY = barTopY,
-                        endY = canvasH
-                    )
-                )
+                drawPath(path = barPath, brush = Brush.verticalGradient(colors = listOf(topColor, bottomColor, bottomColor.copy(alpha = 0f)), startY = barTopY, endY = canvasH))
             }
 
-            // --- Curve line on top of bars (Monotone Cubic Spline) ---
             if (points.size >= 2) {
                 val linePath = Path().apply {
                     moveTo(points.first().x, points.first().y)
                     for (i in 0 until points.size - 1) {
-                        val p0 = points[i]
-                        val p1 = points[i + 1]
-                        val m0 = tangents[i]
-                        val m1 = tangents[i + 1]
-                        val dx = p1.x - p0.x
-                        
-                        // Control points for Cubic Bézier
-                        val cp1x = p0.x + dx / 3f
-                        val cp1y = p0.y + m0 * dx / 3f
-                        val cp2x = p1.x - dx / 3f
-                        val cp2y = p1.y - m1 * dx / 3f
-                        
-                        cubicTo(cp1x, cp1y, cp2x, cp2y, p1.x, p1.y)
+                        val p0 = points[i]; val p1 = points[i + 1]
+                        val m0 = tangents[i]; val m1 = tangents[i + 1]; val dx = p1.x - p0.x
+                        cubicTo(p0.x + dx / 3f, p0.y + m0 * dx / 3f, p1.x - dx / 3f, p1.y - m1 * dx / 3f, p1.x, p1.y)
                     }
                 }
-                drawPath(
-                    path = linePath,
-                    color = Color.White,
-                    style = Stroke(
-                        width = 2.dp.toPx(),
-                        cap = StrokeCap.Round,
-                        join = StrokeJoin.Round
-                    )
-                )
+                drawPath(path = linePath, color = Color.White, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
 
-            // --- Dots and temperature labels ---
             points.forEachIndexed { index, point ->
                 drawCircle(Color.White, 3.dp.toPx(), point)
                 drawCircle(Color.White.copy(alpha = 0.3f), 6.dp.toPx(), point)
-
                 val tempText = "${tempValues[index].toInt()}°"
-                val result = textMeasurer.measure(
-                    AnnotatedString(tempText),
-                    style = TextStyle(fontSize = 10.sp, color = Color.White)
-                )
-                drawText(
-                    result,
-                    topLeft = Offset(point.x - result.size.width / 2, point.y - result.size.height - 6.dp.toPx())
-                )
+                val result = textMeasurer.measure(AnnotatedString(tempText), style = TextStyle(fontSize = 10.sp, color = Color.White))
+                drawText(result, topLeft = Offset(point.x - result.size.width / 2, point.y - result.size.height - 6.dp.toPx()))
             }
 
-            // --- Weather text in lower part of bars ---
             val labelStyle = TextStyle(fontSize = 9.sp, color = Color.White.copy(alpha = 0.9f))
             val labelCenterY = curveAreaBottom + (canvasH - curveAreaBottom) * 0.45f
-
             for (i in 0 until itemCount) {
                 val skycon = skyconValues[i] ?: continue
                 val leftX = if (i == 0) 0f else (points[i - 1].x + points[i].x) / 2f
-                val rightX = if (i == itemCount - 1) size.width
-                    else (points[i].x + points[i + 1].x) / 2f
+                val rightX = if (i == itemCount - 1) size.width else (points[i].x + points[i + 1].x) / 2f
                 val centerX = (leftX + rightX) / 2f
-
                 val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
-                val weatherLabel = weatherInfo.description
-                val weatherResult = textMeasurer.measure(AnnotatedString(weatherLabel), style = labelStyle)
-
+                val weatherResult = textMeasurer.measure(AnnotatedString(weatherInfo.description), style = labelStyle)
                 val isPrecip = skycon.contains("RAIN") || skycon.contains("STORM") || skycon.contains("SNOW")
                 val prob = probValues[i]
                 val probText = if (isPrecip && prob >= 1.0) "${prob.toInt()}%" else ""
-
                 val lineSpacing = 2.dp.toPx()
-                val totalTextHeight = if (probText.isNotEmpty()) {
-                    val probResult = textMeasurer.measure(AnnotatedString(probText), style = labelStyle)
-                    weatherResult.size.height.toFloat() + lineSpacing + probResult.size.height.toFloat()
-                } else {
-                    weatherResult.size.height.toFloat()
-                }
-
-                val barWidth = rightX - leftX
-                if (barWidth < weatherResult.size.width * 0.7f) continue
-
-                val textStartY = labelCenterY - totalTextHeight / 2f
-                val weatherX = centerX - weatherResult.size.width / 2f
-                drawText(weatherResult, topLeft = Offset(weatherX, textStartY))
-
+                val totalH = if (probText.isNotEmpty()) weatherResult.size.height + lineSpacing + textMeasurer.measure(AnnotatedString(probText), style = labelStyle).size.height else weatherResult.size.height.toFloat()
+                if (rightX - leftX < weatherResult.size.width * 0.7f) continue
+                val startY = labelCenterY - totalH / 2f
+                drawText(weatherResult, topLeft = Offset(centerX - weatherResult.size.width / 2f, startY))
                 if (probText.isNotEmpty()) {
                     val probResult = textMeasurer.measure(AnnotatedString(probText), style = labelStyle)
-                    val probX = centerX - probResult.size.width / 2f
-                    drawText(
-                        probResult,
-                        topLeft = Offset(probX, textStartY + weatherResult.size.height + lineSpacing)
-                    )
+                    drawText(probResult, topLeft = Offset(centerX - probResult.size.width / 2f, startY + weatherResult.size.height + lineSpacing))
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Weather icon row
-        Row(
-            modifier = Modifier
-                .width(totalWidth)
-                .padding(horizontal = sidePad)
-        ) {
+        // Icons Row
+        Row(modifier = Modifier.width(totalWidth).padding(horizontal = sidePad)) {
             skycons?.forEach { skycon ->
                 val info = WeatherUtils.getWeatherInfo(skycon.value)
-                Box(
-                    modifier = Modifier.width(itemWidthDp),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                     WeatherIcon(iconType = info.icon, size = 30.dp)
                 }
             }
@@ -396,19 +275,12 @@ private fun HourlyTemperatureChart(
 
         Spacer(modifier = Modifier.height(2.dp))
 
-        // Hour label row
-        Row(
-            modifier = Modifier
-                .width(totalWidth)
-                .padding(horizontal = sidePad)
-        ) {
-            temperatures.forEach { temp ->
-                Box(
-                    modifier = Modifier.width(itemWidthDp),
-                    contentAlignment = Alignment.Center
-                ) {
+        // Time Row
+        Row(modifier = Modifier.width(totalWidth).padding(horizontal = sidePad)) {
+            temperatures.forEachIndexed { index, temp ->
+                Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                     Text(
-                        text = WeatherUtils.formatHourShort(temp.datetime),
+                        text = if (index == 0) "现在" else WeatherUtils.formatHourShort(temp.datetime),
                         style = MaterialTheme.typography.labelSmall,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
