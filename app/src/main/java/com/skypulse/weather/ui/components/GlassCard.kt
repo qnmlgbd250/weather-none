@@ -14,30 +14,46 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.ui.geometry.Offset
+
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     isSunnyDay: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val cardBaseColor = if (isSunnyDay) Color(0xFF467CD6) else Color.White
-    val borderColor = if (isSunnyDay) Color.White.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.2f)
+    val cardBaseColor = Color.White
     
+    // For sunny/bright days, we want the card to be a bit more "solid" to stand out against the sky
+    val topAlpha = if (isSunnyDay) 0.28f else 0.18f
+    val bottomAlpha = if (isSunnyDay) 0.12f else 0.08f
+    
+    // Premium border with diagonal light source simulation
+    val borderBrush = Brush.linearGradient(
+        colors = listOf(
+            Color.White.copy(alpha = if (isSunnyDay) 0.65f else 0.45f),
+            Color.White.copy(alpha = if (isSunnyDay) 0.15f else 0.10f),
+            Color.White.copy(alpha = if (isSunnyDay) 0.35f else 0.25f)
+        ),
+        start = Offset(0f, 0f),
+        end = Offset.Infinite
+    )
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        cardBaseColor.copy(alpha = if (isSunnyDay) 0.35f else 0.25f),
-                        cardBaseColor.copy(alpha = if (isSunnyDay) 0.15f else 0.10f)
+                        cardBaseColor.copy(alpha = topAlpha),
+                        cardBaseColor.copy(alpha = bottomAlpha)
                     )
                 )
             )
             .border(
-                BorderStroke(0.5.dp, borderColor),
-                RoundedCornerShape(20.dp)
+                BorderStroke(1.dp, borderBrush),
+                RoundedCornerShape(22.dp)
             ),
         content = content
     )

@@ -59,7 +59,11 @@ object WeatherUtils {
 
     fun isBrightBackground(skycon: String?): Boolean {
         val isDay = isCurrentlyDay()
-        return isDay && (skycon == null || skycon.contains("CLEAR") || skycon.contains("PARTLY_CLOUDY"))
+        if (!isDay) return false
+        return skycon == null || 
+               skycon.contains("CLEAR") || 
+               skycon.contains("PARTLY_CLOUDY") || 
+               skycon.contains("CLOUDY")
     }
 
     fun getTemperatureColor(temp: Double?): Color {

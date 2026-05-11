@@ -72,7 +72,7 @@ fun LocationHeader(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = locationName,
                 style = MaterialTheme.typography.bodyMedium,
@@ -101,7 +101,7 @@ fun LocationHeader(
                             tint = TextSecondary
                         )
                     }
-                    Spacer(modifier = Modifier.width(9.dp))
+                    Spacer(modifier = Modifier.width(7.dp))
                     Text(
                         text = if (refreshPhase == RefreshPhase.Refreshing) "正在更新数据" else "更新成功",
                         style = MaterialTheme.typography.labelSmall,

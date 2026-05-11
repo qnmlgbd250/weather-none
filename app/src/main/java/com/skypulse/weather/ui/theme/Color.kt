@@ -10,7 +10,7 @@ val WarmGold = Color(0xFFFFD54F)
 val CardSurface = Color(0x33FFFFFF)
 val CardSurfaceLight = Color(0x1AFFFFFF)
 val TextPrimary = Color(0xFFFFFFFF)
-val TextSecondary = Color(0xB3FFFFFF)
+val TextSecondary = Color(0xD9FFFFFF) // Increased from 0xB3 to 0xD9 (85% alpha)
 
 // ============ Dynamic Background Gradients ============
 // Sunny (Day)
