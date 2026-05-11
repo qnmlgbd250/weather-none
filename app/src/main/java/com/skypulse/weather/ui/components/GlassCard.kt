@@ -13,32 +13,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.skypulse.weather.ui.theme.LocalWeatherTheme
 
 import androidx.compose.ui.geometry.Offset
 
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
-    isSunnyDay: Boolean = false,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val theme = LocalWeatherTheme.current
     val cardBaseColor = Color.White
     
-    // For sunny/bright days, we want the card to be a bit more "solid" to stand out against the sky
-    val topAlpha = if (isSunnyDay) 0.28f else 0.18f
-    val bottomAlpha = if (isSunnyDay) 0.12f else 0.08f
-    
-    // Premium border with diagonal light source simulation
-    val borderBrush = Brush.linearGradient(
-        colors = listOf(
-            Color.White.copy(alpha = if (isSunnyDay) 0.65f else 0.45f),
-            Color.White.copy(alpha = if (isSunnyDay) 0.15f else 0.10f),
-            Color.White.copy(alpha = if (isSunnyDay) 0.35f else 0.25f)
-        ),
-        start = Offset(0f, 0f),
-        end = Offset.Infinite
-    )
-
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -46,13 +32,13 @@ fun GlassCard(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        cardBaseColor.copy(alpha = topAlpha),
-                        cardBaseColor.copy(alpha = bottomAlpha)
+                        cardBaseColor.copy(alpha = theme.cardTopAlpha),
+                        cardBaseColor.copy(alpha = theme.cardBottomAlpha)
                     )
                 )
             )
             .border(
-                BorderStroke(1.dp, borderBrush),
+                BorderStroke(1.dp, theme.cardBorderBrush),
                 RoundedCornerShape(22.dp)
             ),
         content = content

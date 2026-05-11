@@ -30,8 +30,7 @@ private const val CHART_HEIGHT_DP = 60f
 @Composable
 fun MinutelyPrecipitationCard(
     minutely: MinutelyForecast?,
-    modifier: Modifier = Modifier,
-    isSunnyDay: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     val raw = minutely?.precipitation_2h
     if (raw.isNullOrEmpty()) return
@@ -49,7 +48,7 @@ fun MinutelyPrecipitationCard(
     )
     LaunchedEffect(Unit) { visible = true }
 
-    GlassCard(modifier = modifier.alpha(alpha), isSunnyDay = isSunnyDay) {
+    GlassCard(modifier = modifier.alpha(alpha)) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
                 text = "分钟级降水",

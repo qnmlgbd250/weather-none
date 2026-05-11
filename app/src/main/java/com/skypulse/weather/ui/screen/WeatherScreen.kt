@@ -19,8 +19,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.skypulse.weather.ui.components.*
-import com.skypulse.weather.ui.theme.TextPrimary
-import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
@@ -81,56 +80,63 @@ fun WeatherScreen(
         else -> null
     }
 
-    WeatherBackground(skycon = skycon) {
-        // Pull-to-refresh wrapper
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (val state = uiState) {
-                is WeatherUiState.Loading -> {
-                    LoadingShimmer(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
-                    )
-                }
+    val isDay = WeatherUtils.isCurrentlyDay()
+    val weatherTheme = remember(skycon, isDay) {
+        WeatherUtils.getWeatherTheme(skycon, isDay)
+    }
 
-                is WeatherUiState.Success -> {
-                    WeatherContent(
-                        state = state,
-                        isLocating = isLocating,
-                        refreshPhase = refreshPhase,
-                        onLocationClick = { viewModel.relocateAndRefresh() },
-                        onRefresh = { viewModel.refresh() }
-                    )
-                }
+    CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {
+        WeatherBackground(skycon = skycon) {
+            // Pull-to-refresh wrapper
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (val state = uiState) {
+                    is WeatherUiState.Loading -> {
+                        LoadingShimmer(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .statusBarsPadding()
+                        )
+                    }
 
-                is WeatherUiState.Error -> {
-                    ErrorContent(
-                        message = state.message,
-                        onRetry = {
-                            if (hasLocationPermission && !useDefaultLocation) {
-                                viewModel.fetchWeather()
-                            } else {
+                    is WeatherUiState.Success -> {
+                        WeatherContent(
+                            state = state,
+                            isLocating = isLocating,
+                            refreshPhase = refreshPhase,
+                            onLocationClick = { viewModel.relocateAndRefresh() },
+                            onRefresh = { viewModel.refresh() }
+                        )
+                    }
+
+                    is WeatherUiState.Error -> {
+                        ErrorContent(
+                            message = state.message,
+                            onRetry = {
+                                if (hasLocationPermission && !useDefaultLocation) {
+                                    viewModel.fetchWeather()
+                                } else {
+                                    viewModel.fetchDefaultWeather()
+                                }
+                            },
+                            onUseDefault = {
+                                useDefaultLocation = true
                                 viewModel.fetchDefaultWeather()
                             }
-                        },
+                        )
+                    }
+                }
+
+                // Permission request overlay
+                if (!hasLocationPermission && !useDefaultLocation) {
+                    PermissionRequestContent(
+                        shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
+                        onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
                         onUseDefault = {
                             useDefaultLocation = true
                             viewModel.fetchDefaultWeather()
                         }
                     )
                 }
-            }
-
-            // Permission request overlay
-            if (!hasLocationPermission && !useDefaultLocation) {
-                PermissionRequestContent(
-                    shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
-                    onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
-                    onUseDefault = {
-                        useDefaultLocation = true
-                        viewModel.fetchDefaultWeather()
-                    }
-                )
             }
         }
     }
@@ -147,10 +153,6 @@ private fun WeatherContent(
     val result = state.weather.result
     val realtime = result?.realtime
     val todayTemp = result?.daily?.temperature?.firstOrNull()
-
-    val isSunnyDay = remember(realtime?.skycon) {
-        WeatherUtils.isBrightBackground(realtime?.skycon)
-    }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Spacer(modifier = Modifier.height(12.dp))
@@ -180,7 +182,7 @@ private fun WeatherContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             result?.forecastKeypoint?.let { keypoint ->
-                GlassCard(modifier = Modifier.padding(horizontal = 16.dp), isSunnyDay = isSunnyDay) {
+                GlassCard(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Text(
                         text = keypoint,
                         style = MaterialTheme.typography.bodyMedium,
@@ -197,7 +199,6 @@ private fun WeatherContent(
             if (showMinutely) {
                 MinutelyPrecipitationCard(
                     minutely = result?.minutely,
-                    isSunnyDay = isSunnyDay,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
@@ -207,8 +208,6 @@ private fun WeatherContent(
 
             HourlyForecastCard(
                 hourly = result?.hourly,
-                currentSkycon = result?.realtime?.skycon,
-                isSunnyDay = isSunnyDay,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
@@ -218,7 +217,6 @@ private fun WeatherContent(
 
             DailyForecastCard(
                 daily = result?.daily,
-                isSunnyDay = isSunnyDay,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)

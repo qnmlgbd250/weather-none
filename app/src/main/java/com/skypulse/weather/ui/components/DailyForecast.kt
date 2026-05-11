@@ -31,8 +31,7 @@ private const val DAY_WIDTH = 56
 @Composable
 fun DailyForecastCard(
     daily: DailyForecast?,
-    modifier: Modifier = Modifier,
-    isSunnyDay: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     if (daily?.temperature.isNullOrEmpty()) return
     val forecast = daily ?: return
@@ -54,8 +53,7 @@ fun DailyForecastCard(
     val itemWidth = DAY_WIDTH.dp
 
     GlassCard(
-        modifier = modifier.alpha(alpha),
-        isSunnyDay = isSunnyDay
+        modifier = modifier.alpha(alpha)
     ) {
         Column(modifier = Modifier.padding(vertical = 18.dp)) {
             Text(

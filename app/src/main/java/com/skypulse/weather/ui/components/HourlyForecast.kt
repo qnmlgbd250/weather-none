@@ -30,8 +30,7 @@ private val SIDE_PADDING = 12
 fun HourlyForecastCard(
     hourly: HourlyForecast?,
     currentSkycon: String? = null,
-    modifier: Modifier = Modifier,
-    isSunnyDay: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     if (hourly?.temperature.isNullOrEmpty()) return
     val data = hourly ?: return
@@ -47,8 +46,7 @@ fun HourlyForecastCard(
     LaunchedEffect(Unit) { visible = true }
 
     GlassCard(
-        modifier = modifier.alpha(alpha),
-        isSunnyDay = isSunnyDay
+        modifier = modifier.alpha(alpha)
     ) {
         Column(modifier = Modifier.padding(vertical = 16.dp)) {
             Text(
@@ -61,8 +59,7 @@ fun HourlyForecastCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             HourlyTemperatureChart(
-                hourlyData = data,
-                currentSkycon = currentSkycon
+                hourlyData = data
             )
         }
     }
@@ -70,17 +67,13 @@ fun HourlyForecastCard(
 
 @Composable
 private fun HourlyTemperatureChart(
-    hourlyData: HourlyForecast,
-    currentSkycon: String? = null
+    hourlyData: HourlyForecast
 ) {
     val temperatures = hourlyData.temperature?.take(24) ?: return
     val skycons = hourlyData.skycon?.take(24)
     val precipitation = hourlyData.precipitation?.take(24)
 
-    val isBrightBg = remember(currentSkycon) {
-        val isDay = WeatherUtils.isCurrentlyDay()
-        isDay && (currentSkycon == null || currentSkycon.contains("CLEAR") || currentSkycon.contains("PARTLY_CLOUDY"))
-    }
+    val theme = LocalWeatherTheme.current
     val textMeasurer = rememberTextMeasurer()
 
     val tempValues = temperatures.mapNotNull { it.value?.let { v -> kotlin.math.round(v) } }
@@ -169,34 +162,19 @@ private fun HourlyTemperatureChart(
                 val leftX = if (i == 0) 0f else (points[i - 1].x + points[i].x) / 2f
                 val rightX = if (i == itemCount - 1) size.width else (points[i].x + points[i + 1].x) / 2f
                 val skycon = skyconValues[i]
-                val (topColor, bottomColor) = if (isBrightBg) {
-                    when {
-                        skycon == null -> Color(0xFF467CD6).copy(alpha = 0.30f) to Color(0xFF2E5AAC).copy(alpha = 0.18f)
-                        skycon.contains("STORM") -> Color(0xFF1A3A7A).copy(alpha = 0.45f) to Color(0xFF0D1F4A).copy(alpha = 0.30f)
-                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> Color(0xFF2E5AAC).copy(alpha = 0.42f) to Color(0xFF1A3A7A).copy(alpha = 0.28f)
-                        skycon.contains("RAIN") || skycon.contains("SNOW") -> Color(0xFF467CD6).copy(alpha = 0.38f) to Color(0xFF2E5AAC).copy(alpha = 0.24f)
-                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> Color(0xFF6FA0E8).copy(alpha = 0.34f) to Color(0xFF467CD6).copy(alpha = 0.20f)
-                        skycon.contains("CLOUDY") -> Color(0xFF8AA4C4).copy(alpha = 0.28f) to Color(0xFF6A8AAA).copy(alpha = 0.16f)
-                        skycon.contains("PARTLY_CLOUDY") -> Color(0xFFE8A832).copy(alpha = 0.25f) to Color(0xFFC48820).copy(alpha = 0.15f)
-                        skycon.contains("HAZE") || skycon == "FOG" -> Color(0xFF9A8A76).copy(alpha = 0.30f) to Color(0xFF7A6A56).copy(alpha = 0.18f)
-                        skycon == "WIND" -> Color(0xFF5AACB8).copy(alpha = 0.28f) to Color(0xFF3A8A98).copy(alpha = 0.16f)
-                        skycon.contains("CLEAR") -> Color(0xFFF0C040).copy(alpha = 0.25f) to Color(0xFFD4A020).copy(alpha = 0.15f)
-                        else -> Color(0xFF467CD6).copy(alpha = 0.28f) to Color(0xFF2E5AAC).copy(alpha = 0.16f)
-                    }
-                } else {
-                    when {
-                        skycon == null -> Color(0xFF7AAAFF).copy(alpha = 0.35f) to Color(0xFF467CD6).copy(alpha = 0.20f)
-                        skycon.contains("STORM") -> Color(0xFFB080FF).copy(alpha = 0.50f) to Color(0xFF7040C0).copy(alpha = 0.35f)
-                        skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> Color(0xFF6080E0).copy(alpha = 0.45f) to Color(0xFF304898).copy(alpha = 0.30f)
-                        skycon.contains("RAIN") || skycon.contains("SNOW") -> Color(0xFF70A0F0).copy(alpha = 0.40f) to Color(0xFF4070B8).copy(alpha = 0.26f)
-                        skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> Color(0xFF80B8FF).copy(alpha = 0.35f) to Color(0xFF5090D0).copy(alpha = 0.22f)
-                        skycon.contains("CLOUDY") -> Color(0xFF8898B0).copy(alpha = 0.30f) to Color(0xFF607088).copy(alpha = 0.18f)
-                        skycon.contains("PARTLY_CLOUDY") -> Color(0xFFD0B878).copy(alpha = 0.30f) to Color(0xFFA89058).copy(alpha = 0.18f)
-                        skycon.contains("HAZE") || skycon == "FOG" -> Color(0xFF908878).copy(alpha = 0.30f) to Color(0xFF706858).copy(alpha = 0.18f)
-                        skycon == "WIND" -> Color(0xFF60C0D0).copy(alpha = 0.32f) to Color(0xFF4090A0).copy(alpha = 0.20f)
-                        skycon.contains("CLEAR") -> Color(0xFFFFD860).copy(alpha = 0.32f) to Color(0xFFD0A830).copy(alpha = 0.20f)
-                        else -> Color(0xFF7AAAFF).copy(alpha = 0.30f) to Color(0xFF467CD6).copy(alpha = 0.18f)
-                    }
+                val colors = theme.chartColors
+                val (topColor, bottomColor) = when {
+                    skycon == null -> colors.clear
+                    skycon.contains("STORM") -> colors.storm
+                    skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> colors.rain
+                    skycon.contains("RAIN") || skycon.contains("SNOW") -> colors.rain
+                    skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> colors.rain
+                    skycon.contains("CLOUDY") -> colors.cloudy
+                    skycon.contains("PARTLY_CLOUDY") -> colors.partlyCloudy
+                    skycon.contains("HAZE") || skycon == "FOG" -> colors.haze
+                    skycon == "WIND" -> colors.wind
+                    skycon.contains("CLEAR") -> colors.clear
+                    else -> colors.clear
                 }
 
                 val barSteps = ((rightX - leftX) / (2f * density)).toInt().coerceIn(10, 50)

@@ -13,6 +13,59 @@ object WeatherUtils {
         val isDay: Boolean = true
     )
 
+    fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
+        val background = getWeatherGradient(skycon, isDay)
+        val isBright = isBrightBackground(skycon)
+        
+        // --- Card Styling ---
+        val topAlpha = if (isBright) 0.28f else 0.18f
+        val bottomAlpha = if (isBright) 0.12f else 0.08f
+        
+        val borderBrush = androidx.compose.ui.graphics.Brush.linearGradient(
+            colors = listOf(
+                androidx.compose.ui.graphics.Color.White.copy(alpha = if (isBright) 0.65f else 0.45f),
+                androidx.compose.ui.graphics.Color.White.copy(alpha = if (isBright) 0.15f else 0.10f),
+                androidx.compose.ui.graphics.Color.White.copy(alpha = if (isBright) 0.35f else 0.25f)
+            ),
+            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+            end = androidx.compose.ui.geometry.Offset.Infinite
+        )
+
+        // --- Chart Colors ---
+        val chartColors = if (isDay) {
+            WeatherChartColors(
+                clear = Color(0xFFFFFFF0) to Color(0xFFFFF9C4),
+                partlyCloudy = Color(0xFFFFF8E1) to Color(0xFFFFECB3),
+                cloudy = Color(0xFF8AA4C4) to Color(0xFF6A8AAA),
+                rain = Color(0xFF467CD6) to Color(0xFF2E5AAC),
+                snow = Color(0xFF6FA0E8) to Color(0xFF467CD6),
+                wind = Color(0xFF5AACB8) to Color(0xFF3A8A98),
+                haze = Color(0xFF9A8A76) to Color(0xFF7A6A56),
+                storm = Color(0xFF1A3A7A) to Color(0xFF0D1F4A)
+            )
+        } else {
+            WeatherChartColors(
+                clear = Color(0xFFFFFDE7).copy(alpha = 0.25f) to Color(0xFFFFF9C4).copy(alpha = 0.15f),
+                partlyCloudy = Color(0xFFFFF9C4).copy(alpha = 0.22f) to Color(0xFFFFECB3).copy(alpha = 0.12f),
+                cloudy = Color(0xFF8898B0).copy(alpha = 0.25f) to Color(0xFF607088).copy(alpha = 0.15f),
+                rain = Color(0xFF70A0F0).copy(alpha = 0.30f) to Color(0xFF4070B8).copy(alpha = 0.18f),
+                snow = Color(0xFF80B8FF).copy(alpha = 0.32f) to Color(0xFF5090D0).copy(alpha = 0.20f),
+                wind = Color(0xFF60C0D0).copy(alpha = 0.28f) to Color(0xFF4090A0).copy(alpha = 0.16f),
+                haze = Color(0xFF908878).copy(alpha = 0.25f) to Color(0xFF706858).copy(alpha = 0.15f),
+                storm = Color(0xFFB080FF).copy(alpha = 0.35f) to Color(0xFF7040C0).copy(alpha = 0.22f)
+            )
+        }
+
+        return WeatherTheme(
+            isDay = isDay,
+            backgroundGradient = background,
+            cardTopAlpha = topAlpha,
+            cardBottomAlpha = bottomAlpha,
+            cardBorderBrush = borderBrush,
+            chartColors = chartColors
+        )
+    }
+
     fun getWeatherInfo(skycon: String?, hour: Int = 12): WeatherInfo {
         val isDay = hour in 6..18
         return when (skycon) {
