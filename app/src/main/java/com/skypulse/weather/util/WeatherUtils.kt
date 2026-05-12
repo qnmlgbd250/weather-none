@@ -34,14 +34,14 @@ object WeatherUtils {
         // --- Chart Colors ---
         val chartColors = if (isDay) {
             WeatherChartColors(
-                clear = Color(0xFFFFFFF0) to Color(0xFFFFF9C4),
-                partlyCloudy = Color(0xFFFFF8E1) to Color(0xFFFFECB3),
-                cloudy = Color(0xFF8AA4C4) to Color(0xFF6A8AAA),
-                rain = Color(0xFF467CD6) to Color(0xFF2E5AAC),
-                snow = Color(0xFF6FA0E8) to Color(0xFF467CD6),
-                wind = Color(0xFF5AACB8) to Color(0xFF3A8A98),
-                haze = Color(0xFF9A8A76) to Color(0xFF7A6A56),
-                storm = Color(0xFF1A3A7A) to Color(0xFF0D1F4A)
+                clear = Color(0xFFFFF9C4).copy(alpha = 0.85f) to Color(0xFFFFF9C4).copy(alpha = 0.20f),
+                partlyCloudy = Color(0xFFE1F5FE).copy(alpha = 0.75f) to Color(0xFFE1F5FE).copy(alpha = 0.15f),
+                cloudy = Color(0xFFCFD8DC).copy(alpha = 0.70f) to Color(0xFFCFD8DC).copy(alpha = 0.10f),
+                rain = Color(0xFF4FC3F7).copy(alpha = 0.70f) to Color(0xFF4FC3F7).copy(alpha = 0.15f),
+                snow = Color(0xFFFFFFFF).copy(alpha = 0.85f) to Color(0xFFFFFFFF).copy(alpha = 0.20f),
+                wind = Color(0xFF4DB6AC).copy(alpha = 0.65f) to Color(0xFF4DB6AC).copy(alpha = 0.10f),
+                haze = Color(0xFFBCAAA4).copy(alpha = 0.65f) to Color(0xFFBCAAA4).copy(alpha = 0.10f),
+                storm = Color(0xFF5C6BC0).copy(alpha = 0.75f) to Color(0xFF5C6BC0).copy(alpha = 0.15f)
             )
         } else {
             WeatherChartColors(
