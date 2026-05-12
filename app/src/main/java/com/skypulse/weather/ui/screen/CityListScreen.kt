@@ -34,8 +34,6 @@ import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.viewmodel.CitySearchResult
 import com.skypulse.weather.viewmodel.CityWeatherData
-import java.text.SimpleDateFormat
-import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,19 +47,11 @@ fun CityListScreen(
     onRemoveCity: (String) -> Unit,
     onSearch: (String) -> Unit,
     onClearSearch: () -> Unit,
-    onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var isSearchActive by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
-
-    // Current date/time display
-    val now = remember { Calendar.getInstance() }
-    val dateFormat = remember { SimpleDateFormat("M月d日 EEEE", Locale.CHINA) }
-    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.CHINA) }
-    val dateText = remember { dateFormat.format(now.time) }
-    val timeText = remember { timeFormat.format(now.time) }
 
     Box(
         modifier = modifier
@@ -76,41 +66,8 @@ fun CityListScreen(
             )
     ) {
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = timeText,
-                        style = MaterialTheme.typography.displaySmall.copy(
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Thin
-                        ),
-                        color = TextPrimary
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = dateText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                }
+            Spacer(modifier = Modifier.height(16.dp))
 
-                IconButton(onClick = onClose) {
-                    Icon(
-                        imageVector = Icons.Outlined.Close,
-                        contentDescription = "关闭",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
-
-            // Search bar
             Box(modifier = Modifier.padding(horizontal = 16.dp)) {
                 TextField(
                     value = searchQuery,
@@ -180,13 +137,11 @@ fun CityListScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Content: search results or city list
             AnimatedVisibility(
                 visible = isSearchActive,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                // Search results
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp)
@@ -246,7 +201,6 @@ fun CityListScreen(
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
-                // City list
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -265,7 +219,6 @@ fun CityListScreen(
                         )
                     }
 
-                    // Add city hint at bottom
                     item {
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
@@ -276,9 +229,7 @@ fun CityListScreen(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
-                                    onClick = {
-                                        isSearchActive = true
-                                    }
+                                    onClick = { isSearchActive = true }
                                 )
                                 .padding(horizontal = 20.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,

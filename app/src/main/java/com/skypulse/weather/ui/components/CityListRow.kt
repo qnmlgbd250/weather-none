@@ -78,7 +78,6 @@ fun CityListRow(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left side: city name + weather description
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (city.isCurrentLocation) {
@@ -107,7 +106,6 @@ fun CityListRow(
                 )
             }
 
-            // Right side: weather icon + temp + hi/lo
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End

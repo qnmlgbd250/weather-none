@@ -1,8 +1,6 @@
 package com.skypulse.weather.ui.screen
 
 import android.Manifest
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -98,93 +96,72 @@ fun WeatherScreen(
     }
 
     CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {
-        AnimatedContent(
-            targetState = currentScreen,
-            transitionSpec = {
-                if (targetState == AppScreen.CityList) {
-                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300)) togetherWith
-                        slideOutHorizontally(tween(300)) { -it / 3 } + fadeOut(tween(200))
-                } else {
-                    slideInHorizontally(tween(300)) { -it / 3 } + fadeIn(tween(300)) togetherWith
-                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(200))
-                }
-            },
-            label = "screen_transition"
-        ) { screen ->
-            when (screen) {
-                AppScreen.CityList -> {
-                    CityListScreen(
-                        cities = savedCities,
-                        cityWeatherMap = cityWeatherMap,
-                        searchResults = searchResults,
-                        isSearching = isSearching,
-                        onCityClick = { cityId -> viewModel.navigateToCityDetail(cityId) },
-                        onAddCity = { result -> viewModel.addCity(result) },
-                        onRemoveCity = { cityId -> viewModel.removeCity(cityId) },
-                        onSearch = { query -> viewModel.searchCities(query) },
-                        onClearSearch = { viewModel.clearSearchResults() },
-                        onClose = {
-                            // Navigate back to the first city or current location
-                            val firstCity = savedCities.firstOrNull()
-                            if (firstCity != null) {
-                                viewModel.navigateToCityDetail(firstCity.id)
+        when (currentScreen) {
+            AppScreen.CityList -> {
+                CityListScreen(
+                    cities = savedCities,
+                    cityWeatherMap = cityWeatherMap,
+                    searchResults = searchResults,
+                    isSearching = isSearching,
+                    onCityClick = { cityId -> viewModel.navigateToCityDetail(cityId) },
+                    onAddCity = { result -> viewModel.addCity(result) },
+                    onRemoveCity = { cityId -> viewModel.removeCity(cityId) },
+                    onSearch = { query -> viewModel.searchCities(query) },
+                    onClearSearch = { viewModel.clearSearchResults() }
+                )
+            }
+
+            AppScreen.CityDetail -> {
+                WeatherBackground(skycon = skycon) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        when (val state = uiState) {
+                            is WeatherUiState.Loading -> {
+                                LoadingShimmer(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .statusBarsPadding()
+                                )
                             }
-                        }
-                    )
-                }
 
-                AppScreen.CityDetail -> {
-                    WeatherBackground(skycon = skycon) {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            when (val state = uiState) {
-                                is WeatherUiState.Loading -> {
-                                    LoadingShimmer(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .statusBarsPadding()
-                                    )
-                                }
+                            is WeatherUiState.Success -> {
+                                WeatherContent(
+                                    state = state,
+                                    isLocating = isLocating,
+                                    refreshPhase = refreshPhase,
+                                    onLocationClick = { viewModel.relocateAndRefresh() },
+                                    onRefresh = { viewModel.refresh() },
+                                    onListClick = { viewModel.navigateToCityList() }
+                                )
+                            }
 
-                                is WeatherUiState.Success -> {
-                                    WeatherContent(
-                                        state = state,
-                                        isLocating = isLocating,
-                                        refreshPhase = refreshPhase,
-                                        onLocationClick = { viewModel.relocateAndRefresh() },
-                                        onRefresh = { viewModel.refresh() },
-                                        onListClick = { viewModel.navigateToCityList() }
-                                    )
-                                }
-
-                                is WeatherUiState.Error -> {
-                                    ErrorContent(
-                                        message = state.message,
-                                        onRetry = {
-                                            if (hasLocationPermission && !useDefaultLocation) {
-                                                viewModel.fetchWeather()
-                                            } else {
-                                                viewModel.fetchDefaultWeather()
-                                            }
-                                        },
-                                        onUseDefault = {
-                                            useDefaultLocation = true
+                            is WeatherUiState.Error -> {
+                                ErrorContent(
+                                    message = state.message,
+                                    onRetry = {
+                                        if (hasLocationPermission && !useDefaultLocation) {
+                                            viewModel.fetchWeather()
+                                        } else {
                                             viewModel.fetchDefaultWeather()
                                         }
-                                    )
-                                }
-                            }
-
-                            // Permission request overlay
-                            if (!hasLocationPermission && !useDefaultLocation) {
-                                PermissionRequestContent(
-                                    shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
-                                    onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
+                                    },
                                     onUseDefault = {
                                         useDefaultLocation = true
                                         viewModel.fetchDefaultWeather()
                                     }
                                 )
                             }
+                        }
+
+                        // Permission request overlay
+                        if (!hasLocationPermission && !useDefaultLocation) {
+                            PermissionRequestContent(
+                                shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
+                                onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
+                                onUseDefault = {
+                                    useDefaultLocation = true
+                                    viewModel.fetchDefaultWeather()
+                                }
+                            )
                         }
                     }
                 }

@@ -135,7 +135,19 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     fun navigateToCityList() {
         _currentScreen.value = AppScreen.CityList
-        loadAllCityWeather()
+        // Only load weather for cities that don't have data yet
+        val existingData = _cityWeatherMap.value
+        val citiesToLoad = _savedCities.value.filter { city ->
+            val data = existingData[city.id]
+            data == null || (data.weather == null && !data.isLoading)
+        }
+        if (citiesToLoad.isNotEmpty()) {
+            viewModelScope.launch {
+                citiesToLoad.map { city ->
+                    async { loadWeatherForCity(city) }
+                }.awaitAll()
+            }
+        }
     }
 
     fun navigateToCityDetail(cityId: String) {
@@ -215,24 +227,14 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     // ============ Multi-city Weather Loading ============
 
-    fun loadAllCityWeather() {
-        val cities = _savedCities.value
-        if (cities.isEmpty()) return
-
-        viewModelScope.launch {
-            cities.map { city ->
-                async {
-                    loadWeatherForCity(city)
-                }
-            }.awaitAll()
-        }
-    }
-
     private suspend fun loadWeatherForCity(city: City) {
-        // Set loading state
-        val currentMap = _cityWeatherMap.value.toMutableMap()
-        currentMap[city.id] = CityWeatherData(isLoading = true)
-        _cityWeatherMap.value = currentMap
+        // Only show loading spinner if there's no existing data
+        val existingData = _cityWeatherMap.value[city.id]
+        if (existingData?.weather == null) {
+            val currentMap = _cityWeatherMap.value.toMutableMap()
+            currentMap[city.id] = CityWeatherData(isLoading = true)
+            _cityWeatherMap.value = currentMap
+        }
 
         val result = repository.getWeather(city.longitude, city.latitude)
         val updatedMap = _cityWeatherMap.value.toMutableMap()
