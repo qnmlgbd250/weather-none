@@ -1,6 +1,8 @@
 package com.skypulse.weather.ui.screen
 
 import android.Manifest
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +23,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
+import com.skypulse.weather.viewmodel.AppScreen
 import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
 import com.skypulse.weather.viewmodel.WeatherViewModel
@@ -33,6 +36,12 @@ fun WeatherScreen(
     val uiState by viewModel.uiState.collectAsState()
     val refreshPhase by viewModel.refreshPhase.collectAsState()
     val isLocating by viewModel.isLocating.collectAsState()
+    val currentScreen by viewModel.currentScreen.collectAsState()
+    val savedCities by viewModel.savedCities.collectAsState()
+    val cityWeatherMap by viewModel.cityWeatherMap.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching by viewModel.isSearching.collectAsState()
+
     val locationPermissions = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -71,7 +80,10 @@ fun WeatherScreen(
     LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission) {
             useDefaultLocation = false
+            viewModel.ensureCurrentLocationCity()
             viewModel.fetchWeather()
+        } else {
+            viewModel.ensureCurrentLocationCity()
         }
     }
 
@@ -86,56 +98,95 @@ fun WeatherScreen(
     }
 
     CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {
-        WeatherBackground(skycon = skycon) {
-            // Pull-to-refresh wrapper
-            Box(modifier = Modifier.fillMaxSize()) {
-                when (val state = uiState) {
-                    is WeatherUiState.Loading -> {
-                        LoadingShimmer(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .statusBarsPadding()
-                        )
-                    }
-
-                    is WeatherUiState.Success -> {
-                        WeatherContent(
-                            state = state,
-                            isLocating = isLocating,
-                            refreshPhase = refreshPhase,
-                            onLocationClick = { viewModel.relocateAndRefresh() },
-                            onRefresh = { viewModel.refresh() }
-                        )
-                    }
-
-                    is WeatherUiState.Error -> {
-                        ErrorContent(
-                            message = state.message,
-                            onRetry = {
-                                if (hasLocationPermission && !useDefaultLocation) {
-                                    viewModel.fetchWeather()
-                                } else {
-                                    viewModel.fetchDefaultWeather()
-                                }
-                            },
-                            onUseDefault = {
-                                useDefaultLocation = true
-                                viewModel.fetchDefaultWeather()
-                            }
-                        )
-                    }
+        AnimatedContent(
+            targetState = currentScreen,
+            transitionSpec = {
+                if (targetState == AppScreen.CityList) {
+                    slideInHorizontally(tween(300)) { it } + fadeIn(tween(300)) togetherWith
+                        slideOutHorizontally(tween(300)) { -it / 3 } + fadeOut(tween(200))
+                } else {
+                    slideInHorizontally(tween(300)) { -it / 3 } + fadeIn(tween(300)) togetherWith
+                        slideOutHorizontally(tween(300)) { it } + fadeOut(tween(200))
                 }
-
-                // Permission request overlay
-                if (!hasLocationPermission && !useDefaultLocation) {
-                    PermissionRequestContent(
-                        shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
-                        onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
-                        onUseDefault = {
-                            useDefaultLocation = true
-                            viewModel.fetchDefaultWeather()
+            },
+            label = "screen_transition"
+        ) { screen ->
+            when (screen) {
+                AppScreen.CityList -> {
+                    CityListScreen(
+                        cities = savedCities,
+                        cityWeatherMap = cityWeatherMap,
+                        searchResults = searchResults,
+                        isSearching = isSearching,
+                        onCityClick = { cityId -> viewModel.navigateToCityDetail(cityId) },
+                        onAddCity = { result -> viewModel.addCity(result) },
+                        onRemoveCity = { cityId -> viewModel.removeCity(cityId) },
+                        onSearch = { query -> viewModel.searchCities(query) },
+                        onClearSearch = { viewModel.clearSearchResults() },
+                        onClose = {
+                            // Navigate back to the first city or current location
+                            val firstCity = savedCities.firstOrNull()
+                            if (firstCity != null) {
+                                viewModel.navigateToCityDetail(firstCity.id)
+                            }
                         }
                     )
+                }
+
+                AppScreen.CityDetail -> {
+                    WeatherBackground(skycon = skycon) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            when (val state = uiState) {
+                                is WeatherUiState.Loading -> {
+                                    LoadingShimmer(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .statusBarsPadding()
+                                    )
+                                }
+
+                                is WeatherUiState.Success -> {
+                                    WeatherContent(
+                                        state = state,
+                                        isLocating = isLocating,
+                                        refreshPhase = refreshPhase,
+                                        onLocationClick = { viewModel.relocateAndRefresh() },
+                                        onRefresh = { viewModel.refresh() },
+                                        onListClick = { viewModel.navigateToCityList() }
+                                    )
+                                }
+
+                                is WeatherUiState.Error -> {
+                                    ErrorContent(
+                                        message = state.message,
+                                        onRetry = {
+                                            if (hasLocationPermission && !useDefaultLocation) {
+                                                viewModel.fetchWeather()
+                                            } else {
+                                                viewModel.fetchDefaultWeather()
+                                            }
+                                        },
+                                        onUseDefault = {
+                                            useDefaultLocation = true
+                                            viewModel.fetchDefaultWeather()
+                                        }
+                                    )
+                                }
+                            }
+
+                            // Permission request overlay
+                            if (!hasLocationPermission && !useDefaultLocation) {
+                                PermissionRequestContent(
+                                    shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
+                                    onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
+                                    onUseDefault = {
+                                        useDefaultLocation = true
+                                        viewModel.fetchDefaultWeather()
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -148,7 +199,8 @@ private fun WeatherContent(
     isLocating: Boolean = false,
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
     onLocationClick: () -> Unit = {},
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    onListClick: () -> Unit = {}
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
@@ -161,7 +213,8 @@ private fun WeatherContent(
             locationName = state.locationName,
             isLocating = isLocating,
             refreshPhase = refreshPhase,
-            onLocationClick = onLocationClick
+            onLocationClick = onLocationClick,
+            onListClick = onListClick
         )
 
         Column(

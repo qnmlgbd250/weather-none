@@ -22,15 +22,22 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.skypulse.weather.data.CityManager
+import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.WeatherRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.util.Locale
+import java.util.UUID
 import kotlin.coroutines.resume
 
 sealed class WeatherUiState {
@@ -48,11 +55,28 @@ enum class RefreshPhase {
     Idle, Refreshing, Success
 }
 
+enum class AppScreen {
+    CityList, CityDetail
+}
+
+data class CityWeatherData(
+    val weather: WeatherResponse? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
+data class CitySearchResult(
+    val name: String,
+    val district: String,
+    val longitude: Double,
+    val latitude: Double
+)
+
 class WeatherViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private const val TAG = "WeatherVM"
-        private const val API_COOLDOWN_MS = 30_000L // 30s cooldown between API calls
+        private const val API_COOLDOWN_MS = 30_000L
         private const val DEFAULT_LOCATION_NAME = "北京市"
         private const val DEFAULT_LONGITUDE = 116.4074
         private const val DEFAULT_LATITUDE = 39.9042
@@ -62,14 +86,38 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     private val repository = WeatherRepository()
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
+    private val cityManager = CityManager(application)
 
+    // --- Screen navigation ---
+    private val _currentScreen = MutableStateFlow(AppScreen.CityDetail)
+    val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
+
+    // --- Saved cities ---
+    private val _savedCities = MutableStateFlow<List<City>>(emptyList())
+    val savedCities: StateFlow<List<City>> = _savedCities.asStateFlow()
+
+    // --- Weather data for each city ---
+    private val _cityWeatherMap = MutableStateFlow<Map<String, CityWeatherData>>(emptyMap())
+    val cityWeatherMap: StateFlow<Map<String, CityWeatherData>> = _cityWeatherMap.asStateFlow()
+
+    // --- Selected city for detail view ---
+    private val _selectedCityId = MutableStateFlow<String?>(null)
+    val selectedCityId: StateFlow<String?> = _selectedCityId.asStateFlow()
+
+    // --- City search ---
+    private val _searchResults = MutableStateFlow<List<CitySearchResult>>(emptyList())
+    val searchResults: StateFlow<List<CitySearchResult>> = _searchResults.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    // --- Original GPS-based state (kept for detail view compatibility) ---
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
-    // Pull-to-refresh status phase: Idle → Refreshing → Success
     private val _refreshPhase = MutableStateFlow(RefreshPhase.Idle)
     val refreshPhase: StateFlow<RefreshPhase> = _refreshPhase.asStateFlow()
 
@@ -79,7 +127,185 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val _lastFetchTime = MutableStateFlow(0L)
     val lastFetchTime: StateFlow<Long> = _lastFetchTime.asStateFlow()
 
-    /** Force re-acquire GPS location, then refresh weather */
+    init {
+        _savedCities.value = cityManager.getCities()
+    }
+
+    // ============ Navigation ============
+
+    fun navigateToCityList() {
+        _currentScreen.value = AppScreen.CityList
+        loadAllCityWeather()
+    }
+
+    fun navigateToCityDetail(cityId: String) {
+        _selectedCityId.value = cityId
+        _currentScreen.value = AppScreen.CityDetail
+
+        val city = _savedCities.value.find { it.id == cityId } ?: return
+        if (city.isCurrentLocation) {
+            fetchWeather()
+        } else {
+            viewModelScope.launch { fetchWeatherForCity(city) }
+        }
+    }
+
+    // ============ City Management ============
+
+    fun addCity(searchResult: CitySearchResult) {
+        val city = City(
+            id = UUID.randomUUID().toString(),
+            name = searchResult.name,
+            longitude = searchResult.longitude,
+            latitude = searchResult.latitude,
+            isCurrentLocation = false
+        )
+        cityManager.addCity(city)
+        _savedCities.value = cityManager.getCities()
+        _searchResults.value = emptyList()
+        viewModelScope.launch { loadWeatherForCity(city) }
+    }
+
+    fun removeCity(cityId: String) {
+        cityManager.removeCity(cityId)
+        _savedCities.value = cityManager.getCities()
+        // Remove from weather map
+        val currentMap = _cityWeatherMap.value.toMutableMap()
+        currentMap.remove(cityId)
+        _cityWeatherMap.value = currentMap
+    }
+
+    // ============ City Search ============
+
+    fun searchCities(query: String) {
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            _isSearching.value = true
+            try {
+                val results = withContext(Dispatchers.IO) {
+                    val geocoder = Geocoder(getApplication(), Locale.CHINA)
+                    val addresses = geocoder.getFromLocationName(query, 10)
+                    addresses?.mapNotNull { addr ->
+                        val name = addr.locality ?: addr.adminArea ?: return@mapNotNull null
+                        val district = addr.subLocality ?: addr.subAdminArea ?: ""
+                        CitySearchResult(
+                            name = name,
+                            district = district,
+                            longitude = addr.longitude,
+                            latitude = addr.latitude
+                        )
+                    }?.distinctBy { it.name } ?: emptyList()
+                }
+                _searchResults.value = results
+            } catch (e: Exception) {
+                Log.e(TAG, "City search failed", e)
+                _searchResults.value = emptyList()
+            } finally {
+                _isSearching.value = false
+            }
+        }
+    }
+
+    fun clearSearchResults() {
+        _searchResults.value = emptyList()
+    }
+
+    // ============ Multi-city Weather Loading ============
+
+    fun loadAllCityWeather() {
+        val cities = _savedCities.value
+        if (cities.isEmpty()) return
+
+        viewModelScope.launch {
+            cities.map { city ->
+                async {
+                    loadWeatherForCity(city)
+                }
+            }.awaitAll()
+        }
+    }
+
+    private suspend fun loadWeatherForCity(city: City) {
+        // Set loading state
+        val currentMap = _cityWeatherMap.value.toMutableMap()
+        currentMap[city.id] = CityWeatherData(isLoading = true)
+        _cityWeatherMap.value = currentMap
+
+        val result = repository.getWeather(city.longitude, city.latitude)
+        val updatedMap = _cityWeatherMap.value.toMutableMap()
+        result.fold(
+            onSuccess = { response ->
+                updatedMap[city.id] = CityWeatherData(weather = response)
+            },
+            onFailure = { e ->
+                updatedMap[city.id] = CityWeatherData(error = mapError(e))
+            }
+        )
+        _cityWeatherMap.value = updatedMap
+    }
+
+    private fun fetchWeatherForCity(city: City) {
+        viewModelScope.launch {
+            _uiState.value = WeatherUiState.Loading
+            val result = fetchWithRetry(city.longitude, city.latitude)
+            result.fold(
+                onSuccess = { response ->
+                    _lastFetchTime.value = System.currentTimeMillis()
+                    _uiState.value = WeatherUiState.Success(
+                        weather = response,
+                        locationName = city.name
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = WeatherUiState.Error(mapError(e))
+                }
+            )
+        }
+    }
+
+    // Ensure current location city exists in saved cities
+    fun ensureCurrentLocationCity() {
+        val cities = _savedCities.value.toMutableList()
+        val hasCurrentLocation = cities.any { it.isCurrentLocation }
+        if (!hasCurrentLocation) {
+            val currentLocationCity = City(
+                id = "current_location",
+                name = DEFAULT_LOCATION_NAME,
+                longitude = DEFAULT_LONGITUDE,
+                latitude = DEFAULT_LATITUDE,
+                isCurrentLocation = true
+            )
+            cities.add(0, currentLocationCity)
+            cityManager.saveCities(cities)
+            _savedCities.value = cities
+        }
+    }
+
+    fun updateCurrentLocationCityName(name: String) {
+        val cities = _savedCities.value.toMutableList()
+        val index = cities.indexOfFirst { it.isCurrentLocation }
+        if (index >= 0) {
+            cities[index] = cities[index].copy(name = name)
+            cityManager.saveCities(cities)
+            _savedCities.value = cities
+        }
+    }
+
+    fun updateCurrentLocationCityCoords(lon: Double, lat: Double) {
+        val cities = _savedCities.value.toMutableList()
+        val index = cities.indexOfFirst { it.isCurrentLocation }
+        if (index >= 0) {
+            cities[index] = cities[index].copy(longitude = lon, latitude = lat)
+            cityManager.saveCities(cities)
+            _savedCities.value = cities
+        }
+    }
+
+    // ============ Original GPS-based methods (unchanged) ============
+
     @Suppress("MissingPermission")
     fun relocateAndRefresh() {
         viewModelScope.launch {
@@ -108,6 +334,9 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                     return@launch
                 }
 
+                // Update current location city coords
+                updateCurrentLocationCityCoords(lon, lat)
+                updateCurrentLocationCityName(locationName)
                 fetchWeatherForLocation(lon, lat, locationName)
             } catch (e: Exception) {
                 _uiState.value = WeatherUiState.Error("定位失败，请稍后重试")
@@ -142,7 +371,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             val startTime = System.currentTimeMillis()
             val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
             if (sinceLast < API_COOLDOWN_MS) {
-                // Data is fresh — skip API call, just show success
                 delay(800)
             } else {
                 doFetchWeather()
@@ -156,7 +384,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Silent refresh — shows brief success text only */
     fun silentRefresh() {
         viewModelScope.launch {
             val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
@@ -195,6 +422,9 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 return
             }
 
+            // Update current location city
+            updateCurrentLocationCityCoords(lon, lat)
+            updateCurrentLocationCityName(locationName)
             fetchWeatherForLocation(lon, lat, locationName)
         } catch (e: LocationFailure) {
             _uiState.value = WeatherUiState.Error(e.message ?: "定位失败")
@@ -316,7 +546,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             }
     }
 
-    /** Check if location services are available and return diagnostic message */
     private fun getLocationDiagnostic(): String? {
         val ctx = getApplication<Application>()
         val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -339,19 +568,16 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         val ctx = getApplication<Application>()
         val lm = ctx.getSystemService(LocationManager::class.java)
 
-        // GMS availability
         val gmsStatus = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(ctx)
         val gmsOk = gmsStatus == ConnectionResult.SUCCESS
         Log.d(TAG, "GMS available: $gmsOk (status=$gmsStatus)")
 
-        // Providers
         val allProviders = lm.allProviders
         val gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
         val networkEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
         Log.d(TAG, "All providers: $allProviders")
         Log.d(TAG, "GPS enabled=$gpsEnabled, NETWORK enabled=$networkEnabled")
 
-        // Permissions
         val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val hasCoarse = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         Log.d(TAG, "Permissions: FINE=$hasFine, COARSE=$hasCoarse")
@@ -423,7 +649,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    /** Request a fresh GPS fix with timeout */
     private suspend fun requestFreshLocation(): Location? {
         val ctx = getApplication<Application>()
         val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -432,7 +657,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             Log.w(TAG, "requestFreshLocation: no location permission")
             return null
         }
-        // FINE_LOCATION implies COARSE_LOCATION access
         val canUseCoarse = hasFine || hasCoarse
 
         val lm = ctx.getSystemService(LocationManager::class.java)
@@ -444,7 +668,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             return it
         }
 
-        // 1. Try network location (fast, works indoors)
         if (canUseCoarse && networkEnabled) {
             Log.d(TAG, "Trying NETWORK_PROVIDER...")
             val loc = requestLocationFromProvider(lm, LocationManager.NETWORK_PROVIDER, timeoutMs = 5_000L)
@@ -455,7 +678,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             Log.w(TAG, "NETWORK_PROVIDER returned null")
         }
 
-        // 2. Try GPS updates and stop as soon as the first fix arrives.
         if (hasFine && gpsEnabled) {
             Log.d(TAG, "Trying GPS_PROVIDER via requestLocationUpdates...")
             val loc = requestLocationFromProvider(lm, LocationManager.GPS_PROVIDER, timeoutMs = 10_000L)
@@ -466,7 +688,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             Log.w(TAG, "GPS_PROVIDER returned null after 10s")
         }
 
-        // 3. Google Play Services fallback — only if GMS is available
         val gmsAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(ctx) == ConnectionResult.SUCCESS
         if (hasFine && gmsAvailable) {
             Log.d(TAG, "Trying FusedLocation (BALANCED)...")
@@ -477,7 +698,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             }
             Log.w(TAG, "FusedLocation (BALANCED) returned null")
 
-            // 4. Last resort: low power coarse location
             Log.d(TAG, "Trying FusedLocation (LOW_POWER) as last resort...")
             val coarseLoc = requestLocationFromFusedLowPower()
             if (coarseLoc != null) {

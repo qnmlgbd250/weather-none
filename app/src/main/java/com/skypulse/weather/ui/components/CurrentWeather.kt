@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.*
 import com.skypulse.weather.viewmodel.RefreshPhase
 import androidx.compose.runtime.*
@@ -29,6 +30,7 @@ fun LocationHeader(
     isLocating: Boolean = false,
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
     onLocationClick: (() -> Unit)? = null,
+    onListClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
@@ -44,40 +46,56 @@ fun LocationHeader(
                         )
                     else Modifier
                 ),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isLocating,
-                    enter = fadeIn(),
-                    exit = fadeOut()
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = TextSecondary
-                    )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isLocating,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = TextSecondary
+                        )
+                    }
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !isLocating,
+                        enter = fadeIn(),
+                        exit = fadeOut()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocationOn,
+                            contentDescription = "校正位置",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = !isLocating,
-                    enter = fadeIn(),
-                    exit = fadeOut()
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = locationName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+
+            if (onListClick != null) {
+                IconButton(
+                    onClick = onListClick,
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = "校正位置",
+                        imageVector = Icons.Outlined.Menu,
+                        contentDescription = "城市列表",
                         tint = TextSecondary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = locationName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
-            )
         }
 
         Box(modifier = Modifier.height(20.dp).padding(start = 3.dp)) {
