@@ -135,16 +135,25 @@ fun CityListRow(
     modifier: Modifier = Modifier
 ) {
     val realtime = weather?.result?.realtime
-    val todayTemp = weather?.result?.daily?.temperature?.firstOrNull()
     val skycon = realtime?.skycon
     val isDay = WeatherUtils.isCurrentlyDay()
     val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
     val temperature = WeatherUtils.formatTemperature(realtime?.temperature).replace("°", "")
-    val high = WeatherUtils.formatTemperature(todayTemp?.max)
-    val low = WeatherUtils.formatTemperature(todayTemp?.min)
+    val aqiValue = realtime?.air_quality?.aqi?.chn?.toInt()
+    val aqiDesc = realtime?.air_quality?.description?.chn ?: aqiValue?.let {
+        when {
+            it <= 50 -> "优"
+            it <= 100 -> "良"
+            it <= 150 -> "轻度"
+            it <= 200 -> "中度"
+            it <= 300 -> "重度"
+            else -> "严重"
+        }
+    }
+    val aqiText = if (aqiDesc != null && aqiValue != null) "空气$aqiDesc$aqiValue" else null
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
@@ -172,87 +181,87 @@ fun CityListRow(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
+        // Top: city name + temperature — baseline aligned
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (city.isCurrentLocation) {
-                        Icon(
-                            imageVector = Icons.Outlined.LocationOn,
-                            contentDescription = null,
-                            tint = TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                if (city.isCurrentLocation) {
+                    Icon(
+                        imageVector = Icons.Outlined.LocationOn,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Text(
+                    text = city.name,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = 20.sp
+                    ),
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.alignByBaseline()
+                )
+            }
+
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color = TextSecondary
+                )
+            } else if (weather != null) {
+                Box(
+                    contentAlignment = Alignment.TopEnd,
+                    modifier = Modifier.alignByBaseline()
+                ) {
                     Text(
-                        text = city.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium,
+                        text = temperature,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Thin,
+                            fontFeatureSettings = "tnum"
+                        ),
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "°",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Thin
+                        ),
                         color = TextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.offset(x = 10.dp, y = 2.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+
+        // Bottom: air quality + weather description aligned
+        Row(modifier = Modifier.fillMaxWidth()) {
+            if (aqiText != null) {
+                Text(
+                    text = aqiText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            if (!isLoading && weather != null) {
                 Text(
                     text = weatherInfo.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary
                 )
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End
-            ) {
-                if (!isLoading && weather != null) {
-                    WeatherIcon(
-                        iconType = weatherInfo.icon,
-                        size = 36.dp,
-                        animated = false
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp,
-                            color = TextSecondary
-                        )
-                    } else {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Text(
-                                text = temperature,
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontSize = 36.sp,
-                                    fontWeight = FontWeight.Thin
-                                ),
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "°",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Thin
-                                ),
-                                color = TextPrimary,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "$low / $high",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary
-                    )
-                }
             }
         }
     }

@@ -62,7 +62,7 @@ fun CityListScreen(
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search bar — always visible
+            // Search bar — iOS-style pill capsule
             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 TextField(
                     value = searchQuery,
@@ -76,7 +76,8 @@ fun CityListScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp)),
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(50)),
                     placeholder = {
                         Text(
                             text = "搜索并添加城市",
@@ -89,7 +90,7 @@ fun CityListScreen(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = null,
                             tint = TextSecondary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     },
                     trailingIcon = {
@@ -100,13 +101,13 @@ fun CityListScreen(
                                     onClearSearch()
                                     focusManager.clearFocus()
                                 },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
                                     contentDescription = "清除",
                                     tint = TextSecondary,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
                         }
@@ -190,8 +191,8 @@ fun CityListScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(
                         items = cities,
