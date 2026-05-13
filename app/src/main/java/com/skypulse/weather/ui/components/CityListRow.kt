@@ -1,23 +1,29 @@
 package com.skypulse.weather.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
@@ -25,6 +31,100 @@ import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.util.WeatherUtils
+import kotlin.math.roundToInt
+
+@Composable
+fun SwipeableCityListRow(
+    city: City,
+    weather: WeatherResponse?,
+    isLoading: Boolean,
+    isCurrentLocation: Boolean,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val deleteButtonWidth = 80.dp
+    val deleteButtonWidthPx = with(LocalDensity.current) { deleteButtonWidth.toPx() }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    val animatedOffsetX by animateFloatAsState(
+        targetValue = offsetX,
+        animationSpec = spring(),
+        label = "swipeOffset"
+    )
+
+    Box(modifier = modifier.fillMaxWidth()) {
+        // Layer 1: Red delete button — bottom layer, full width
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFFFF3B30)),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            IconButton(
+                onClick = {
+                    onDelete()
+                    offsetX = 0f
+                },
+                modifier = Modifier.padding(end = 16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = "删除",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        // Layer 2: Opaque dark base — moves WITH the card, only covers the card area
+        // This blocks the red from showing through the transparent card
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
+                .fillMaxWidth()
+                .matchParentSize()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFF0D1B2A))
+        )
+
+        // Layer 3: City card — on top, slides left to reveal red delete button
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
+                .fillMaxWidth()
+                .pointerInput(isCurrentLocation) {
+                    if (isCurrentLocation) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (offsetX < -deleteButtonWidthPx / 2) {
+                                offsetX = -deleteButtonWidthPx
+                            } else {
+                                offsetX = 0f
+                            }
+                        },
+                        onHorizontalDrag = { _, dragAmount ->
+                            val newOffset = offsetX + dragAmount
+                            offsetX = newOffset.coerceIn(-deleteButtonWidthPx, 0f)
+                        }
+                    )
+                }
+        ) {
+            CityListRow(
+                city = city,
+                weather = weather,
+                isLoading = isLoading,
+                onClick = {
+                    if (offsetX < 0f) {
+                        offsetX = 0f
+                    } else {
+                        onClick()
+                    }
+                }
+            )
+        }
+    }
+}
 
 @Composable
 fun CityListRow(

@@ -52,3 +52,8 @@
 -keep class androidx.activity.** { *; }
 -dontwarn androidx.lifecycle.**
 -dontwarn androidx.activity.**
+
+# === Amap (高德) SDK ===
+-keep class com.amap.api.** { *; }
+-keep class com.amap.api.services.** { *; }
+-dontwarn com.amap.api.**

@@ -37,10 +37,20 @@ android {
         buildConfigField("String", "AMAP_API_KEY", "\"$escapedAmapApiKey\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release-keystore.jks")
+            storePassword = "weather123"
+            keyAlias = "weather-app"
+            keyPassword = "weather123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"
@@ -96,6 +106,7 @@ dependencies {
 
     implementation(libs.play.services.location)
     implementation(libs.amap.location)
+    implementation(libs.amap.search)
     implementation(libs.accompanist.permissions)
     implementation(libs.lottie.compose)
 

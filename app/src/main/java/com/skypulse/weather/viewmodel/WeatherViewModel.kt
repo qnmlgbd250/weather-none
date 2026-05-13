@@ -22,10 +22,13 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.CurrentLocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.skypulse.weather.api.ApiClient
+import com.skypulse.weather.data.CityDatabase
 import com.skypulse.weather.data.CityManager
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.WeatherRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -87,6 +90,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val repository = WeatherRepository()
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
     private val cityManager = CityManager(application)
+    private val cityDatabase = CityDatabase(application)
 
     // --- Screen navigation ---
     private val _currentScreen = MutableStateFlow(AppScreen.CityDetail)
@@ -110,6 +114,8 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private var searchJob: Job? = null
 
     // --- Original GPS-based state (kept for detail view compatibility) ---
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
@@ -191,30 +197,32 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     fun searchCities(query: String) {
         if (query.isBlank()) {
+            searchJob?.cancel()
             _searchResults.value = emptyList()
+            _isSearching.value = false
             return
         }
-        viewModelScope.launch {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(200)
             _isSearching.value = true
             try {
                 val results = withContext(Dispatchers.IO) {
-                    val geocoder = Geocoder(getApplication(), Locale.CHINA)
-                    val addresses = geocoder.getFromLocationName(query, 10)
-                    addresses?.mapNotNull { addr ->
-                        val name = addr.locality ?: addr.adminArea ?: return@mapNotNull null
-                        val district = addr.subLocality ?: addr.subAdminArea ?: ""
+                    cityDatabase.search(query).map { city ->
                         CitySearchResult(
-                            name = name,
-                            district = district,
-                            longitude = addr.longitude,
-                            latitude = addr.latitude
+                            name = city.name,
+                            district = city.province,
+                            longitude = city.lon,
+                            latitude = city.lat
                         )
-                    }?.distinctBy { it.name } ?: emptyList()
+                    }
                 }
                 _searchResults.value = results
             } catch (e: Exception) {
-                Log.e(TAG, "City search failed", e)
-                _searchResults.value = emptyList()
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    Log.e(TAG, "City search failed", e)
+                    _searchResults.value = emptyList()
+                }
             } finally {
                 _isSearching.value = false
             }

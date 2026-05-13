@@ -1,11 +1,6 @@
 package com.skypulse.weather.ui.screen
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
@@ -30,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.ui.components.CityListRow
 import com.skypulse.weather.ui.components.CitySearchResultRow
+import com.skypulse.weather.ui.components.SwipeableCityListRow
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.viewmodel.CitySearchResult
@@ -50,7 +45,7 @@ fun CityListScreen(
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var isSearchActive by remember { mutableStateOf(false) }
+    val isSearchActive = searchQuery.isNotBlank()
     val focusManager = LocalFocusManager.current
 
     Box(
@@ -64,51 +59,54 @@ fun CityListScreen(
                     )
                 )
             )
+            .statusBarsPadding()
     ) {
-        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Search bar — always visible
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 TextField(
                     value = searchQuery,
                     onValueChange = { query ->
                         searchQuery = query
                         if (query.isNotBlank()) {
-                            isSearchActive = true
                             onSearch(query)
                         } else {
-                            isSearchActive = false
                             onClearSearch()
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp)),
+                        .clip(RoundedCornerShape(12.dp)),
                     placeholder = {
                         Text(
-                            text = "搜索城市",
-                            color = TextSecondary.copy(alpha = 0.6f)
+                            text = "搜索并添加城市",
+                            color = TextSecondary.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = null,
-                            tint = TextSecondary
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
                         )
                     },
                     trailingIcon = {
                         if (searchQuery.isNotBlank()) {
-                            IconButton(onClick = {
-                                searchQuery = ""
-                                isSearchActive = false
-                                onClearSearch()
-                                focusManager.clearFocus()
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    searchQuery = ""
+                                    onClearSearch()
+                                    focusManager.clearFocus()
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
                                     contentDescription = "清除",
-                                    tint = TextSecondary
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -123,6 +121,7 @@ fun CityListScreen(
                         }
                     ),
                     singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium,
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.White.copy(alpha = 0.12f),
                         unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
@@ -135,13 +134,8 @@ fun CityListScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AnimatedVisibility(
-                visible = isSearchActive,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
+            // Content: either search results or city list
+            if (isSearchActive) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp)
@@ -161,7 +155,7 @@ fun CityListScreen(
                                 )
                             }
                         }
-                    } else if (searchResults.isEmpty() && searchQuery.isNotBlank()) {
+                    } else if (searchResults.isEmpty()) {
                         item {
                             Text(
                                 text = "未找到匹配的城市",
@@ -181,7 +175,6 @@ fun CityListScreen(
                                 onClick = {
                                     onAddCity(result)
                                     searchQuery = ""
-                                    isSearchActive = false
                                     focusManager.clearFocus()
                                 }
                             )
@@ -194,13 +187,7 @@ fun CityListScreen(
                         }
                     }
                 }
-            }
-
-            AnimatedVisibility(
-                visible = !isSearchActive,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
+            } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -211,43 +198,17 @@ fun CityListScreen(
                         key = { it.id }
                     ) { city ->
                         val weatherData = cityWeatherMap[city.id]
-                        CityListRow(
+                        SwipeableCityListRow(
                             city = city,
                             weather = weatherData?.weather,
                             isLoading = weatherData?.isLoading == true,
-                            onClick = { onCityClick(city.id) }
+                            isCurrentLocation = city.isCurrentLocation,
+                            onClick = { onCityClick(city.id) },
+                            onDelete = { onRemoveCity(city.id) }
                         )
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color.White.copy(alpha = 0.06f))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { isSearchActive = true }
-                                )
-                                .padding(horizontal = 20.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Add,
-                                contentDescription = null,
-                                tint = TextSecondary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "添加城市",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary
-                            )
-                        }
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                 }
