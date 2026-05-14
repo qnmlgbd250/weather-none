@@ -78,7 +78,7 @@ fun LocationHeader(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = locationName,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
                     color = TextSecondary
                 )
             }

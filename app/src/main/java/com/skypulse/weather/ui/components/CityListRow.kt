@@ -151,7 +151,7 @@ fun CityListRow(
             else -> "严重"
         }
     }
-    val aqiText = if (aqiDesc != null && aqiValue != null) "空气$aqiDesc$aqiValue" else null
+    val aqiText = if (aqiDesc != null && aqiValue != null) "空气$aqiDesc $aqiValue" else null
 
     Column(
         modifier = modifier
