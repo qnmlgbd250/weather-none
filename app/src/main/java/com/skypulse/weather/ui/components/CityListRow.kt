@@ -260,7 +260,8 @@ fun CityListRow(
                 Text(
                     text = weatherInfo.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
+                    color = TextSecondary,
+                    modifier = Modifier.padding(end = 8.dp)
                 )
             }
         }
