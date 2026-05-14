@@ -256,11 +256,14 @@ private fun VerticalTempBar(
     }
 }
 
+private val shortDateFmt: java.lang.ThreadLocal<java.text.SimpleDateFormat> = java.lang.ThreadLocal.withInitial {
+    java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+}
+
 private fun formatShortDate(dateStr: String?): String {
     if (dateStr == null) return ""
     return try {
-        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
-        val date = fmt.parse(dateStr) ?: return ""
+        val date = shortDateFmt.get().parse(dateStr) ?: return ""
         val cal = java.util.Calendar.getInstance()
         cal.time = date
         "${cal.get(java.util.Calendar.MONTH) + 1}/${cal.get(java.util.Calendar.DAY_OF_MONTH)}"

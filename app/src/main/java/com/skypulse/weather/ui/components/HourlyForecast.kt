@@ -139,56 +139,67 @@ private fun HourlyTemperatureChart(
                 }
             }
 
+            fun findSegmentIndex(x: Float): Int {
+                var lo = 0; var hi = points.size - 2
+                while (lo <= hi) {
+                    val mid = (lo + hi) ushr 1
+                    if (x < points[mid].x) hi = mid - 1
+                    else if (x > points[mid + 1].x) lo = mid + 1
+                    else return mid
+                }
+                return lo.coerceIn(0, points.size - 2)
+            }
+
             fun sampleSplineY(x: Float): Float {
                 if (points.isEmpty()) return curveAreaBottom
                 if (x <= points.first().x) return points.first().y
                 if (x >= points.last().x) return points.last().y
-                for (i in 0 until points.size - 1) {
-                    if (x <= points[i + 1].x) {
-                        val p0 = points[i]; val p1 = points[i + 1]
-                        val m0 = tangents[i]; val m1 = tangents[i + 1]
-                        val t = (x - p0.x) / (p1.x - p0.x)
-                        val t2 = t * t; val t3 = t2 * t
-                        val h00 = 2 * t3 - 3 * t2 + 1; val h10 = t3 - 2 * t2 + t
-                        val h01 = -2 * t3 + 3 * t2; val h11 = t3 - t2
-                        val dx = p1.x - p0.x
-                        return h00 * p0.y + h10 * m0 * dx + h01 * p1.y + h11 * m1 * dx
-                    }
+                val i = findSegmentIndex(x)
+                val p0 = points[i]; val p1 = points[i + 1]
+                val m0 = tangents[i]; val m1 = tangents[i + 1]
+                val t = (x - p0.x) / (p1.x - p0.x)
+                val t2 = t * t; val t3 = t2 * t
+                val h00 = 2 * t3 - 3 * t2 + 1; val h10 = t3 - 2 * t2 + t
+                val h01 = -2 * t3 + 3 * t2; val h11 = t3 - t2
+                val dx = p1.x - p0.x
+                return h00 * p0.y + h10 * m0 * dx + h01 * p1.y + h11 * m1 * dx
+            }
+
+            val chartColors = theme.chartColors
+            val barColorPairs = skyconValues.map { skycon ->
+                when {
+                    skycon == null -> chartColors.clear
+                    skycon.contains("STORM") -> chartColors.storm
+                    skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> chartColors.rain
+                    skycon.contains("RAIN") || skycon.contains("SNOW") -> chartColors.rain
+                    skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> chartColors.rain
+                    skycon.contains("CLOUDY") -> chartColors.cloudy
+                    skycon.contains("PARTLY_CLOUDY") -> chartColors.partlyCloudy
+                    skycon.contains("HAZE") || skycon == "FOG" -> chartColors.haze
+                    skycon == "WIND" -> chartColors.wind
+                    skycon.contains("CLEAR") -> chartColors.clear
+                    else -> chartColors.clear
                 }
-                return points.last().y
             }
 
             for (i in 0 until itemCount) {
                 val leftX = if (i == 0) 0f else (points[i - 1].x + points[i].x) / 2f
                 val rightX = if (i == itemCount - 1) size.width else (points[i].x + points[i + 1].x) / 2f
-                val skycon = skyconValues[i]
-                val colors = theme.chartColors
-                val (topColor, bottomColor) = when {
-                    skycon == null -> colors.clear
-                    skycon.contains("STORM") -> colors.storm
-                    skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> colors.rain
-                    skycon.contains("RAIN") || skycon.contains("SNOW") -> colors.rain
-                    skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> colors.rain
-                    skycon.contains("CLOUDY") -> colors.cloudy
-                    skycon.contains("PARTLY_CLOUDY") -> colors.partlyCloudy
-                    skycon.contains("HAZE") || skycon == "FOG" -> colors.haze
-                    skycon == "WIND" -> colors.wind
-                    skycon.contains("CLEAR") -> colors.clear
-                    else -> colors.clear
-                }
+                val (topColor, bottomColor) = barColorPairs[i]
 
                 val barSteps = ((rightX - leftX) / (2f * density)).toInt().coerceIn(10, 50)
-                var barTopY = points[i].y
+                val sampledYs = FloatArray(barSteps + 1)
                 for (s in 0..barSteps) {
                     val x = leftX + (rightX - leftX) * (s.toFloat() / barSteps)
-                    barTopY = minOf(barTopY, sampleSplineY(x))
+                    sampledYs[s] = sampleSplineY(x)
                 }
+                val barTopY = sampledYs.min()
 
                 val barPath = Path().apply {
                     moveTo(leftX, canvasH)
                     for (s in 0..barSteps) {
                         val x = leftX + (rightX - leftX) * (s.toFloat() / barSteps)
-                        lineTo(x, sampleSplineY(x))
+                        lineTo(x, sampledYs[s])
                     }
                     lineTo(rightX, canvasH); close()
                 }

@@ -7,6 +7,13 @@ import java.util.*
 
 object WeatherUtils {
 
+    private val hourFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
+    }
+    private val dateFormat: ThreadLocal<SimpleDateFormat> = ThreadLocal.withInitial {
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    }
+
     data class WeatherInfo(
         val description: String,
         val icon: String,
@@ -15,7 +22,7 @@ object WeatherUtils {
 
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
-        val isBright = isBrightBackground(skycon)
+        val isBright = isBrightBackground(skycon, isDay)
         
         // --- Card Styling ---
         val topAlpha = if (isBright) 0.28f else 0.18f
@@ -110,12 +117,11 @@ object WeatherUtils {
         return "${kotlin.math.round(temp).toInt()}°"
     }
 
-    fun isBrightBackground(skycon: String?): Boolean {
-        val isDay = isCurrentlyDay()
+    fun isBrightBackground(skycon: String?, isDay: Boolean = isCurrentlyDay()): Boolean {
         if (!isDay) return false
-        return skycon == null || 
-               skycon.contains("CLEAR") || 
-               skycon.contains("PARTLY_CLOUDY") || 
+        return skycon == null ||
+               skycon.contains("CLEAR") ||
+               skycon.contains("PARTLY_CLOUDY") ||
                skycon.contains("CLOUDY")
     }
 
@@ -198,8 +204,7 @@ object WeatherUtils {
     fun formatHourShort(datetime: String?): String {
         if (datetime == null) return ""
         return try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
-            val date = inputFormat.parse(datetime) ?: return ""
+            val date = hourFormat.get().parse(datetime) ?: return ""
             val cal = Calendar.getInstance()
             cal.time = date
             val hour = cal.get(Calendar.HOUR_OF_DAY)
@@ -212,8 +217,7 @@ object WeatherUtils {
     fun formatWeekday(dateStr: String?): String {
         if (dateStr == null) return ""
         return try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val date = inputFormat.parse(dateStr) ?: return ""
+            val date = dateFormat.get().parse(dateStr) ?: return ""
             val cal = Calendar.getInstance()
             val today = Calendar.getInstance()
             cal.time = date

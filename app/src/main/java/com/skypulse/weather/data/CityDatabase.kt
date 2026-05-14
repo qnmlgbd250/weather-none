@@ -13,7 +13,6 @@ import kotlin.coroutines.resume
 
 data class CityEntry(
     val name: String,
-    val pinyin: String,
     val province: String,
     val lat: Double,
     val lon: Double
@@ -56,7 +55,6 @@ class CityDatabase(context: Context) {
                                     val district = poi.adName ?: ""
                                     CityEntry(
                                         name = title,
-                                        pinyin = "",
                                         province = if (district.isNotBlank()) "$city · $district" else city,
                                         lat = point.latitude,
                                         lon = point.longitude

@@ -132,7 +132,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     val isLocating: StateFlow<Boolean> = _isLocating.asStateFlow()
 
     private val _lastFetchTime = MutableStateFlow(0L)
-    val lastFetchTime: StateFlow<Long> = _lastFetchTime.asStateFlow()
 
     init {
         _savedCities.value = cityManager.getCities()
