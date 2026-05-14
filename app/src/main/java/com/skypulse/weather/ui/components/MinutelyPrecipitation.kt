@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import java.time.LocalTime
@@ -137,12 +138,32 @@ private fun MinutelyBarChart(
                         )
                     }
 
-                    val fillAlpha = (0.4f + 0.6f * visualRatio).coerceIn(0.4f, 1f)
+                    // Vertical gradient: brighter at top, normal at bottom
+                    val topAlpha = (0.7f + 0.3f * visualRatio).coerceIn(0.7f, 1f)
+                    val bottomAlpha = (0.4f + 0.6f * visualRatio).coerceIn(0.4f, 1f)
+                    val gradientBrush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFFB0EAFF).copy(alpha = topAlpha),
+                            Color(0xFF92DDFE).copy(alpha = bottomAlpha)
+                        ),
+                        startY = fillTop,
+                        endY = fillTop + fillH
+                    )
                     drawRoundRect(
-                        color = Color(0xFF92DDFE).copy(alpha = fillAlpha),
+                        brush = gradientBrush,
                         topLeft = Offset(left, fillTop),
                         size = Size(barW, fillH),
                         cornerRadius = corner
+                    )
+
+                    // Subtle highlight on left edge (light reflection)
+                    val highlightWidth = barW * 0.25f
+                    val highlightAlpha = (0.2f + 0.3f * visualRatio).coerceIn(0.2f, 0.5f)
+                    drawRoundRect(
+                        color = Color.White.copy(alpha = highlightAlpha),
+                        topLeft = Offset(left, fillTop + fillH * 0.05f),
+                        size = Size(highlightWidth, fillH * 0.9f),
+                        cornerRadius = CornerRadius(highlightWidth / 2f)
                     )
                 }
             }

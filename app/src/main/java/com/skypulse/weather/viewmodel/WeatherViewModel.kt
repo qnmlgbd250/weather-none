@@ -25,6 +25,7 @@ import com.google.android.gms.location.Priority
 import com.skypulse.weather.api.ApiClient
 import com.skypulse.weather.data.CityDatabase
 import com.skypulse.weather.data.CityManager
+import com.skypulse.weather.data.WeatherCache
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.WeatherRepository
@@ -64,7 +65,6 @@ enum class AppScreen {
 
 data class CityWeatherData(
     val weather: WeatherResponse? = null,
-    val isLoading: Boolean = false,
     val error: String? = null
 )
 
@@ -91,6 +91,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
     private val cityManager = CityManager(application)
     private val cityDatabase = CityDatabase(application)
+    private val weatherCache = WeatherCache(application)
 
     // --- Screen navigation ---
     private val _currentScreen = MutableStateFlow(AppScreen.CityDetail)
@@ -135,6 +136,17 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         _savedCities.value = cityManager.getCities()
+        // Load cached weather data so city list has data immediately
+        val cachedMap = mutableMapOf<String, CityWeatherData>()
+        for (city in _savedCities.value) {
+            val cached = weatherCache.load(city.id)
+            if (cached != null) {
+                cachedMap[city.id] = CityWeatherData(weather = cached)
+            }
+        }
+        if (cachedMap.isNotEmpty()) {
+            _cityWeatherMap.value = cachedMap
+        }
     }
 
     // ============ Navigation ============
@@ -145,7 +157,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         val existingData = _cityWeatherMap.value
         val citiesToLoad = _savedCities.value.filter { city ->
             val data = existingData[city.id]
-            data == null || (data.weather == null && !data.isLoading)
+            data == null || data.weather == null
         }
         if (citiesToLoad.isNotEmpty()) {
             viewModelScope.launch {
@@ -187,10 +199,10 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     fun removeCity(cityId: String) {
         cityManager.removeCity(cityId)
         _savedCities.value = cityManager.getCities()
-        // Remove from weather map
         val currentMap = _cityWeatherMap.value.toMutableMap()
         currentMap.remove(cityId)
         _cityWeatherMap.value = currentMap
+        weatherCache.remove(cityId)
     }
 
     // ============ City Search ============
@@ -236,19 +248,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     // ============ Multi-city Weather Loading ============
 
     private suspend fun loadWeatherForCity(city: City) {
-        // Only show loading spinner if there's no existing data
-        val existingData = _cityWeatherMap.value[city.id]
-        if (existingData?.weather == null) {
-            val currentMap = _cityWeatherMap.value.toMutableMap()
-            currentMap[city.id] = CityWeatherData(isLoading = true)
-            _cityWeatherMap.value = currentMap
-        }
-
         val result = repository.getWeather(city.longitude, city.latitude)
         val updatedMap = _cityWeatherMap.value.toMutableMap()
         result.fold(
             onSuccess = { response ->
                 updatedMap[city.id] = CityWeatherData(weather = response)
+                weatherCache.save(city.id, response)
             },
             onFailure = { e ->
                 updatedMap[city.id] = CityWeatherData(error = mapError(e))
@@ -268,6 +273,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                         weather = response,
                         locationName = city.name
                     )
+                    weatherCache.save(city.id, response)
                 },
                 onFailure = { e ->
                     _uiState.value = WeatherUiState.Error(mapError(e))
@@ -456,6 +462,11 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                     weather = response,
                     locationName = locationName
                 )
+                // Cache for current location city
+                val currentCity = _savedCities.value.find { it.isCurrentLocation }
+                if (currentCity != null) {
+                    weatherCache.save(currentCity.id, response)
+                }
             },
             onFailure = { e ->
                 _uiState.value = WeatherUiState.Error(mapError(e))

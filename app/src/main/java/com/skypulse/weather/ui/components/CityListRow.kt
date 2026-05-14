@@ -37,7 +37,6 @@ import kotlin.math.roundToInt
 fun SwipeableCityListRow(
     city: City,
     weather: WeatherResponse?,
-    isLoading: Boolean,
     isCurrentLocation: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit,
@@ -113,7 +112,6 @@ fun SwipeableCityListRow(
             CityListRow(
                 city = city,
                 weather = weather,
-                isLoading = isLoading,
                 onClick = {
                     if (offsetX < 0f) {
                         offsetX = 0f
@@ -130,7 +128,6 @@ fun SwipeableCityListRow(
 fun CityListRow(
     city: City,
     weather: WeatherResponse?,
-    isLoading: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -214,13 +211,7 @@ fun CityListRow(
                 )
             }
 
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp,
-                    color = TextSecondary
-                )
-            } else if (weather != null) {
+            if (weather != null) {
                 Box(
                     contentAlignment = Alignment.TopEnd,
                     modifier = Modifier.alignByBaseline()
@@ -256,7 +247,7 @@ fun CityListRow(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            if (!isLoading && weather != null) {
+            if (weather != null) {
                 Text(
                     text = weatherInfo.description,
                     style = MaterialTheme.typography.bodySmall,

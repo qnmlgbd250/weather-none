@@ -202,7 +202,6 @@ fun CityListScreen(
                         SwipeableCityListRow(
                             city = city,
                             weather = weatherData?.weather,
-                            isLoading = weatherData?.isLoading == true,
                             isCurrentLocation = city.isCurrentLocation,
                             onClick = { onCityClick(city.id) },
                             onDelete = { onRemoveCity(city.id) }
