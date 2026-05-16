@@ -146,6 +146,17 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         if (cachedMap.isNotEmpty()) {
             _cityWeatherMap.value = cachedMap
         }
+        // Initialize detail screen with cached data for current location
+        val currentCity = _savedCities.value.find { it.isCurrentLocation }
+        if (currentCity != null) {
+            val cachedWeather = weatherCache.load(currentCity.id)
+            if (cachedWeather != null) {
+                _uiState.value = WeatherUiState.Success(
+                    weather = cachedWeather,
+                    locationName = currentCity.name
+                )
+            }
+        }
     }
 
     // ============ Navigation ============
@@ -363,7 +374,9 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
     fun fetchWeather() {
         viewModelScope.launch {
-            _uiState.value = WeatherUiState.Loading
+            if (_uiState.value !is WeatherUiState.Success) {
+                _uiState.value = WeatherUiState.Loading
+            }
             doFetchWeather()
         }
     }
@@ -403,7 +416,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
             if (sinceLast >= API_COOLDOWN_MS) {
-                doFetchWeather()
+                doFetchWeather(silent = true)
             }
             _refreshPhase.value = RefreshPhase.Success
             delay(2000)
@@ -411,7 +424,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private suspend fun doFetchWeather() {
+    private suspend fun doFetchWeather(silent: Boolean = false) {
         try {
             logLocationDiagnostics()
             val location = getBestCachedSystemLocation(FRESH_CACHE_MAX_AGE_MS)
@@ -427,6 +440,11 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 lat = location.latitude
                 locationName = getLocationName(location)
             } else {
+                // In silent mode, don't overwrite existing success data with errors
+                if (silent && _uiState.value is WeatherUiState.Success) {
+                    Log.w(TAG, "Silent refresh location failed, keeping cached data")
+                    return
+                }
                 val diagnostic = getLocationDiagnostic()
                 if (diagnostic != null) {
                     _uiState.value = WeatherUiState.Error(diagnostic)
@@ -440,18 +458,23 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             // Update current location city
             updateCurrentLocationCityCoords(lon, lat)
             updateCurrentLocationCityName(locationName)
-            fetchWeatherForLocation(lon, lat, locationName)
+            fetchWeatherForLocation(lon, lat, locationName, silent)
         } catch (e: LocationFailure) {
-            _uiState.value = WeatherUiState.Error(e.message ?: "定位失败")
+            if (!silent || _uiState.value !is WeatherUiState.Success) {
+                _uiState.value = WeatherUiState.Error(e.message ?: "定位失败")
+            }
         } catch (e: Exception) {
-            _uiState.value = WeatherUiState.Error("获取天气数据失败，请稍后重试")
+            if (!silent || _uiState.value !is WeatherUiState.Success) {
+                _uiState.value = WeatherUiState.Error("获取天气数据失败，请稍后重试")
+            }
         }
     }
 
     private suspend fun fetchWeatherForLocation(
         lon: Double,
         lat: Double,
-        locationName: String
+        locationName: String,
+        silent: Boolean = false
     ) {
         val result = fetchWithRetry(lon, lat)
         result.fold(
@@ -468,7 +491,9 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 }
             },
             onFailure = { e ->
-                _uiState.value = WeatherUiState.Error(mapError(e))
+                if (!silent || _uiState.value !is WeatherUiState.Success) {
+                    _uiState.value = WeatherUiState.Error(mapError(e))
+                }
             }
         )
     }
