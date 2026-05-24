@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
+import com.skypulse.weather.ui.theme.NightFallbackGradient
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.util.WeatherUtils
@@ -84,7 +85,7 @@ fun SwipeableCityListRow(
                 .fillMaxWidth()
                 .matchParentSize()
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFF0D1B2A))
+                .background(NightFallbackGradient.first())
         )
 
         // Layer 3: City card — on top, slides left to reveal red delete button
@@ -157,8 +158,8 @@ fun CityListRow(
             .background(
                 Brush.horizontalGradient(
                     colors = listOf(
-                        gradientColors[0].copy(alpha = 0.7f),
-                        gradientColors[1].copy(alpha = 0.5f)
+                        gradientColors.first().copy(alpha = 0.7f),
+                        gradientColors.last().copy(alpha = 0.5f)
                     )
                 )
             )

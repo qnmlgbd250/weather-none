@@ -203,7 +203,16 @@ private fun HourlyTemperatureChart(
                     }
                     lineTo(rightX, canvasH); close()
                 }
-                drawPath(path = barPath, brush = Brush.verticalGradient(colors = listOf(topColor, bottomColor, bottomColor.copy(alpha = 0f)), startY = barTopY, endY = canvasH))
+                drawPath(path = barPath, brush = Brush.verticalGradient(
+                    colors = listOf(
+                        topColor,
+                        topColor.copy(alpha = topColor.alpha * 0.6f),
+                        topColor.copy(alpha = topColor.alpha * 0.25f),
+                        topColor.copy(alpha = 0f)
+                    ),
+                    startY = barTopY,
+                    endY = canvasH
+                ))
             }
 
             if (points.size >= 2) {

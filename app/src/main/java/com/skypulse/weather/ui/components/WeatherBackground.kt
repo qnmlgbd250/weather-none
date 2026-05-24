@@ -17,17 +17,14 @@ fun WeatherBackground(
     content: @Composable BoxScope.() -> Unit
 ) {
     val isDay = WeatherUtils.isCurrentlyDay()
-    val targetColors = WeatherUtils.getWeatherGradient(skycon, isDay)
-
-    val color1 = targetColors.getOrElse(0) { Color(0xFF1976D2) }
-    val color2 = targetColors.getOrElse(1) { Color(0xFF64B5F6) }
+    val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(color1, color2),
+                    colors = gradientColors,
                     startY = 0f,
                     endY = Float.POSITIVE_INFINITY
                 )

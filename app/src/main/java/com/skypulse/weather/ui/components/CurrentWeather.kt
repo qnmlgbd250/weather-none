@@ -169,6 +169,7 @@ fun CurrentWeather(
             else -> "严重"
         }
     } ?: "--"
+    val uvDesc = realtime?.life_index?.ultraviolet?.desc ?: "--"
 
     Column(
         modifier = modifier
@@ -238,6 +239,12 @@ fun CurrentWeather(
                     style = MaterialTheme.typography.bodyLarge,
                     color = TextSecondary
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "空气 $aqiDesc",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = TextSecondary
+                )
             }
         }
 
@@ -250,7 +257,7 @@ fun CurrentWeather(
             InfoBlock(label = "体感", value = feelsLike)
             InfoBlock(label = "风向", value = "$windDir$windSpeed")
             InfoBlock(label = "湿度", value = humidity)
-            InfoBlock(label = "空气质量", value = aqiDesc)
+            InfoBlock(label = "紫外线", value = uvDesc)
         }
     }
 }

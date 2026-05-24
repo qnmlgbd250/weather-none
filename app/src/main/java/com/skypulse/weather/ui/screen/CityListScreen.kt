@@ -25,6 +25,7 @@ import com.skypulse.weather.model.City
 import com.skypulse.weather.ui.components.CityListRow
 import com.skypulse.weather.ui.components.CitySearchResultRow
 import com.skypulse.weather.ui.components.SwipeableCityListRow
+import com.skypulse.weather.ui.theme.NightFallbackGradient
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.viewmodel.CitySearchResult
@@ -53,10 +54,7 @@ fun CityListScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0D1B2A),
-                        Color(0xFF1B2838)
-                    )
+                    colors = NightFallbackGradient
                 )
             )
             .statusBarsPadding()

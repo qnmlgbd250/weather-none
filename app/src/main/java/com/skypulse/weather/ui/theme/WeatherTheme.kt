@@ -32,7 +32,7 @@ data class WeatherChartColors(
 val LocalWeatherTheme = staticCompositionLocalOf {
     WeatherTheme(
         isDay = true,
-        backgroundGradient = listOf(SunnyTop, SunnyBottom),
+        backgroundGradient = SunnyGradient,
         cardTopAlpha = 0.28f,
         cardBottomAlpha = 0.12f,
         cardBorderBrush = Brush.linearGradient(listOf(Color.White, Color.Transparent)),

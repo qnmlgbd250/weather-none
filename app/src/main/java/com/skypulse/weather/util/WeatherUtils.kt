@@ -100,15 +100,15 @@ object WeatherUtils {
 
     fun getWeatherGradient(skycon: String?, isDay: Boolean = true): List<Color> {
         return when {
-            skycon == null -> if (isDay) listOf(SunnyTop, SunnyBottom) else listOf(SunnyNightTop, SunnyNightBottom)
-            skycon.contains("CLEAR") -> if (isDay) listOf(SunnyTop, SunnyBottom) else listOf(SunnyNightTop, SunnyNightBottom)
-            skycon.contains("PARTLY_CLOUDY") -> if (isDay) listOf(PartialCloudTop, PartialCloudBottom) else listOf(PartialCloudNightTop, PartialCloudNightBottom)
-            skycon.contains("CLOUDY") -> if (isDay) listOf(CloudyTop, CloudyBottom) else listOf(CloudyNightTop, CloudyNightBottom)
-            skycon.contains("RAIN") || skycon.contains("STORM") -> if (isDay) listOf(RainyTop, RainyBottom) else listOf(RainyNightTop, RainyNightBottom)
-            skycon.contains("SNOW") -> if (isDay) listOf(SnowyTop, SnowyBottom) else listOf(SnowyNightTop, SnowyNightBottom)
-            skycon.contains("HAZE") || skycon == "FOG" -> listOf(HazeTop, HazeBottom)
-            skycon == "WIND" -> listOf(WindyTop, WindyBottom)
-            else -> if (isDay) listOf(SunnyTop, SunnyBottom) else listOf(SunnyNightTop, SunnyNightBottom)
+            skycon == null -> if (isDay) SunnyGradient else SunnyNightGradient
+            skycon.contains("CLEAR") -> if (isDay) SunnyGradient else SunnyNightGradient
+            skycon.contains("PARTLY_CLOUDY") -> if (isDay) PartialCloudGradient else PartialCloudNightGradient
+            skycon.contains("CLOUDY") -> if (isDay) CloudyGradient else CloudyNightGradient
+            skycon.contains("RAIN") || skycon.contains("STORM") -> if (isDay) RainyGradient else RainyNightGradient
+            skycon.contains("SNOW") -> if (isDay) SnowyGradient else SnowyNightGradient
+            skycon.contains("HAZE") || skycon == "FOG" -> HazeGradient
+            skycon == "WIND" -> WindyGradient
+            else -> if (isDay) SunnyGradient else SunnyNightGradient
         }
     }
 
