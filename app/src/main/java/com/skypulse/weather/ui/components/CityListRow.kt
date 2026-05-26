@@ -27,8 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -206,22 +209,34 @@ fun CityListRow(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                Box(
+                BoxWithConstraints(
                     modifier = Modifier
                         .alignByBaseline()
                         .fillMaxWidth(0.85f)
-                        .fadingEdge()
                 ) {
-                    Text(
-                        text = city.name,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 20.sp
-                        ),
-                        fontWeight = FontWeight.Medium,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        modifier = Modifier.basicMarquee()
+                    val textMeasurer = rememberTextMeasurer()
+                    val nameStyle = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium
                     )
+                    val containerWidthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
+                    val overflows = remember(city.name, containerWidthPx) {
+                        textMeasurer.measure(text = city.name, style = nameStyle)
+                            .size.width > containerWidthPx
+                    }
+                    Box(
+                        modifier = Modifier.then(
+                            if (overflows) Modifier.fadingEdge() else Modifier
+                        )
+                    ) {
+                        Text(
+                            text = city.name,
+                            style = nameStyle,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            modifier = Modifier.basicMarquee()
+                        )
+                    }
                 }
             }
 
