@@ -14,6 +14,9 @@ import androidx.core.content.ContextCompat
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
+import com.amap.api.services.core.LatLonPoint
+import com.amap.api.services.geocoder.GeocodeSearch
+import com.amap.api.services.geocoder.RegeocodeQuery
 import com.skypulse.weather.BuildConfig
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
@@ -832,34 +835,94 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun getLocationName(location: Location): String {
+    private suspend fun getLocationName(location: Location): String {
+        // AMap location already has POI/street data attached
         if (location is AMapLocation) {
-            val amapName = buildString {
-                location.city?.takeIf { it.isNotBlank() }?.let { append(it) }
-                location.district?.takeIf { it.isNotBlank() && it != location.city }?.let { append(it) }
-                // Street-level: prefer POI, then street
-                val poi = location.poiName?.takeIf { it.isNotBlank() }
-                val street = location.street?.takeIf { it.isNotBlank() }
-                val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
-                when {
-                    poi != null -> append("·$poi")
-                    street != null -> {
-                        append(street)
-                        streetNum?.let { append(it) }
-                    }
-                }
-                if (isEmpty()) {
-                    location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
-                }
-            }
-            if (amapName.isNotBlank()) {
-                return amapName
-            }
+            val amapName = buildAmapLocationName(location)
+            if (amapName.isNotBlank()) return amapName
         }
 
+        // Non-AMapLocation (e.g. cached system location): try AMap reverse geocoding for POI
+        val amapReverse = amapReverseGeocode(location.latitude, location.longitude)
+        if (amapReverse != null) return amapReverse
+
+        // Fallback: Android Geocoder
+        return geocoderFallback(location.latitude, location.longitude)
+    }
+
+    private fun buildAmapLocationName(location: AMapLocation): String = buildString {
+        location.city?.takeIf { it.isNotBlank() }?.let { append(it) }
+        location.district?.takeIf { it.isNotBlank() && it != location.city }?.let { append(it) }
+        val poi = location.poiName?.takeIf { it.isNotBlank() }
+        val street = location.street?.takeIf { it.isNotBlank() }
+        val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
+        when {
+            poi != null -> append("·$poi")
+            street != null -> {
+                append(street)
+                streetNum?.let { append(it) }
+            }
+        }
+        if (isEmpty()) {
+            location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
+        }
+    }
+
+    private suspend fun amapReverseGeocode(lat: Double, lon: Double): String? {
+        return try {
+            val ctx = getApplication<Application>()
+            val search = GeocodeSearch(ctx)
+            val query = RegeocodeQuery(
+                LatLonPoint(lat, lon),
+                200f,
+                GeocodeSearch.AMAP
+            )
+            val result = kotlinx.coroutines.withTimeoutOrNull(5_000L) {
+                kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+                    search.setOnGeocodeSearchListener(object : GeocodeSearch.OnGeocodeSearchListener {
+                        override fun onRegeocodeSearched(result: com.amap.api.services.geocoder.RegeocodeResult?, rCode: Int) {
+                            if (cont.isActive) {
+                                if (rCode == 1000 && result?.regeocodeAddress != null) {
+                                    val addr = result.regeocodeAddress
+                                    val name = buildString {
+                                        addr.city?.takeIf { it.isNotBlank() }?.let { append(it) }
+                                        addr.district?.takeIf { it.isNotBlank() && it != addr.city }?.let { append(it) }
+                                        val pois = addr.pois
+                                        val poi = pois?.firstOrNull { !it.title.isNullOrBlank() }
+                                        val street = addr.streetNumber?.street?.takeIf { it.isNotBlank() }
+                                        val streetNum = addr.streetNumber?.number?.takeIf { it.isNotBlank() }
+                                        when {
+                                            poi != null -> append("·${poi.title}")
+                                            street != null -> {
+                                                append(street)
+                                                streetNum?.let { append(it) }
+                                            }
+                                        }
+                                        if (isEmpty()) {
+                                            addr.formatAddress?.takeIf { it.isNotBlank() }?.let { append(it) }
+                                        }
+                                    }
+                                    cont.resume(name.takeIf { it.isNotBlank() }, null)
+                                } else {
+                                    cont.resume(null, null)
+                                }
+                            }
+                        }
+                        override fun onGeocodeSearched(result: com.amap.api.services.geocoder.GeocodeResult?, rCode: Int) {}
+                    })
+                    search.getFromLocationAsyn(query)
+                }
+            }
+            result
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun geocoderFallback(lat: Double, lon: Double): String {
         return try {
             val geocoder = Geocoder(getApplication(), Locale.CHINA)
-            val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+            val addresses = geocoder.getFromLocation(lat, lon, 1)
             if (!addresses.isNullOrEmpty()) {
                 val addr = addresses[0]
                 buildString {
@@ -875,7 +938,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             } else {
                 "未知位置"
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             "未知位置"
         }
     }
