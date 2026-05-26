@@ -5,6 +5,12 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -19,8 +25,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -212,8 +216,9 @@ fun CityListRow(
                     maxLines = 1,
                     modifier = Modifier
                         .alignByBaseline()
-                        .fillMaxWidth(0.7f)
+                        .fillMaxWidth(0.85f)
                         .basicMarquee()
+                        .fadingEdge()
                 )
             }
 
@@ -303,3 +308,18 @@ fun CitySearchResultRow(
         }
     }
 }
+
+private fun Modifier.fadingEdge(): Modifier =
+    this.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to Color.Transparent,
+                    0.08f to Color.Black,
+                    0.92f to Color.Black,
+                    1f to Color.Transparent
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
