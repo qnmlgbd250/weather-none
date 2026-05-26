@@ -231,11 +231,11 @@ private fun HourlyTemperatureChart(
                 drawCircle(Color.White, 3.dp.toPx(), point)
                 drawCircle(Color.White.copy(alpha = 0.3f), 6.dp.toPx(), point)
                 val tempText = "${tempValues[index].toInt()}°"
-                val result = textMeasurer.measure(AnnotatedString(tempText), style = TextStyle(fontSize = 10.sp, color = Color.White))
+                val result = textMeasurer.measure(AnnotatedString(tempText), style = TextStyle(fontSize = 12.sp, color = Color.White))
                 drawText(result, topLeft = Offset(point.x - result.size.width / 2, point.y - result.size.height - 6.dp.toPx()))
             }
 
-            val labelStyle = TextStyle(fontSize = 9.sp, color = Color.White.copy(alpha = 0.9f))
+            val labelStyle = TextStyle(fontSize = 11.sp, color = Color.White.copy(alpha = 0.9f))
             val labelCenterY = curveAreaBottom + (canvasH - curveAreaBottom) * 0.45f
             for (i in 0 until itemCount) {
                 val skycon = skyconValues[i] ?: continue
@@ -266,7 +266,7 @@ private fun HourlyTemperatureChart(
             skycons?.forEach { skycon ->
                 val info = WeatherUtils.getWeatherInfo(skycon.value)
                 Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
-                    WeatherIcon(iconType = info.icon, size = 30.dp)
+                    WeatherIcon(iconType = info.icon, size = 36.dp)
                 }
             }
         }
@@ -279,7 +279,7 @@ private fun HourlyTemperatureChart(
                 Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                     Text(
                         text = if (index == 0) "现在" else WeatherUtils.formatHourShort(temp.datetime),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                         color = TextSecondary,
                         textAlign = TextAlign.Center
                     )

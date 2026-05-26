@@ -115,12 +115,12 @@ private fun DailyColumn(
         // --- Date + Weekday ---
         Text(
             text = weekday,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
             color = TextPrimary
         )
         Text(
             text = dateLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
             color = TextSecondary
         )
 
@@ -133,13 +133,13 @@ private fun DailyColumn(
                 .clipToBounds(),
             contentAlignment = Alignment.Center
         ) {
-            WeatherIcon(iconType = weatherInfo.icon, size = 28.dp)
+            WeatherIcon(iconType = weatherInfo.icon, size = 34.dp)
         }
 
         // --- Weather description ---
         Text(
             text = weatherInfo.description,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
             color = TextSecondary,
             maxLines = 1,
             textAlign = TextAlign.Center
@@ -151,7 +151,7 @@ private fun DailyColumn(
         TempText(
             value = maxTemp,
             color = TextPrimary,
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp)
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -173,7 +173,7 @@ private fun DailyColumn(
         TempText(
             value = minTemp,
             color = TextPrimary,
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp)
         )
     }
 }

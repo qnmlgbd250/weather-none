@@ -5,10 +5,6 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
-import android.location.LocationListener
-import android.location.LocationManager
-import android.os.Bundle
-import android.os.Looper
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.amap.api.location.AMapLocation
@@ -18,13 +14,8 @@ import com.amap.api.services.core.LatLonPoint
 import com.amap.api.services.geocoder.GeocodeSearch
 import com.amap.api.services.geocoder.RegeocodeQuery
 import com.skypulse.weather.BuildConfig
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.location.CurrentLocationRequest
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.skypulse.weather.api.ApiClient
 import com.skypulse.weather.data.CityDatabase
 import com.skypulse.weather.data.CityManager
@@ -91,7 +82,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private val repository = WeatherRepository()
-    private val fusedLocationClient = LocationServices.getFusedLocationProviderClient(application)
     private val cityManager = CityManager(application)
     private val cityDatabase = CityDatabase(application)
     private val weatherCache = WeatherCache(application)
@@ -342,31 +332,21 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             try {
                 logLocationDiagnostics()
                 val location = requestAmapLocation()
-                    ?: requestFreshLocation()
-                    ?: getBestCachedSystemLocation(STALE_CACHE_MAX_AGE_MS)
-                    ?: getLastLocation()
-                val lon: Double
-                val lat: Double
-                val locationName: String
                 if (location != null) {
-                    lon = location.longitude
-                    lat = location.latitude
-                    locationName = getLocationName(location)
+                    val lon = location.longitude
+                    val lat = location.latitude
+                    val locationName = getLocationName(location)
+                    updateCurrentLocationCityCoords(lon, lat)
+                    updateCurrentLocationCityName(locationName)
+                    fetchWeatherForLocation(lon, lat, locationName)
                 } else {
                     val diagnostic = getLocationDiagnostic()
                     if (diagnostic != null) {
                         _uiState.value = WeatherUiState.Error(diagnostic)
-                        return@launch
+                    } else {
+                        _uiState.value = WeatherUiState.Error("无法获取定位，请到室外空旷处重试。如持续失败，请检查手机\"位置信息\"设置是否开启")
                     }
-                    Log.e(TAG, "All location methods failed, diagnostic=null")
-                    _uiState.value = WeatherUiState.Error("无法获取定位，请到室外空旷处重试。如持续失败，请检查手机\"位置信息\"设置是否开启")
-                    return@launch
                 }
-
-                // Update current location city coords
-                updateCurrentLocationCityCoords(lon, lat)
-                updateCurrentLocationCityName(locationName)
-                fetchWeatherForLocation(lon, lat, locationName)
             } catch (e: Exception) {
                 _uiState.value = WeatherUiState.Error("定位失败，请稍后重试")
             } finally {
@@ -430,20 +410,16 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     private suspend fun doFetchWeather(silent: Boolean = false) {
         try {
             logLocationDiagnostics()
-            val location = getBestCachedSystemLocation(FRESH_CACHE_MAX_AGE_MS)
-                ?: requestAmapLocation()
-                ?: requestFreshLocation()
-                ?: getLastLocation()
-            val lon: Double
-            val lat: Double
-            val locationName: String
+            val location = requestAmapLocation()
 
             if (location != null) {
-                lon = location.longitude
-                lat = location.latitude
-                locationName = getLocationName(location)
+                val lon = location.longitude
+                val lat = location.latitude
+                val locationName = getLocationName(location)
+                updateCurrentLocationCityCoords(lon, lat)
+                updateCurrentLocationCityName(locationName)
+                fetchWeatherForLocation(lon, lat, locationName, silent)
             } else {
-                // In silent mode, don't overwrite existing success data with errors
                 if (silent && _uiState.value is WeatherUiState.Success) {
                     Log.w(TAG, "Silent refresh location failed, keeping cached data")
                     return
@@ -451,17 +427,10 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 val diagnostic = getLocationDiagnostic()
                 if (diagnostic != null) {
                     _uiState.value = WeatherUiState.Error(diagnostic)
-                    return
+                } else {
+                    _uiState.value = WeatherUiState.Error("无法获取定位，请到室外或靠近窗户重试。如持续失败可使用\"刷新\"按钮重试")
                 }
-                Log.e(TAG, "All location methods failed, diagnostic=null")
-                _uiState.value = WeatherUiState.Error("无法获取定位，请到室外或靠近窗户重试。如持续失败可使用\"刷新\"按钮重试")
-                return
             }
-
-            // Update current location city
-            updateCurrentLocationCityCoords(lon, lat)
-            updateCurrentLocationCityName(locationName)
-            fetchWeatherForLocation(lon, lat, locationName, silent)
         } catch (e: LocationFailure) {
             if (!silent || _uiState.value !is WeatherUiState.Success) {
                 _uiState.value = WeatherUiState.Error(e.message ?: "定位失败")
@@ -531,101 +500,22 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         else -> "获取天气数据失败，请稍后重试"
     }
 
-    private suspend fun getLastLocation(): Location? {
-        val ctx = getApplication<Application>()
-        val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (!hasFine && !hasCoarse) return null
-
-        val gmsAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(ctx) == ConnectionResult.SUCCESS
-        if (!gmsAvailable) {
-            Log.w(TAG, "getLastLocation: GMS unavailable, skip FusedLocation cache")
-            return null
-        }
-
-        return try {
-            val task = fusedLocationClient.lastLocation
-            val loc = kotlinx.coroutines.withTimeoutOrNull(1_500L) {
-                kotlinx.coroutines.suspendCancellableCoroutine<Location?> { cont ->
-                    task.addOnSuccessListener { if (cont.isActive) cont.resume(it) }
-                    task.addOnFailureListener { if (cont.isActive) cont.resume(null) }
-                }
-            }
-            if (loc != null) {
-                Log.d(TAG, "getLastLocation: ${loc.latitude}, ${loc.longitude}")
-            } else {
-                Log.d(TAG, "getLastLocation: null (no cached location)")
-            }
-            loc
-        } catch (e: Exception) {
-            Log.w(TAG, "getLastLocation exception", e)
-            null
-        }
-    }
-
-    @Suppress("MissingPermission")
-    private fun getBestCachedSystemLocation(maxAgeMs: Long): Location? {
-        val ctx = getApplication<Application>()
-        val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (!hasFine && !hasCoarse) return null
-
-        val lm = ctx.getSystemService(LocationManager::class.java)
-        val now = System.currentTimeMillis()
-        val providers = buildList {
-            if (hasCoarse) add(LocationManager.NETWORK_PROVIDER)
-            if (hasFine) add(LocationManager.GPS_PROVIDER)
-            add(LocationManager.PASSIVE_PROVIDER)
-        }
-
-        return providers
-            .mapNotNull { provider ->
-                try {
-                    if (!lm.allProviders.contains(provider)) return@mapNotNull null
-                    lm.getLastKnownLocation(provider)?.takeIf { now - it.time <= maxAgeMs }
-                } catch (e: Exception) {
-                    Log.w(TAG, "getLastKnownLocation failed: $provider", e)
-                    null
-                }
-            }
-            .maxByOrNull { it.time }
-            ?.also {
-                Log.d(TAG, "System cached location: ${it.provider} ${it.latitude}, ${it.longitude}")
-            }
-    }
-
     private fun getLocationDiagnostic(): String? {
         val ctx = getApplication<Application>()
         val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val hasCoarse = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
         if (!hasFine && !hasCoarse) {
             return "定位权限未授予，请在应用设置中允许定位权限"
         }
-
-        val lm = ctx.getSystemService(LocationManager::class.java)
-        val gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        val networkEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-        return when {
-            !gpsEnabled && !networkEnabled -> "定位服务未开启，请在系统设置中打开位置信息"
-            else -> null
+        val apiKey = BuildConfig.AMAP_API_KEY.trim()
+        if (apiKey.isEmpty()) {
+            return "未配置高德定位 Key"
         }
+        return null
     }
 
     private fun logLocationDiagnostics() {
         val ctx = getApplication<Application>()
-        val lm = ctx.getSystemService(LocationManager::class.java)
-
-        val gmsStatus = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(ctx)
-        val gmsOk = gmsStatus == ConnectionResult.SUCCESS
-        Log.d(TAG, "GMS available: $gmsOk (status=$gmsStatus)")
-
-        val allProviders = lm.allProviders
-        val gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        val networkEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-        Log.d(TAG, "All providers: $allProviders")
-        Log.d(TAG, "GPS enabled=$gpsEnabled, NETWORK enabled=$networkEnabled")
-
         val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val hasCoarse = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         Log.d(TAG, "Permissions: FINE=$hasFine, COARSE=$hasCoarse")
@@ -693,144 +583,6 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "requestAmapLocation exception", e)
-            null
-        }
-    }
-
-    private suspend fun requestFreshLocation(): Location? {
-        val ctx = getApplication<Application>()
-        val hasFine = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        val hasCoarse = ContextCompat.checkSelfPermission(ctx, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (!hasFine && !hasCoarse) {
-            Log.w(TAG, "requestFreshLocation: no location permission")
-            return null
-        }
-        val canUseCoarse = hasFine || hasCoarse
-
-        val lm = ctx.getSystemService(LocationManager::class.java)
-        val networkEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-        val gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        Log.d(TAG, "requestFreshLocation: networkEnabled=$networkEnabled, gpsEnabled=$gpsEnabled")
-
-        getBestCachedSystemLocation(FRESH_CACHE_MAX_AGE_MS)?.let {
-            return it
-        }
-
-        if (canUseCoarse && networkEnabled) {
-            Log.d(TAG, "Trying NETWORK_PROVIDER...")
-            val loc = requestLocationFromProvider(lm, LocationManager.NETWORK_PROVIDER, timeoutMs = 5_000L)
-            if (loc != null) {
-                Log.d(TAG, "Got NETWORK_PROVIDER location: ${loc.latitude}, ${loc.longitude}")
-                return loc
-            }
-            Log.w(TAG, "NETWORK_PROVIDER returned null")
-        }
-
-        if (hasFine && gpsEnabled) {
-            Log.d(TAG, "Trying GPS_PROVIDER via requestLocationUpdates...")
-            val loc = requestLocationFromProvider(lm, LocationManager.GPS_PROVIDER, timeoutMs = 10_000L)
-            if (loc != null) {
-                Log.d(TAG, "Got GPS_PROVIDER location: ${loc.latitude}, ${loc.longitude}")
-                return loc
-            }
-            Log.w(TAG, "GPS_PROVIDER returned null after 10s")
-        }
-
-        val gmsAvailable = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(ctx) == ConnectionResult.SUCCESS
-        if (hasFine && gmsAvailable) {
-            Log.d(TAG, "Trying FusedLocation (BALANCED)...")
-            val loc = requestLocationFromFused()
-            if (loc != null) {
-                Log.d(TAG, "Got FusedLocation location: ${loc.latitude}, ${loc.longitude}")
-                return loc
-            }
-            Log.w(TAG, "FusedLocation (BALANCED) returned null")
-
-            Log.d(TAG, "Trying FusedLocation (LOW_POWER) as last resort...")
-            val coarseLoc = requestLocationFromFusedLowPower()
-            if (coarseLoc != null) {
-                Log.d(TAG, "Got FusedLocation LOW_POWER: ${coarseLoc.latitude}, ${coarseLoc.longitude}")
-                return coarseLoc
-            }
-            Log.w(TAG, "All location methods exhausted")
-        } else if (!gmsAvailable) {
-            Log.w(TAG, "GMS not available, skipping FusedLocation fallback")
-        }
-
-        return null
-    }
-
-    @Suppress("MissingPermission")
-    private suspend fun requestLocationFromProvider(lm: LocationManager, provider: String, timeoutMs: Long = 8_000L): Location? {
-        return try {
-            Log.d(TAG, "requestLocationFromProvider: $provider, timeout=${timeoutMs}ms")
-            kotlinx.coroutines.withTimeoutOrNull(timeoutMs) {
-                kotlinx.coroutines.suspendCancellableCoroutine<Location?> { cont ->
-                    val listener = object : LocationListener {
-                        override fun onLocationChanged(loc: Location) {
-                            Log.d(TAG, "onLocationChanged: $provider -> ${loc.latitude}, ${loc.longitude}")
-                            if (cont.isActive) {
-                                try { lm.removeUpdates(this) } catch (_: Exception) {}
-                                cont.resume(loc)
-                            }
-                        }
-                        @Deprecated("Deprecated in API")
-                        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {
-                            Log.d(TAG, "onStatusChanged: $provider status=$status")
-                        }
-                        override fun onProviderEnabled(provider: String) {
-                            Log.d(TAG, "onProviderEnabled: $provider")
-                        }
-                        override fun onProviderDisabled(provider: String) {
-                            Log.d(TAG, "onProviderDisabled: $provider")
-                        }
-                    }
-                    cont.invokeOnCancellation {
-                        try { lm.removeUpdates(listener) } catch (_: Exception) {}
-                    }
-                    lm.requestLocationUpdates(provider, 0L, 0f, listener, Looper.getMainLooper())
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "requestLocationFromProvider exception: $provider", e)
-            null
-        }
-    }
-
-    @Suppress("MissingPermission")
-    private suspend fun requestLocationFromFused(): Location? {
-        return try {
-            val request = CurrentLocationRequest.Builder()
-                .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
-                .setMaxUpdateAgeMillis(0)
-                .build()
-            kotlinx.coroutines.withTimeoutOrNull(8_000L) {
-                kotlinx.coroutines.suspendCancellableCoroutine<Location?> { cont ->
-                    fusedLocationClient.getCurrentLocation(request, null)
-                        .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
-                        .addOnFailureListener { if (cont.isActive) cont.resume(null) }
-                }
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    @Suppress("MissingPermission")
-    private suspend fun requestLocationFromFusedLowPower(): Location? {
-        return try {
-            val request = CurrentLocationRequest.Builder()
-                .setPriority(Priority.PRIORITY_LOW_POWER)
-                .setMaxUpdateAgeMillis(60_000L)
-                .build()
-            kotlinx.coroutines.withTimeoutOrNull(10_000L) {
-                kotlinx.coroutines.suspendCancellableCoroutine<Location?> { cont ->
-                    fusedLocationClient.getCurrentLocation(request, null)
-                        .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
-                        .addOnFailureListener { if (cont.isActive) cont.resume(null) }
-                }
-            }
-        } catch (_: Exception) {
             null
         }
     }
