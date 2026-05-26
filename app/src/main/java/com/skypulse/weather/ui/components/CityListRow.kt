@@ -212,7 +212,7 @@ fun CityListRow(
                     maxLines = 1,
                     modifier = Modifier
                         .alignByBaseline()
-                        .weight(1f, fill = false)
+                        .fillMaxWidth(0.7f)
                         .basicMarquee()
                 )
             }
