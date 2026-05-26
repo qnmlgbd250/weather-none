@@ -837,8 +837,16 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             val amapName = buildString {
                 location.city?.takeIf { it.isNotBlank() }?.let { append(it) }
                 location.district?.takeIf { it.isNotBlank() && it != location.city }?.let { append(it) }
-                if (isEmpty()) {
-                    location.poiName?.takeIf { it.isNotBlank() }?.let { append(it) }
+                // Street-level: prefer POI, then street
+                val poi = location.poiName?.takeIf { it.isNotBlank() }
+                val street = location.street?.takeIf { it.isNotBlank() }
+                val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
+                when {
+                    poi != null -> append("·$poi")
+                    street != null -> {
+                        append(street)
+                        streetNum?.let { append(it) }
+                    }
                 }
                 if (isEmpty()) {
                     location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
@@ -857,6 +865,12 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 buildString {
                     addr.locality?.let { append(it) }
                     addr.subLocality?.let { append(it) }
+                    val thoroughfare = addr.thoroughfare?.takeIf { it.isNotBlank() }
+                    val subThoroughfare = addr.subThoroughfare?.takeIf { it.isNotBlank() }
+                    if (thoroughfare != null) {
+                        append("·$thoroughfare")
+                        subThoroughfare?.let { append(it) }
+                    }
                 }.ifEmpty { "未知位置" }
             } else {
                 "未知位置"
