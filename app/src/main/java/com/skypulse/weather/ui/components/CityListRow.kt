@@ -206,12 +206,11 @@ fun CityListRow(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                var overflows by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
                         .alignByBaseline()
                         .fillMaxWidth(0.85f)
-                        .then(if (overflows) Modifier.fadingEdge() else Modifier)
+                        .fadingEdge()
                 ) {
                     Text(
                         text = city.name,
@@ -221,8 +220,7 @@ fun CityListRow(
                         fontWeight = FontWeight.Medium,
                         color = TextPrimary,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee(),
-                        onTextLayout = { overflows = it.didOverflowWidth }
+                        modifier = Modifier.basicMarquee()
                     )
                 }
             }
