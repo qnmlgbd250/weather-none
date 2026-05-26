@@ -97,7 +97,7 @@ fun LocationHeader(
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
                         color = TextSecondary,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee(),
+                        modifier = Modifier.fillMaxWidth().basicMarquee(),
                         onTextLayout = { overflows = it.didOverflowWidth }
                     )
                 }

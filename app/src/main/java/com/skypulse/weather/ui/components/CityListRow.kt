@@ -221,7 +221,7 @@ fun CityListRow(
                         fontWeight = FontWeight.Medium,
                         color = TextPrimary,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee(),
+                        modifier = Modifier.fillMaxWidth().basicMarquee(),
                         onTextLayout = { overflows = it.didOverflowWidth }
                     )
                 }
