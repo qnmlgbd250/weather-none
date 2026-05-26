@@ -86,16 +86,19 @@ fun LocationHeader(
                     }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = locationName,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
-                    color = TextSecondary,
-                    maxLines = 1,
+                Box(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .basicMarquee()
                         .fadingEdge()
-                )
+                ) {
+                    Text(
+                        text = locationName,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+                        color = TextSecondary,
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
+                    )
+                }
             }
 
             if (onListClick != null) {

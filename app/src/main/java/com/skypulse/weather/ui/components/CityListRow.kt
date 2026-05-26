@@ -206,20 +206,23 @@ fun CityListRow(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                Text(
-                    text = city.name,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = 20.sp
-                    ),
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    maxLines = 1,
+                Box(
                     modifier = Modifier
                         .alignByBaseline()
                         .fillMaxWidth(0.85f)
-                        .basicMarquee()
                         .fadingEdge()
-                )
+                ) {
+                    Text(
+                        text = city.name,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 20.sp
+                        ),
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        modifier = Modifier.basicMarquee()
+                    )
+                }
             }
 
             if (weather != null) {
