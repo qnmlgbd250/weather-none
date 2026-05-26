@@ -2,6 +2,8 @@ package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -125,6 +127,7 @@ fun SwipeableCityListRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CityListRow(
     city: City,
@@ -207,8 +210,10 @@ fun CityListRow(
                     fontWeight = FontWeight.Medium,
                     color = TextPrimary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.alignByBaseline()
+                    modifier = Modifier
+                        .alignByBaseline()
+                        .weight(1f, fill = false)
+                        .basicMarquee()
                 )
             }
 

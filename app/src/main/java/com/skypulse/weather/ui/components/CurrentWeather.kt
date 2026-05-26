@@ -4,6 +4,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -25,6 +27,7 @@ import com.skypulse.weather.model.RealtimeWeather
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun LocationHeader(
     locationName: String,
@@ -82,8 +85,9 @@ fun LocationHeader(
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
                     color = TextSecondary,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .basicMarquee()
                 )
             }
 

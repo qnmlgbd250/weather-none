@@ -609,7 +609,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         val street = location.street?.takeIf { it.isNotBlank() }
         val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
         when {
-            poi != null -> append("·$poi")
+            poi != null -> append(" $poi")
             street != null -> {
                 append(street)
                 streetNum?.let { append(it) }
@@ -644,7 +644,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                                         val street = addr.streetNumber?.street?.takeIf { it.isNotBlank() }
                                         val streetNum = addr.streetNumber?.number?.takeIf { it.isNotBlank() }
                                         when {
-                                            poi != null -> append("·${poi.title}")
+                                            poi != null -> append(" ${poi.title}")
                                             street != null -> {
                                                 append(street)
                                                 streetNum?.let { append(it) }
@@ -683,7 +683,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                     val thoroughfare = addr.thoroughfare?.takeIf { it.isNotBlank() }
                     val subThoroughfare = addr.subThoroughfare?.takeIf { it.isNotBlank() }
                     if (thoroughfare != null) {
-                        append("·$thoroughfare")
+                        append(" $thoroughfare")
                         subThoroughfare?.let { append(it) }
                     }
                 }.ifEmpty { "未知位置" }
