@@ -59,7 +59,10 @@ fun LocationHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
                 Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = isLocating,
@@ -86,21 +89,16 @@ fun LocationHeader(
                     }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
-                var overflows by remember { mutableStateOf(false) }
-                Box(
+                Text(
+                    text = locationName,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+                    color = TextSecondary,
+                    maxLines = 1,
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .then(if (overflows) Modifier.fadingEdge() else Modifier)
-                ) {
-                    Text(
-                        text = locationName,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
-                        color = TextSecondary,
-                        maxLines = 1,
-                        modifier = Modifier.fillMaxWidth().basicMarquee(),
-                        onTextLayout = { overflows = it.didOverflowWidth }
-                    )
-                }
+                        .basicMarquee()
+                        .fadingEdge()
+                )
             }
 
             if (onListClick != null) {

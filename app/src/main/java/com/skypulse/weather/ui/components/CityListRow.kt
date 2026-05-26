@@ -206,25 +206,20 @@ fun CityListRow(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                var overflows by remember { mutableStateOf(false) }
-                Box(
+                Text(
+                    text = city.name,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = 20.sp
+                    ),
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                    maxLines = 1,
                     modifier = Modifier
                         .alignByBaseline()
                         .fillMaxWidth(0.85f)
-                        .then(if (overflows) Modifier.fadingEdge() else Modifier)
-                ) {
-                    Text(
-                        text = city.name,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 20.sp
-                        ),
-                        fontWeight = FontWeight.Medium,
-                        color = TextPrimary,
-                        maxLines = 1,
-                        modifier = Modifier.fillMaxWidth().basicMarquee(),
-                        onTextLayout = { overflows = it.didOverflowWidth }
-                    )
-                }
+                        .basicMarquee()
+                        .fadingEdge()
+                )
             }
 
             if (weather != null) {
