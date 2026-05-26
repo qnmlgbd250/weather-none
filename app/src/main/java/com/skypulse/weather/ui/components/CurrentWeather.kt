@@ -86,17 +86,19 @@ fun LocationHeader(
                     }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
+                var overflows by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .fadingEdge()
+                        .then(if (overflows) Modifier.fadingEdge() else Modifier)
                 ) {
                     Text(
                         text = locationName,
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
                         color = TextSecondary,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee()
+                        modifier = Modifier.basicMarquee(),
+                        onTextLayout = { overflows = it.didOverflowWidth }
                     )
                 }
             }
