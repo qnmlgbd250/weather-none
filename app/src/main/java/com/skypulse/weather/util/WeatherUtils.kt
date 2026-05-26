@@ -22,17 +22,34 @@ object WeatherUtils {
 
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
-        val isBright = isBrightBackground(skycon, isDay)
-        
-        // --- Card Styling ---
-        val topAlpha = if (isBright) 0.28f else 0.18f
-        val bottomAlpha = if (isBright) 0.12f else 0.08f
-        
+
+        // --- Card Styling: per-weather alpha tuned to background luminance ---
+        val (topAlpha, bottomAlpha) = if (!isDay) {
+            // Night: backgrounds are dark, keep card subtle
+            0.16f to 0.07f
+        } else when {
+            skycon == null ||
+            skycon.contains("CLEAR") -> 0.30f to 0.14f
+            skycon.contains("PARTLY_CLOUDY") -> 0.32f to 0.16f
+            skycon.contains("CLOUDY") -> 0.40f to 0.22f
+            skycon.contains("RAIN") ||
+            skycon.contains("STORM") -> 0.20f to 0.10f
+            skycon.contains("SNOW") -> 0.42f to 0.24f
+            skycon.contains("HAZE") ||
+            skycon == "FOG" -> 0.38f to 0.20f
+            skycon == "WIND" -> 0.25f to 0.14f
+            else -> 0.30f to 0.14f
+        }
+
+        // Border brightness scales with card opacity
+        val baseTop = 0.28f
+        val borderScale = (topAlpha / baseTop).coerceIn(0.6f, 1.8f)
+
         val borderBrush = androidx.compose.ui.graphics.Brush.linearGradient(
             colors = listOf(
-                androidx.compose.ui.graphics.Color.White.copy(alpha = if (isBright) 0.65f else 0.45f),
-                androidx.compose.ui.graphics.Color.White.copy(alpha = if (isBright) 0.15f else 0.10f),
-                androidx.compose.ui.graphics.Color.White.copy(alpha = if (isBright) 0.35f else 0.25f)
+                androidx.compose.ui.graphics.Color.White.copy(alpha = (0.65f * borderScale).coerceAtMost(1f)),
+                androidx.compose.ui.graphics.Color.White.copy(alpha = (0.15f * borderScale).coerceAtMost(1f)),
+                androidx.compose.ui.graphics.Color.White.copy(alpha = (0.35f * borderScale).coerceAtMost(1f))
             ),
             start = androidx.compose.ui.geometry.Offset(0f, 0f),
             end = androidx.compose.ui.geometry.Offset.Infinite
