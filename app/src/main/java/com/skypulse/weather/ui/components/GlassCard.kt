@@ -23,17 +23,17 @@ fun GlassCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     val theme = LocalWeatherTheme.current
-    val cardBaseColor = Color.White
-    
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
+            .background(Color.Black.copy(alpha = 0.25f))
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        cardBaseColor.copy(alpha = theme.cardTopAlpha),
-                        cardBaseColor.copy(alpha = theme.cardBottomAlpha)
+                        Color.White.copy(alpha = theme.cardTopAlpha),
+                        Color.White.copy(alpha = theme.cardBottomAlpha)
                     )
                 )
             )

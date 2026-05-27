@@ -23,22 +23,23 @@ object WeatherUtils {
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
 
-        // --- Card Styling: per-weather alpha tuned to background luminance ---
+        // --- Card Styling: white layer alpha (dark base at 0.25 provides contrast floor) ---
         val (topAlpha, bottomAlpha) = if (!isDay) {
-            // Night: backgrounds are dark, keep card subtle
-            0.16f to 0.07f
+            0.18f to 0.08f
         } else when {
             skycon == null ||
-            skycon.contains("CLEAR") -> 0.30f to 0.14f
-            skycon.contains("PARTLY_CLOUDY") -> 0.32f to 0.16f
-            skycon.contains("CLOUDY") -> 0.40f to 0.22f
+            skycon.contains("CLEAR") -> 0.22f to 0.10f
+            skycon.contains("PARTLY_CLOUDY") -> 0.24f to 0.10f
+            skycon.contains("CLOUDY") -> 0.28f to 0.14f
             skycon.contains("RAIN") ||
-            skycon.contains("STORM") -> 0.20f to 0.10f
-            skycon.contains("SNOW") -> 0.42f to 0.24f
+            skycon.contains("STORM") -> 0.15f to 0.07f
+            skycon.contains("SNOW") -> 0.30f to 0.14f
             skycon.contains("HAZE") ||
-            skycon == "FOG" -> 0.38f to 0.20f
-            skycon == "WIND" -> 0.25f to 0.14f
-            else -> 0.30f to 0.14f
+            skycon == "FOG" ||
+            skycon == "DUST" ||
+            skycon == "SAND" -> 0.26f to 0.12f
+            skycon == "WIND" -> 0.18f to 0.08f
+            else -> 0.22f to 0.10f
         }
 
         // Border brightness scales with card opacity
@@ -111,6 +112,10 @@ object WeatherUtils {
             "HEAVY_SNOW" -> WeatherInfo("大雪", "extreme-snow", isDay)
             "STORM_SNOW" -> WeatherInfo("暴雪", "extreme-snow", isDay)
             "WIND" -> WeatherInfo("大风", "wind", isDay)
+            "DUST" -> WeatherInfo("浮尘", "haze", isDay)
+            "SAND" -> WeatherInfo("沙尘", "haze", isDay)
+            "SLEET" -> WeatherInfo("雨夹雪", "snow", isDay)
+            "THUNDER_SHOWER" -> WeatherInfo("雷阵雨", "thunderstorms-rain", isDay)
             else -> WeatherInfo("未知", "overcast", isDay)
         }
     }
@@ -123,7 +128,7 @@ object WeatherUtils {
             skycon.contains("CLOUDY") -> if (isDay) CloudyGradient else CloudyNightGradient
             skycon.contains("RAIN") || skycon.contains("STORM") -> if (isDay) RainyGradient else RainyNightGradient
             skycon.contains("SNOW") -> if (isDay) SnowyGradient else SnowyNightGradient
-            skycon.contains("HAZE") || skycon == "FOG" -> HazeGradient
+            skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> HazeGradient
             skycon == "WIND" -> WindyGradient
             else -> if (isDay) SunnyGradient else SunnyNightGradient
         }
