@@ -23,7 +23,34 @@ object WeatherUtils {
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
 
-        // --- Card Styling: white layer alpha (dark base at 0.25 provides contrast floor) ---
+        // Tinted base: night uses fixed deep navy, day computes from gradient
+        val cardTintColor = if (!isDay) {
+            Color(0xFF050D33).copy(alpha = 0.60f)
+        } else {
+            val c0 = background[0]
+            val c1 = background[1]
+            Color(
+                red = ((c0.red + c1.red) / 2f * 0.5f).coerceIn(0f, 1f),
+                green = ((c0.green + c1.green) / 2f * 0.5f).coerceIn(0f, 1f),
+                blue = ((c0.blue + c1.blue) / 2f * 0.5f).coerceIn(0f, 1f),
+                alpha = 0.35f
+            )
+        }
+
+        // Frost tint: night uses cool blue, day blends 12% gradient accent into white
+        val cardFrostColor = if (!isDay) {
+            Color(0.90f, 0.92f, 1.0f) // cool blue-white for night
+        } else {
+            val accent = background[2]
+            val frostMix = 0.12f
+            Color(
+                red = (1f - frostMix) + accent.red * frostMix,
+                green = (1f - frostMix) + accent.green * frostMix,
+                blue = (1f - frostMix) + accent.blue * frostMix
+            )
+        }
+
+        // --- Card Styling: white layer alpha (tinted base provides contrast floor) ---
         val (topAlpha, bottomAlpha) = if (!isDay) {
             0.18f to 0.08f
         } else when {
@@ -84,6 +111,8 @@ object WeatherUtils {
         return WeatherTheme(
             isDay = isDay,
             backgroundGradient = background,
+            cardTintColor = cardTintColor,
+            cardFrostColor = cardFrostColor,
             cardTopAlpha = topAlpha,
             cardBottomAlpha = bottomAlpha,
             cardBorderBrush = borderBrush,

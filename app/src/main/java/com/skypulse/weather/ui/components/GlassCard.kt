@@ -28,12 +28,12 @@ fun GlassCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(Color.Black.copy(alpha = 0.25f))
+            .background(theme.cardTintColor)
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = theme.cardTopAlpha),
-                        Color.White.copy(alpha = theme.cardBottomAlpha)
+                        theme.cardFrostColor.copy(alpha = theme.cardTopAlpha),
+                        theme.cardFrostColor.copy(alpha = theme.cardBottomAlpha)
                     )
                 )
             )

@@ -9,6 +9,8 @@ import androidx.compose.ui.graphics.Color
 data class WeatherTheme(
     val isDay: Boolean,
     val backgroundGradient: List<Color>,
+    val cardTintColor: Color,
+    val cardFrostColor: Color,
     val cardTopAlpha: Float,
     val cardBottomAlpha: Float,
     val cardBorderBrush: Brush,
@@ -33,6 +35,8 @@ val LocalWeatherTheme = staticCompositionLocalOf {
     WeatherTheme(
         isDay = true,
         backgroundGradient = SunnyGradient,
+        cardTintColor = Color(0xFF1A3A5C),
+        cardFrostColor = Color.White,
         cardTopAlpha = 0.28f,
         cardBottomAlpha = 0.12f,
         cardBorderBrush = Brush.linearGradient(listOf(Color.White, Color.Transparent)),

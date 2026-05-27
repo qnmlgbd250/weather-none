@@ -129,11 +129,11 @@ private fun DailyColumn(
         // --- Weather icon ---
         Box(
             modifier = Modifier
-                .size(28.dp)
+                .size(36.dp)
                 .clipToBounds(),
             contentAlignment = Alignment.Center
         ) {
-            WeatherIcon(iconType = weatherInfo.icon, size = 34.dp)
+            WeatherIcon(iconType = weatherInfo.icon, size = 36.dp)
         }
 
         // --- Weather description ---
