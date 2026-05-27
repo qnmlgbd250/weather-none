@@ -15,13 +15,13 @@ val TextSecondary = Color(0xD9FFFFFF)
 // ============ iOS Weather-style Background Gradients ============
 // Each gradient uses 5 stops for smooth, natural sky transitions
 
-// Sunny (Day) — deep cobalt to bright sky blue
+// Sunny (Day) — deep cobalt to medium sky blue
 val SunnyGradient = listOf(
     Color(0xFF1565A0),
     Color(0xFF2980C0),
     Color(0xFF4A9BD5),
-    Color(0xFF6DB5E5),
-    Color(0xFF95CDF0)
+    Color(0xFF5AADD8),
+    Color(0xFF6DB5E0)
 )
 
 // Sunny (Night) — deep navy to midnight blue
@@ -33,13 +33,13 @@ val SunnyNightGradient = listOf(
     Color(0xFF234A72)
 )
 
-// Partly Cloudy (Day) — medium blue to light sky
+// Partly Cloudy (Day) — medium blue to medium sky
 val PartialCloudGradient = listOf(
     Color(0xFF3578A8),
     Color(0xFF4E92C0),
     Color(0xFF6AABD5),
-    Color(0xFF85C0E5),
-    Color(0xFFA0D2F0)
+    Color(0xFF6DA8C8),
+    Color(0xFF7AADD0)
 )
 
 // Partly Cloudy (Night) — indigo to blue-violet
@@ -55,9 +55,9 @@ val PartialCloudNightGradient = listOf(
 val CloudyGradient = listOf(
     Color(0xFF5E7D8E),
     Color(0xFF7A99AA),
-    Color(0xFF94B1BF),
-    Color(0xFFADC7D3),
-    Color(0xFFC2D8E2)
+    Color(0xFF8AA5B5),
+    Color(0xFF94ADBA),
+    Color(0xFF9CB3BE)
 )
 
 // Cloudy (Night) — dark blue-gray
@@ -73,9 +73,9 @@ val CloudyNightGradient = listOf(
 val RainyGradient = listOf(
     Color(0xFF44596B),
     Color(0xFF566E82),
-    Color(0xFF688296),
-    Color(0xFF7B95A8),
-    Color(0xFF8EA7B8)
+    Color(0xFF607888),
+    Color(0xFF6A8290),
+    Color(0xFF748C98)
 )
 
 // Rainy (Night) — deep blue-black
@@ -87,13 +87,13 @@ val RainyNightGradient = listOf(
     Color(0xFF324A60)
 )
 
-// Snowy (Day) — cold gray-blue to near white
+// Snowy (Day) — cold gray-blue
 val SnowyGradient = listOf(
     Color(0xFF6E8A9E),
     Color(0xFF8BA5B5),
-    Color(0xFFA5BCC8),
-    Color(0xFFBDD0DA),
-    Color(0xFFD5E3EA)
+    Color(0xFF96AEB8),
+    Color(0xFF9DB5BE),
+    Color(0xFFA5BBC4)
 )
 
 // Snowy (Night) — muted blue-gray
@@ -109,18 +109,18 @@ val SnowyNightGradient = listOf(
 val HazeGradient = listOf(
     Color(0xFF7A6B5E),
     Color(0xFF948578),
-    Color(0xFFAA9C90),
-    Color(0xFFBFB2A6),
-    Color(0xFFD0C5BA)
+    Color(0xFF9A8B7E),
+    Color(0xFFA29388),
+    Color(0xFFAA9B90)
 )
 
 // Windy (Day & Night) — teal-blue, fresh
 val WindyGradient = listOf(
     Color(0xFF2A7B72),
     Color(0xFF3A968C),
-    Color(0xFF4DAEA3),
-    Color(0xFF62C4B8),
-    Color(0xFF7CD8CC)
+    Color(0xFF45A098),
+    Color(0xFF4DA8A0),
+    Color(0xFF55B0A8)
 )
 
 // Night Fallback — deep night sky

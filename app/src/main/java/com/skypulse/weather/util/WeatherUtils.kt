@@ -23,18 +23,11 @@ object WeatherUtils {
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
 
-        // Tinted base: night uses fixed deep navy, day computes from gradient
+        // Card base: night deep navy, day transparent (frost layer only)
         val cardTintColor = if (!isDay) {
             Color(0xFF050D33).copy(alpha = 0.60f)
         } else {
-            val c0 = background[0]
-            val c1 = background[1]
-            Color(
-                red = ((c0.red + c1.red) / 2f * 0.5f).coerceIn(0f, 1f),
-                green = ((c0.green + c1.green) / 2f * 0.5f).coerceIn(0f, 1f),
-                blue = ((c0.blue + c1.blue) / 2f * 0.5f).coerceIn(0f, 1f),
-                alpha = 0.35f
-            )
+            Color.Transparent
         }
 
         // Frost tint: night uses cool blue, day blends 12% gradient accent into white
@@ -50,23 +43,23 @@ object WeatherUtils {
             )
         }
 
-        // --- Card Styling: white layer alpha (tinted base provides contrast floor) ---
+        // --- Card Styling: frost layer alpha (day: standalone; night: on dark base) ---
         val (topAlpha, bottomAlpha) = if (!isDay) {
             0.18f to 0.08f
         } else when {
             skycon == null ||
-            skycon.contains("CLEAR") -> 0.22f to 0.10f
-            skycon.contains("PARTLY_CLOUDY") -> 0.24f to 0.10f
-            skycon.contains("CLOUDY") -> 0.28f to 0.14f
+            skycon.contains("CLEAR") -> 0.30f to 0.14f
+            skycon.contains("PARTLY_CLOUDY") -> 0.32f to 0.16f
+            skycon.contains("CLOUDY") -> 0.40f to 0.22f
             skycon.contains("RAIN") ||
-            skycon.contains("STORM") -> 0.15f to 0.07f
-            skycon.contains("SNOW") -> 0.30f to 0.14f
+            skycon.contains("STORM") -> 0.20f to 0.10f
+            skycon.contains("SNOW") -> 0.42f to 0.24f
             skycon.contains("HAZE") ||
             skycon == "FOG" ||
             skycon == "DUST" ||
-            skycon == "SAND" -> 0.26f to 0.12f
-            skycon == "WIND" -> 0.18f to 0.08f
-            else -> 0.22f to 0.10f
+            skycon == "SAND" -> 0.38f to 0.20f
+            skycon == "WIND" -> 0.25f to 0.14f
+            else -> 0.30f to 0.14f
         }
 
         // Border brightness scales with card opacity

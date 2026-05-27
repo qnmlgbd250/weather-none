@@ -15,8 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.ui.theme.LocalWeatherTheme
 
-import androidx.compose.ui.geometry.Offset
-
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
