@@ -28,7 +28,7 @@ import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.viewmodel.UpdateCheckResult
 
-private const val GITHUB_URL = "https://github.com/user/skypulse"
+private const val GITHUB_URL = "https://github.com/qnmlgbd250/weather-none"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -201,7 +201,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             _updateState.value = UpdateCheckResult.Checking
             try {
                 val result = withContext(Dispatchers.IO) {
-                    val url = java.net.URL("https://api.github.com/repos/user/skypulse/releases/latest")
+                    val url = java.net.URL("https://api.github.com/repos/qnmlgbd250/weather-none/releases/latest")
                     val connection = url.openConnection() as java.net.HttpURLConnection
                     connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
                     connection.connectTimeout = 10_000

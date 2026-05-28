@@ -21,7 +21,6 @@ fun DonateDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(22.dp),
         title = {
             Text(
@@ -37,49 +36,25 @@ fun DonateDialog(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "如果这个应用对你有帮助，可以请作者喝杯咖啡 ☕",
+                    text = "如果这个应用对你有帮助，可以请作者喝杯咖啡",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(
-                            painter = painterResource(id = R.drawable.qr_alipay),
-                            contentDescription = "支付宝收款码",
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "支付宝",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary
-                        )
-                    }
+                Image(
+                    painter = painterResource(id = R.drawable.qr_wechat),
+                    contentDescription = "微信收款码",
+                    modifier = Modifier
+                        .size(200.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit
+                )
 
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Image(
-                            painter = painterResource(id = R.drawable.qr_wechat),
-                            contentDescription = "微信收款码",
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "微信",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextSecondary
-                        )
-                    }
-                }
+                Text(
+                    text = "微信扫一扫",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
             }
         },
         confirmButton = {
