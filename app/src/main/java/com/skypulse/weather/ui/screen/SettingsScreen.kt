@@ -13,7 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -142,7 +142,7 @@ fun SettingsScreen(
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
-                        imageVector = Icons.Outlined.Refresh,
+                        imageVector = Icons.Outlined.Autorenew,
                         contentDescription = "检查更新",
                         tint = TextSecondary,
                         modifier = Modifier
