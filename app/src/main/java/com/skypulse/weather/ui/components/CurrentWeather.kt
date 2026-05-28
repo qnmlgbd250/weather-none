@@ -65,14 +65,14 @@ fun LocationHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f, fill = false)
             ) {
-                Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = isLocating,
                         enter = fadeIn(),
                         exit = fadeOut()
                     ) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
                             color = TextSecondary
                         )
@@ -86,11 +86,11 @@ fun LocationHeader(
                             imageVector = Icons.Outlined.LocationOn,
                             contentDescription = "校正位置",
                             tint = TextSecondary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 var overflows by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
@@ -110,28 +110,41 @@ fun LocationHeader(
 
             Row {
                 if (onListClick != null) {
-                    IconButton(
-                        onClick = onListClick,
-                        modifier = Modifier.size(40.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onListClick
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Menu,
                             contentDescription = "城市列表",
                             tint = TextSecondary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
+                Spacer(modifier = Modifier.width(12.dp))
                 if (onSettingsClick != null) {
-                    IconButton(
-                        onClick = onSettingsClick,
-                        modifier = Modifier.size(40.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onSettingsClick
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.MoreVert,
                             contentDescription = "设置",
                             tint = TextSecondary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
