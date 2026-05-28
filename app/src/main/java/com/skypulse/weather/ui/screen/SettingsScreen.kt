@@ -139,6 +139,16 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 Text(
+                    text = "QQ群：758426293",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary.copy(alpha = 0.4f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                Text(
                     text = "SkyPulse v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary.copy(alpha = 0.4f),
