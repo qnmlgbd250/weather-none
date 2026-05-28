@@ -9,15 +9,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
@@ -41,7 +37,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showDonateDialog by remember { mutableStateOf(false) }
 
-    // Handle update check results
     LaunchedEffect(updateState) {
         when (updateState) {
             is UpdateCheckResult.UpToDate -> {
@@ -67,9 +62,8 @@ fun SettingsScreen(
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Top bar
             TopAppBar(
-                title = { Text("设置", color = TextPrimary) },
+                title = { Text("关于", color = TextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -91,11 +85,8 @@ fun SettingsScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // GitHub 仓库
-                SettingsItem(
-                    icon = Icons.Outlined.Share,
-                    title = "GitHub 仓库",
-                    subtitle = "查看项目源码",
+                SimpleItem(
+                    title = "开源代码",
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
                         context.startActivity(intent)
@@ -107,11 +98,8 @@ fun SettingsScreen(
                     color = TextSecondary.copy(alpha = 0.1f)
                 )
 
-                // 打赏作者
-                SettingsItem(
-                    icon = Icons.Outlined.FavoriteBorder,
-                    title = "打赏作者",
-                    subtitle = "请作者喝杯咖啡",
+                SimpleItem(
+                    title = "捐赠支持",
                     onClick = { showDonateDialog = true }
                 )
 
@@ -120,15 +108,8 @@ fun SettingsScreen(
                     color = TextSecondary.copy(alpha = 0.1f)
                 )
 
-                // 检查更新
-                SettingsItem(
-                    icon = Icons.Outlined.Refresh,
+                SimpleItem(
                     title = "检查更新",
-                    subtitle = when (updateState) {
-                        is UpdateCheckResult.Checking -> "正在检查..."
-                        is UpdateCheckResult.UpdateAvailable -> "发现新版本 v${updateState.version}"
-                        else -> "当前版本 v${BuildConfig.VERSION_NAME}"
-                    },
                     onClick = {
                         if (updateState !is UpdateCheckResult.Checking) {
                             onCheckUpdate()
@@ -136,7 +117,6 @@ fun SettingsScreen(
                     }
                 )
 
-                // Update available action
                 if (updateState is UpdateCheckResult.UpdateAvailable) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
@@ -158,7 +138,6 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Version footer
                 Text(
                     text = "SkyPulse v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
@@ -174,37 +153,17 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsItem(
-    icon: ImageVector,
+private fun SimpleItem(
     title: String,
-    subtitle: String,
     onClick: () -> Unit
 ) {
-    Row(
+    Text(
+        text = title,
+        style = MaterialTheme.typography.bodyLarge,
+        color = TextPrimary,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = TextSecondary,
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = TextPrimary
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = 0.6f)
-            )
-        }
-    }
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+    )
 }
