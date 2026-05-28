@@ -13,6 +13,7 @@ amap-location = "6.4.9"
 amap-search = "9.4.5"
 accompanist = "0.34.0"
 lottie = "6.3.0"
+browser = "1.7.0"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -40,6 +41,7 @@ amap-search = { group = "com.amap.api", name = "search", version.ref = "amap-sea
 
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
+browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

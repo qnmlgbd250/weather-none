@@ -24,6 +24,7 @@ import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.viewmodel.AppScreen
 import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
+import com.skypulse.weather.viewmodel.UpdateCheckResult
 import com.skypulse.weather.viewmodel.WeatherViewModel
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -39,6 +40,7 @@ fun WeatherScreen(
     val cityWeatherMap by viewModel.cityWeatherMap.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
     val isSearching by viewModel.isSearching.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
 
     val locationPermissions = rememberMultiplePermissionsState(
         permissions = listOf(
@@ -130,7 +132,8 @@ fun WeatherScreen(
                                     refreshPhase = refreshPhase,
                                     onLocationClick = { viewModel.relocateAndRefresh() },
                                     onRefresh = { viewModel.refresh() },
-                                    onListClick = { viewModel.navigateToCityList() }
+                                    onListClick = { viewModel.navigateToCityList() },
+                                    onSettingsClick = { viewModel.navigateToSettings() }
                                 )
                             }
 
@@ -166,6 +169,15 @@ fun WeatherScreen(
                     }
                 }
             }
+
+            AppScreen.Settings -> {
+                SettingsScreen(
+                    onBack = { viewModel.navigateBack() },
+                    onCheckUpdate = { viewModel.checkForUpdates() },
+                    updateState = updateState,
+                    onClearUpdateState = { viewModel.clearUpdateState() }
+                )
+            }
         }
     }
 }
@@ -177,7 +189,8 @@ private fun WeatherContent(
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
     onLocationClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
-    onListClick: () -> Unit = {}
+    onListClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
@@ -191,7 +204,8 @@ private fun WeatherContent(
             isLocating = isLocating,
             refreshPhase = refreshPhase,
             onLocationClick = onLocationClick,
-            onListClick = onListClick
+            onListClick = onListClick,
+            onSettingsClick = onSettingsClick
         )
 
         Column(

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.*
 import com.skypulse.weather.viewmodel.RefreshPhase
 import androidx.compose.runtime.*
@@ -41,6 +42,7 @@ fun LocationHeader(
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
     onLocationClick: (() -> Unit)? = null,
     onListClick: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
@@ -106,17 +108,32 @@ fun LocationHeader(
                 }
             }
 
-            if (onListClick != null) {
-                IconButton(
-                    onClick = onListClick,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Menu,
-                        contentDescription = "城市列表",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(22.dp)
-                    )
+            Row {
+                if (onListClick != null) {
+                    IconButton(
+                        onClick = onListClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Menu,
+                            contentDescription = "城市列表",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                if (onSettingsClick != null) {
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.MoreVert,
+                            contentDescription = "设置",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
             }
         }

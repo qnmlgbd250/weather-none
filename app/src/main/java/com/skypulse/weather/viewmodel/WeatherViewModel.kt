@@ -54,7 +54,7 @@ enum class RefreshPhase {
 }
 
 enum class AppScreen {
-    CityList, CityDetail
+    CityList, CityDetail, Settings
 }
 
 data class CityWeatherData(
@@ -181,6 +181,64 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         } else {
             viewModelScope.launch { fetchWeatherForCity(city) }
         }
+    }
+
+    fun navigateToSettings() {
+        _currentScreen.value = AppScreen.Settings
+    }
+
+    fun navigateBack() {
+        if (_currentScreen.value == AppScreen.Settings) {
+            _currentScreen.value = AppScreen.CityDetail
+        }
+    }
+
+    private val _updateState = MutableStateFlow<UpdateCheckResult?>(null)
+    val updateState: StateFlow<UpdateCheckResult?> = _updateState.asStateFlow()
+
+    fun checkForUpdates() {
+        viewModelScope.launch {
+            _updateState.value = UpdateCheckResult.Checking
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val url = java.net.URL("https://api.github.com/repos/user/skypulse/releases/latest")
+                    val connection = url.openConnection() as java.net.HttpURLConnection
+                    connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
+                    connection.connectTimeout = 10_000
+                    connection.readTimeout = 10_000
+                    val body = connection.inputStream.bufferedReader().readText()
+                    connection.disconnect()
+                    body
+                }
+                val json = org.json.JSONObject(result)
+                val tagName = json.getString("tag_name").removePrefix("v")
+                val current = BuildConfig.VERSION_NAME
+                if (isNewerVersion(tagName, current)) {
+                    val htmlUrl = json.getString("html_url")
+                    _updateState.value = UpdateCheckResult.UpdateAvailable(tagName, htmlUrl)
+                } else {
+                    _updateState.value = UpdateCheckResult.UpToDate
+                }
+            } catch (e: Exception) {
+                _updateState.value = UpdateCheckResult.Error("检查更新失败，请稍后重试")
+            }
+        }
+    }
+
+    fun clearUpdateState() {
+        _updateState.value = null
+    }
+
+    private fun isNewerVersion(latest: String, current: String): Boolean {
+        val latestParts = latest.split(".").map { it.toIntOrNull() ?: 0 }
+        val currentParts = current.split(".").map { it.toIntOrNull() ?: 0 }
+        for (i in 0 until maxOf(latestParts.size, currentParts.size)) {
+            val l = latestParts.getOrElse(i) { 0 }
+            val c = currentParts.getOrElse(i) { 0 }
+            if (l > c) return true
+            if (l < c) return false
+        }
+        return false
     }
 
     // ============ City Management ============
@@ -694,4 +752,11 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
             "未知位置"
         }
     }
+}
+
+sealed class UpdateCheckResult {
+    data object Checking : UpdateCheckResult()
+    data object UpToDate : UpdateCheckResult()
+    data class UpdateAvailable(val version: String, val url: String) : UpdateCheckResult()
+    data class Error(val message: String) : UpdateCheckResult()
 }

@@ -109,6 +109,7 @@ dependencies {
     implementation(libs.amap.search)
     implementation(libs.accompanist.permissions)
     implementation(libs.lottie.compose)
+    implementation(libs.browser)
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
