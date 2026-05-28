@@ -148,7 +148,8 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                            containerColor = TextSecondary.copy(alpha = 0.15f),
+                            contentColor = TextPrimary
                         )
                     ) {
                         Text("前往下载 v${updateState.version}")

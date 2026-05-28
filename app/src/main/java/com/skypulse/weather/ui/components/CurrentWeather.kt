@@ -128,7 +128,7 @@ fun LocationHeader(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 if (onSettingsClick != null) {
                     Box(
                         modifier = Modifier
