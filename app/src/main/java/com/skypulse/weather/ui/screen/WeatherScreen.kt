@@ -1,6 +1,7 @@
 package com.skypulse.weather.ui.screen
 
 import android.Manifest
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -95,6 +96,10 @@ fun WeatherScreen(
     val isDay = WeatherUtils.isCurrentlyDay()
     val weatherTheme = remember(skycon, isDay) {
         WeatherUtils.getWeatherTheme(skycon, isDay)
+    }
+
+    BackHandler(enabled = currentScreen != AppScreen.CityDetail) {
+        viewModel.navigateBack()
     }
 
     CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {

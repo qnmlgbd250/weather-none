@@ -188,8 +188,9 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun navigateBack() {
-        if (_currentScreen.value == AppScreen.Settings) {
-            _currentScreen.value = AppScreen.CityDetail
+        when (_currentScreen.value) {
+            AppScreen.Settings, AppScreen.CityList -> _currentScreen.value = AppScreen.CityDetail
+            else -> {}
         }
     }
 
