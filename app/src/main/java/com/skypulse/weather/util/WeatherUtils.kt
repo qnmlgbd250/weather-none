@@ -23,9 +23,11 @@ object WeatherUtils {
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
 
-        // Card base: night deep navy, day transparent (frost layer only)
+        // Card base: night deep navy, cloudy day subtle dark tint, other day transparent
         val cardTintColor = if (!isDay) {
             Color(0xFF050D33).copy(alpha = 0.60f)
+        } else if (skycon != null && skycon.contains("CLOUDY")) {
+            Color(0xFF2C3E50).copy(alpha = 0.15f)
         } else {
             Color.Transparent
         }
@@ -50,7 +52,7 @@ object WeatherUtils {
             skycon == null ||
             skycon.contains("CLEAR") -> 0.30f to 0.14f
             skycon.contains("PARTLY_CLOUDY") -> 0.32f to 0.16f
-            skycon.contains("CLOUDY") -> 0.40f to 0.22f
+            skycon.contains("CLOUDY") -> 0.28f to 0.14f
             skycon.contains("RAIN") ||
             skycon.contains("STORM") -> 0.20f to 0.10f
             skycon.contains("SNOW") -> 0.42f to 0.24f
