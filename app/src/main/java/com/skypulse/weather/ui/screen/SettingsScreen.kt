@@ -3,8 +3,9 @@ package com.skypulse.weather.ui.screen
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,15 +45,19 @@ fun SettingsScreen(
     var showDonateDialog by remember { mutableStateOf(false) }
 
     val isChecking = updateState is UpdateCheckResult.Checking
-    val rotation by animateFloatAsState(
-        targetValue = if (isChecking) 360f else 0f,
-        animationSpec = if (isChecking) {
-            infiniteRepeatable(tween(1000, easing = LinearEasing))
-        } else {
-            tween(300)
-        },
+    val infiniteTransition = rememberInfiniteTransition(label = "refresh")
+    val animatedRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing)),
         label = "refresh_rotation"
     )
+    // Hold last rotation when not checking so it doesn't snap back
+    var frozenRotation by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(isChecking) {
+        if (isChecking) frozenRotation = 0f
+    }
+    val rotation = if (isChecking) animatedRotation else frozenRotation
 
     LaunchedEffect(updateState) {
         when (updateState) {
