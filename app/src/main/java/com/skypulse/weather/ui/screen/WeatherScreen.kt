@@ -2,6 +2,9 @@ package com.skypulse.weather.ui.screen
 
 import android.Manifest
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -407,6 +411,7 @@ private fun AlertBanner(alerts: List<AlertItem>) {
     }
 
     val iconTint = if (alerts.size == 1) alertColor(alerts[0].level) else alertColor(alerts.first().level)
+    val itemHeightDp = 20.dp
 
     Surface(
         onClick = {},
@@ -418,12 +423,17 @@ private fun AlertBanner(alerts: List<AlertItem>) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 5.dp, bottom = 3.dp)
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Notifications,
-                contentDescription = "预警",
-                tint = iconTint,
-                modifier = Modifier.size(13.dp)
-            )
+            Box(
+                modifier = Modifier.size(14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Notifications,
+                    contentDescription = "预警",
+                    tint = iconTint,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
             Spacer(modifier = Modifier.width(4.dp))
 
             if (alerts.size == 1) {
@@ -433,34 +443,44 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                     color = alertColor(alerts[0].level)
                 )
             } else {
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                val itemHeightPx = with(density) { itemHeightDp.toPx() }
+                val scrollOffset = remember { Animatable(0f) }
+                var currentIndex by remember { mutableIntStateOf(0) }
                 val listState = rememberLazyListState()
+
                 LaunchedEffect(alerts) {
                     while (true) {
-                        kotlinx.coroutines.delay(5000)
-                        val firstVisible = listState.firstVisibleItemIndex
-                        if (firstVisible < alerts.size - 1) {
-                            listState.animateScrollToItem(
-                                index = firstVisible + 1,
-                                scrollOffset = 0
-                            )
-                        } else {
-                            listState.animateScrollToItem(0)
-                        }
+                        kotlinx.coroutines.delay(4000)
+                        val nextIndex = if (currentIndex < alerts.size - 1) currentIndex + 1 else 0
+                        scrollOffset.snapTo(0f)
+                        scrollOffset.animateTo(
+                            targetValue = itemHeightPx,
+                            animationSpec = tween(durationMillis = 600, easing = EaseOut)
+                        )
+                        currentIndex = nextIndex
+                        listState.scrollToItem(currentIndex)
+                        scrollOffset.snapTo(0f)
                     }
                 }
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.height(20.dp),
-                    userScrollEnabled = false
-                ) {
-                    items(alerts.size, key = { alerts[it].title }) { index ->
-                        val alert = alerts[index]
-                        Text(
-                            text = alert.title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = alertColor(alert.level),
-                            modifier = Modifier.height(20.dp)
-                        )
+
+                Box(modifier = Modifier.height(itemHeightDp).clipToBounds()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.offset(
+                            y = with(density) { (-scrollOffset.value).toDp() }
+                        ),
+                        userScrollEnabled = false
+                    ) {
+                        items(alerts.size, key = { alerts[it].title }) { index ->
+                            val alert = alerts[index]
+                            Text(
+                                text = alert.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = alertColor(alert.level),
+                                modifier = Modifier.height(itemHeightDp)
+                            )
+                        }
                     }
                 }
             }
