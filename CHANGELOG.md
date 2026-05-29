@@ -4,6 +4,11 @@
 
 ---
 
+## [1.8.75] - 2026-05-29
+
+- **城市列表卡片高度稳定**: 移除条件渲染，数据未加载时用占位符填充，卡片不再因数据加载而展开/收缩
+- **静默刷新**: 进入城市列表时数据在后台加载，不影响卡片布局
+
 ## [1.8.74] - 2026-05-29
 
 - **Smooth alert carousel**: Replaced LazyColumn scroll with AnimatedContent vertical slide + crossfade
@@ -54,6 +59,11 @@
 Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipitation.kt 璺?WeatherScreen.kt 璺?CurrentWeather.kt 璺?HourlyForecast.kt 璺?DailyForecast.kt 璺?WeatherUtils.kt
 
 ---
+
+## [1.8.75] - 2026-05-29
+
+- **城市列表卡片高度稳定**: 移除条件渲染，数据未加载时用占位符填充，卡片不再因数据加载而展开/收缩
+- **静默刷新**: 进入城市列表时数据在后台加载，不影响卡片布局
 
 ## [1.8.74] - 2026-05-29
 
@@ -111,6 +121,11 @@ Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipita
 - Project handed to Codex. Starting version: 1.8.64 (versionCode 144).
 
 ---
+
+## [1.8.75] - 2026-05-29
+
+- **城市列表卡片高度稳定**: 移除条件渲染，数据未加载时用占位符填充，卡片不再因数据加载而展开/收缩
+- **静默刷新**: 进入城市列表时数据在后台加载，不影响卡片布局
 
 ## 项目记忆（Codex 自动维护）
 

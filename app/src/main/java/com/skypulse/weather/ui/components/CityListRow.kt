@@ -240,20 +240,20 @@ fun CityListRow(
                 }
             }
 
-            if (weather != null) {
-                Box(
-                    contentAlignment = Alignment.TopEnd,
-                    modifier = Modifier.alignByBaseline()
-                ) {
-                    Text(
-                        text = temperature,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Thin,
-                            fontFeatureSettings = "tnum"
-                        ),
-                        color = TextPrimary
-                    )
+            Box(
+                contentAlignment = Alignment.TopEnd,
+                modifier = Modifier.alignByBaseline()
+            ) {
+                Text(
+                    text = if (weather != null) temperature else "--",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Thin,
+                        fontFeatureSettings = "tnum"
+                    ),
+                    color = TextPrimary.copy(alpha = if (weather != null) 1f else 0.4f)
+                )
+                if (weather != null) {
                     Text(
                         text = "°",
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -268,22 +268,18 @@ fun CityListRow(
 
         // Bottom: air quality + weather description aligned
         Row(modifier = Modifier.fillMaxWidth()) {
-            if (aqiText != null) {
-                Text(
-                    text = aqiText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
-                )
-            }
+            Text(
+                text = aqiText ?: "--",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary.copy(alpha = if (aqiText != null) 1f else 0.4f)
+            )
             Spacer(modifier = Modifier.weight(1f))
-            if (weather != null) {
-                Text(
-                    text = weatherInfo.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-            }
+            Text(
+                text = if (weather != null) weatherInfo.description else "--",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary.copy(alpha = if (weather != null) 1f else 0.4f),
+                modifier = Modifier.padding(end = 8.dp)
+            )
         }
     }
 }
