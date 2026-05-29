@@ -221,10 +221,6 @@ private fun WeatherContent(
             onSettingsClick = onSettingsClick
         )
 
-        if (alerts.isNotEmpty()) {
-            AlertBanner(alerts = alerts)
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -232,6 +228,11 @@ private fun WeatherContent(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(20.dp))
+
+            if (alerts.isNotEmpty()) {
+                AlertBanner(alerts = alerts)
+                Spacer(modifier = Modifier.height(4.dp))
+            }
 
             CurrentWeather(
                 realtime = realtime,
