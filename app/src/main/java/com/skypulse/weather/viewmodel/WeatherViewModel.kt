@@ -177,20 +177,17 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
 
         val city = _savedCities.value.find { it.id == cityId } ?: return
         if (city.isCurrentLocation) {
-            // Show cached data immediately, then refresh in background
+            // Always show cached data immediately when switching to this city
             val cached = weatherCache.load(city.id)
-            if (cached != null && _uiState.value !is WeatherUiState.Success) {
+            if (cached != null) {
                 _uiState.value = WeatherUiState.Success(
                     weather = cached,
                     locationName = city.name
                 )
             }
-            // Silent refresh: no Loading state, updates UI when done
+            // Silent refresh in background
             viewModelScope.launch {
-                val sinceLast = System.currentTimeMillis() - _lastFetchTime.value
-                if (sinceLast >= API_COOLDOWN_MS) {
-                    doFetchWeather(silent = true)
-                }
+                doFetchWeather(silent = true)
             }
         } else {
             viewModelScope.launch { fetchWeatherForCity(city) }
