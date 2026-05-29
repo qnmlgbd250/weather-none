@@ -191,8 +191,6 @@ fun CurrentWeather(
     realtime: RealtimeWeather?,
     todayHigh: Double?,
     todayLow: Double?,
-    alertTitle: String? = null,
-    alertLevel: String? = null,
     onRefresh: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -305,25 +303,6 @@ fun CurrentWeather(
                     color = TextSecondary
                 )
             }
-        }
-
-        if (!alertTitle.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(28.dp))
-            val alertColor = when {
-                alertLevel?.contains("红") == true -> Color(0xFFFF4444)
-                alertLevel?.contains("橙") == true -> Color(0xFFFF8C00)
-                alertLevel?.contains("黄") == true -> WarmGold
-                alertLevel?.contains("蓝") == true -> Color(0xFF4488FF)
-                else -> WarmGold
-            }
-            Text(
-                text = alertTitle,
-                style = MaterialTheme.typography.bodyLarge,
-                color = alertColor,
-                maxLines = 1,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
         }
 
         Spacer(modifier = Modifier.height(28.dp))

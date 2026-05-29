@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -200,12 +201,13 @@ private fun WeatherContent(
     val result = state.weather.result
     val realtime = result?.realtime
     val todayTemp = result?.daily?.temperature?.firstOrNull()
-    val alertContent = result?.alert?.content?.firstOrNull()
-    val alertTitle = alertContent?.title
-        ?.replace(Regex("\\[.*?\\]"), "")
-        ?.replace(Regex("^.*发布"), "")
-        ?.trim()
-    val alertLevel = alertContent?.level
+    val alerts = result?.alert?.content?.mapNotNull { content ->
+        val title = content.title
+            ?.replace(Regex("\\[.*?\\]"), "")
+            ?.replace(Regex("^.*发布"), "")
+            ?.trim()
+        if (!title.isNullOrBlank()) AlertItem(title, content.level) else null
+    }.orEmpty()
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Spacer(modifier = Modifier.height(12.dp))
@@ -219,6 +221,10 @@ private fun WeatherContent(
             onSettingsClick = onSettingsClick
         )
 
+        if (alerts.isNotEmpty()) {
+            AlertBanner(alerts = alerts)
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -231,8 +237,6 @@ private fun WeatherContent(
                 realtime = realtime,
                 todayHigh = todayTemp?.max,
                 todayLow = todayTemp?.min,
-                alertTitle = alertTitle,
-                alertLevel = alertLevel,
                 onRefresh = onRefresh
             )
 
@@ -376,6 +380,61 @@ private fun PermissionRequestContent(
                 ) {
                     Text("使用默认位置", color = TextSecondary)
                 }
+            }
+        }
+    }
+}
+
+private data class AlertItem(val title: String, val level: String?)
+
+@Composable
+private fun AlertBanner(alerts: List<AlertItem>) {
+    val alertColor = { level: String? ->
+        when {
+            level?.contains("红") == true -> Color(0xFFFF4444)
+            level?.contains("橙") == true -> Color(0xFFFF8C00)
+            level?.contains("黄") == true -> WarmGold
+            level?.contains("蓝") == true -> Color(0xFF4488FF)
+            else -> WarmGold
+        }
+    }
+
+    if (alerts.size == 1) {
+        val alert = alerts[0]
+        Text(
+            text = alert.title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = alertColor(alert.level),
+            modifier = Modifier.padding(start = 23.dp, top = 4.dp)
+        )
+    } else {
+        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+        LaunchedEffect(alerts) {
+            while (true) {
+                kotlinx.coroutines.delay(3000)
+                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                if (lastVisible < alerts.size - 1) {
+                    listState.animateScrollToItem(lastVisible + 1)
+                } else {
+                    listState.animateScrollToItem(0)
+                }
+            }
+        }
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .padding(start = 23.dp, top = 4.dp)
+                .height(24.dp),
+            userScrollEnabled = false
+        ) {
+            items(alerts.size) { index ->
+                val alert = alerts[index]
+                Text(
+                    text = alert.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = alertColor(alert.level),
+                    modifier = Modifier.height(24.dp)
+                )
             }
         }
     }
