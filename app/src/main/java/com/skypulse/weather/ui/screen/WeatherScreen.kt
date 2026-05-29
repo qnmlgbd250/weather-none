@@ -410,13 +410,13 @@ private fun AlertBanner(alerts: List<AlertItem>) {
 
     Surface(
         onClick = {},
-        modifier = Modifier.padding(start = 16.dp),
+        modifier = Modifier.padding(start = 20.dp),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
         color = Color.White.copy(alpha = 0.08f)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 5.dp, bottom = 3.dp)
         ) {
             Icon(
                 imageVector = Icons.Outlined.Notifications,
