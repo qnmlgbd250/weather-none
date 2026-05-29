@@ -109,3 +109,40 @@ Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipita
 ## [1.8.64] 閳?baseline
 
 - Project handed to Codex. Starting version: 1.8.64 (versionCode 144).
+
+---
+
+## 项目记忆（Codex 自动维护）
+
+### GitHub 配置
+- **仓库**: github.com/qnmlgbd250/weather-none
+- **分支**: main
+- **GitHub Token (classic)**: {GITHUB_TOKEN}
+- **Release ID**: 通过 API 查询 /repos/qnmlgbd250/weather-none/releases 获取
+
+### 发版流程（仅用户主动要求时执行）
+1. 修改代码 → 自动递增版本号（versionCode + versionName）
+2. 更新 CHANGELOG.md
+3. 构建 Release APK：gradlew assembleRelease（JAVA_HOME = C:\Program Files\Android\Android Studio\jbr）
+4. 重命名 APK 为 SkyPulse-v{版本号}.apk
+5. 上传 APK 到云端剪贴板：curl -X POST -F "file=@{apk}" "http://114.132.226.161:5000/api/files?room=2027"
+6. Git 提交 + 打 tag + push 到 origin/main
+7. 通过 GitHub API 创建 Release（用 Node.js 发请求，确保中文 UTF-8 编码正确）
+8. 通过 GitHub API 上传 APK 到 Release 附件
+
+### 发版要求
+- **Release 描述必须使用中文**
+- **APK 必须上传到 Release 附件**
+- **GitHub API 调用使用 Node.js**（PowerShell Invoke-RestMethod 中文编码有问题）
+- **仅在用户主动要求发版时才执行发版流程**
+
+### 签名配置
+- Keystore: app/release-keystore.jks
+- storePassword: weather123
+- keyAlias: weather-app
+- keyPassword: weather123
+
+### 构建环境
+- JAVA_HOME: C:\Program Files\Android\Android Studio\jbr
+- Gradle: C:\Users\phil\.gradle\wrapper\dists\gradle-8.5-bin\5t9huq95ubn472n8rpzujfbqh\gradle-8.5
+- 不能用 gradlew（sandbox 会阻止 wrapper 的网络检查），必须直接调用 gradle.bat
