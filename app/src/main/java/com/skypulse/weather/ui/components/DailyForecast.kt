@@ -104,7 +104,11 @@ private fun DailyColumn(
     itemWidth: Dp
 ) {
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
-    val weekday = if (isFirst) "今天" else WeatherUtils.formatWeekday(dateStr)
+    val weekday = when {
+        isFirst -> "今天"
+        WeatherUtils.isTomorrow(dateStr) -> "明天"
+        else -> WeatherUtils.formatWeekday(dateStr)
+    }
 
     val dateLabel = formatShortDate(dateStr)
 
@@ -145,7 +149,7 @@ private fun DailyColumn(
             textAlign = TextAlign.Center
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // --- Max temp ---
         TempText(
@@ -164,7 +168,7 @@ private fun DailyColumn(
             globalMax = globalMax,
             modifier = Modifier
                 .width(6.dp)
-                .height(44.dp)
+                .height(56.dp)
         )
 
         Spacer(modifier = Modifier.height(6.dp))

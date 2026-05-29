@@ -275,9 +275,6 @@ object WeatherUtils {
                 cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
                     cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) + 1 -> "明天"
 
-                cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                    cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) + 2 -> "后天"
-
                 else -> {
                     val weekdays = arrayOf("周日", "周一", "周二", "周三", "周四", "周五", "周六")
                     weekdays[cal.get(Calendar.DAY_OF_WEEK) - 1]
@@ -285,6 +282,20 @@ object WeatherUtils {
             }
         } catch (e: Exception) {
             ""
+        }
+    }
+
+    fun isTomorrow(dateStr: String?): Boolean {
+        if (dateStr == null) return false
+        return try {
+            val date = dateFormat.get().parse(dateStr) ?: return false
+            val cal = Calendar.getInstance()
+            val today = Calendar.getInstance()
+            cal.time = date
+            cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) + 1
+        } catch (e: Exception) {
+            false
         }
     }
 
