@@ -26,7 +26,7 @@ object WeatherUtils {
         // Card base: night deep navy, cloudy day subtle dark tint, other day transparent
         val cardTintColor = if (!isDay) {
             Color(0xFF050D33).copy(alpha = 0.60f)
-        } else if (skycon != null && skycon.contains("CLOUDY")) {
+        } else if (skycon != null && skycon.contains("CLOUDY") && !skycon.contains("PARTLY_CLOUDY")) {
             Color(0xFF2C3E50).copy(alpha = 0.15f)
         } else {
             Color.Transparent
