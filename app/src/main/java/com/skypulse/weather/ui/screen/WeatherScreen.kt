@@ -456,7 +456,7 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                     text = alerts[0].title,
                     style = MaterialTheme.typography.bodyMedium,
                     color = alertColor(alerts[0].level),
-                    modifier = Modifier.offset(y = 1.dp)
+                    modifier = Modifier.offset(y = (-1).dp)
                 )
             } else {
                 val scrollDensity = androidx.compose.ui.platform.LocalDensity.current
