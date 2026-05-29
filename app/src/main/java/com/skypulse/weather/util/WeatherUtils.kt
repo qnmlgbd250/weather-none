@@ -27,7 +27,7 @@ object WeatherUtils {
         val cardTintColor = if (!isDay) {
             Color(0xFF050D33).copy(alpha = 0.60f)
         } else if (skycon != null && skycon.contains("CLOUDY") && !skycon.contains("PARTLY_CLOUDY")) {
-            Color(0xFF2C3E50).copy(alpha = 0.15f)
+            Color(0xFF2C3E50).copy(alpha = 0.08f)
         } else {
             Color.Transparent
         }
