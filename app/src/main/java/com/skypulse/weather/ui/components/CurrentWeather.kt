@@ -192,6 +192,7 @@ fun CurrentWeather(
     todayHigh: Double?,
     todayLow: Double?,
     alertTitle: String? = null,
+    alertLevel: String? = null,
     onRefresh: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -275,6 +276,8 @@ fun CurrentWeather(
             }
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         if (todayLow != null || todayHigh != null) {
             val weatherInfo = WeatherUtils.getWeatherInfo(realtime?.skycon)
             Row(
@@ -305,11 +308,18 @@ fun CurrentWeather(
         }
 
         if (!alertTitle.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(28.dp))
+            val alertColor = when {
+                alertLevel?.contains("红") == true -> Color(0xFFFF4444)
+                alertLevel?.contains("橙") == true -> Color(0xFFFF8C00)
+                alertLevel?.contains("黄") == true -> WarmGold
+                alertLevel?.contains("蓝") == true -> Color(0xFF4488FF)
+                else -> WarmGold
+            }
             Text(
                 text = alertTitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = WarmGold,
+                color = alertColor,
                 maxLines = 1,
                 modifier = Modifier.fillMaxWidth(),
                 textAlign = TextAlign.Center
