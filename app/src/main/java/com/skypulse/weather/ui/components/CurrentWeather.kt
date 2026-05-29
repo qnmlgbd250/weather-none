@@ -318,7 +318,7 @@ fun CurrentWeather(
             }
             Text(
                 text = alertTitle,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyLarge,
                 color = alertColor,
                 maxLines = 1,
                 modifier = Modifier.fillMaxWidth(),

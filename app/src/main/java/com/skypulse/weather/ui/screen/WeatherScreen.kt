@@ -201,7 +201,10 @@ private fun WeatherContent(
     val realtime = result?.realtime
     val todayTemp = result?.daily?.temperature?.firstOrNull()
     val alertContent = result?.alert?.content?.firstOrNull()
-    val alertTitle = alertContent?.title?.replace(Regex("\\[.*?\\]"), "")?.trim()
+    val alertTitle = alertContent?.title
+        ?.replace(Regex("\\[.*?\\]"), "")
+        ?.replace(Regex("^.*发布"), "")
+        ?.trim()
     val alertLevel = alertContent?.level
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
