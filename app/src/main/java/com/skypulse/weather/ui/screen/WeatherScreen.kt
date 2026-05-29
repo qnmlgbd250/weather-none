@@ -232,11 +232,10 @@ private fun WeatherContent(
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(if (alerts.isNotEmpty()) 8.dp else 20.dp))
 
             if (alerts.isNotEmpty()) {
                 AlertBanner(alerts = alerts)
-                Spacer(modifier = Modifier.height(4.dp))
             }
 
             CurrentWeather(
@@ -415,13 +414,13 @@ private fun AlertBanner(alerts: List<AlertItem>) {
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
             Icon(
                 imageVector = Icons.Outlined.Notifications,
                 contentDescription = "预警",
                 tint = iconTint,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(14.dp).offset(y = (-0.5).dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
 
