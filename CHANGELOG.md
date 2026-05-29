@@ -135,7 +135,20 @@ Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipita
 - **GitHub Token (classic)**: {GITHUB_TOKEN}
 - **Release ID**: 通过 API 查询 /repos/qnmlgbd250/weather-none/releases 获取
 
-### 发版流程（仅用户主动要求时执行）
+### 日常迭代流程（默认）
+1. 修改代码 → 自动递增版本号（versionCode + versionName）
+2. 更新 CHANGELOG.md
+3. 构建 Release APK
+4. 重命名 APK 为 `SkyPulse-v{版本号}.apk`
+5. 上传 APK 到云端剪贴板：`curl -X POST -F "file=@{apk}" "http://114.132.226.161:5000/api/files?room=2027"`
+6. Git 提交 + push 到 origin/main
+7. **不创建 GitHub Release**
+
+### 发版流程（仅用户主动要求"发版"时执行）
+1. 执行上述日常迭代流程的所有步骤
+2. 打 tag + push tag
+3. 通过 GitHub API 创建 Release（用 Node.js 发请求，确保中文 UTF-8 编码正确）
+4. 通过 GitHub API 上传 APK 到 Release 附件
 1. 修改代码 → 自动递增版本号（versionCode + versionName）
 2. 更新 CHANGELOG.md
 3. 构建 Release APK：gradlew assembleRelease（JAVA_HOME = C:\Program Files\Android\Android Studio\jbr）
