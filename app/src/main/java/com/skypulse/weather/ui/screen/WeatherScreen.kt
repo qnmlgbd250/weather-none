@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -413,6 +416,23 @@ private fun AlertBanner(alerts: List<AlertItem>) {
     val iconTint = if (alerts.size == 1) alertColor(alerts[0].level) else alertColor(alerts.first().level)
     val itemHeightDp = 20.dp
 
+    val rawPainter = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Outlined.Notifications)
+    val iconSizeDp = 14.dp
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val iconSizePx = with(density) { iconSizeDp.toPx() }
+    val croppedPainter = remember(rawPainter, iconSizePx) {
+        object : androidx.compose.ui.graphics.painter.Painter() {
+            override val intrinsicSize = androidx.compose.ui.geometry.Size(iconSizePx, iconSizePx)
+            override fun DrawScope.onDraw() {
+                val scale = iconSizePx / 20f
+                val offsetPx = -2f * scale
+                translate(left = offsetPx, top = offsetPx) {
+                    with(rawPainter) { draw(androidx.compose.ui.geometry.Size(24f * scale, 24f * scale)) }
+                }
+            }
+        }
+    }
+
     Surface(
         onClick = {},
         modifier = Modifier.padding(start = 20.dp),
@@ -423,17 +443,12 @@ private fun AlertBanner(alerts: List<AlertItem>) {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 5.dp, bottom = 3.dp)
         ) {
-            Box(
-                modifier = Modifier.size(14.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = "预警",
-                    tint = iconTint,
-                    modifier = Modifier.size(14.dp)
-                )
-            }
+            Image(
+                painter = croppedPainter,
+                contentDescription = "预警",
+                modifier = Modifier.size(iconSizeDp),
+                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(iconTint)
+            )
             Spacer(modifier = Modifier.width(4.dp))
 
             if (alerts.size == 1) {
@@ -443,8 +458,8 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                     color = alertColor(alerts[0].level)
                 )
             } else {
-                val density = androidx.compose.ui.platform.LocalDensity.current
-                val itemHeightPx = with(density) { itemHeightDp.toPx() }
+                val scrollDensity = androidx.compose.ui.platform.LocalDensity.current
+                val itemHeightPx = with(scrollDensity) { itemHeightDp.toPx() }
                 val scrollOffset = remember { Animatable(0f) }
                 var currentIndex by remember { mutableIntStateOf(0) }
                 val listState = rememberLazyListState()
@@ -468,7 +483,7 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.offset(
-                            y = with(density) { (-scrollOffset.value).toDp() }
+                            y = with(scrollDensity) { (-scrollOffset.value).toDp() }
                         ),
                         userScrollEnabled = false
                     ) {
