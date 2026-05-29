@@ -23,7 +23,26 @@ data class WeatherResult(
     val minutely: MinutelyForecast? = null,
     val hourly: HourlyForecast? = null,
     val daily: DailyForecast? = null,
-    @Json(name = "forecast_keypoint") val forecastKeypoint: String? = null
+    @Json(name = "forecast_keypoint") val forecastKeypoint: String? = null,
+    val alert: Alert? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class Alert(
+    val status: String? = null,
+    val content: List<AlertContent>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AlertContent(
+    val province: String? = null,
+    val city: String? = null,
+    val county: String? = null,
+    val title: String? = null,
+    val description: String? = null,
+    val level: String? = null,
+    val type: String? = null,
+    val status: String? = null
 )
 
 // ============ Realtime ============

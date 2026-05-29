@@ -27,9 +27,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.skypulse.weather.model.AlertContent
 import com.skypulse.weather.model.RealtimeWeather
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
@@ -189,6 +191,7 @@ fun CurrentWeather(
     realtime: RealtimeWeather?,
     todayHigh: Double?,
     todayLow: Double?,
+    alertTitle: String? = null,
     onRefresh: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -299,6 +302,18 @@ fun CurrentWeather(
                     color = TextSecondary
                 )
             }
+        }
+
+        if (!alertTitle.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = alertTitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = WarmGold,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
         }
 
         Spacer(modifier = Modifier.height(28.dp))

@@ -200,6 +200,7 @@ private fun WeatherContent(
     val result = state.weather.result
     val realtime = result?.realtime
     val todayTemp = result?.daily?.temperature?.firstOrNull()
+    val alertTitle = result?.alert?.content?.firstOrNull()?.title
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Spacer(modifier = Modifier.height(12.dp))
@@ -225,6 +226,7 @@ private fun WeatherContent(
                 realtime = realtime,
                 todayHigh = todayTemp?.max,
                 todayLow = todayTemp?.min,
+                alertTitle = alertTitle,
                 onRefresh = onRefresh
             )
 
