@@ -446,7 +446,7 @@ private fun AlertBanner(alerts: List<AlertItem>) {
             Image(
                 painter = croppedPainter,
                 contentDescription = "预警",
-                modifier = Modifier.size(iconSizeDp),
+                modifier = Modifier.size(iconSizeDp).offset(y = (-1).dp),
                 colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(iconTint)
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -455,7 +455,8 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                 Text(
                     text = alerts[0].title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = alertColor(alerts[0].level)
+                    color = alertColor(alerts[0].level),
+                    modifier = Modifier.offset(y = 1.dp)
                 )
             } else {
                 val scrollDensity = androidx.compose.ui.platform.LocalDensity.current
@@ -493,7 +494,7 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                                 text = alert.title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = alertColor(alert.level),
-                                modifier = Modifier.height(itemHeightDp)
+                                modifier = Modifier.height(itemHeightDp).offset(y = 1.dp)
                             )
                         }
                     }
