@@ -3,8 +3,13 @@ package com.skypulse.weather.ui.screen
 import android.Manifest
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -400,42 +405,63 @@ private fun AlertBanner(alerts: List<AlertItem>) {
         }
     }
 
-    if (alerts.size == 1) {
-        val alert = alerts[0]
-        Text(
-            text = alert.title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = alertColor(alert.level),
-            modifier = Modifier.padding(start = 23.dp, top = 4.dp)
-        )
-    } else {
-        val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-        LaunchedEffect(alerts) {
-            while (true) {
-                kotlinx.coroutines.delay(3000)
-                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                if (lastVisible < alerts.size - 1) {
-                    listState.animateScrollToItem(lastVisible + 1)
-                } else {
-                    listState.animateScrollToItem(0)
-                }
-            }
-        }
-        androidx.compose.foundation.lazy.LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .padding(start = 23.dp, top = 4.dp)
-                .height(24.dp),
-            userScrollEnabled = false
+    val iconTint = if (alerts.size == 1) alertColor(alerts[0].level) else alertColor(alerts.first().level)
+
+    Surface(
+        onClick = {},
+        modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+        color = Color.White.copy(alpha = 0.08f)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
-            items(alerts.size) { index ->
-                val alert = alerts[index]
+            Icon(
+                imageVector = Icons.Outlined.Notifications,
+                contentDescription = "预警",
+                tint = iconTint,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+
+            if (alerts.size == 1) {
                 Text(
-                    text = alert.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = alertColor(alert.level),
-                    modifier = Modifier.height(24.dp)
+                    text = alerts[0].title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = alertColor(alerts[0].level)
                 )
+            } else {
+                val listState = rememberLazyListState()
+                LaunchedEffect(alerts) {
+                    while (true) {
+                        kotlinx.coroutines.delay(5000)
+                        val firstVisible = listState.firstVisibleItemIndex
+                        if (firstVisible < alerts.size - 1) {
+                            listState.animateScrollToItem(
+                                index = firstVisible + 1,
+                                scrollOffset = 0
+                            )
+                        } else {
+                            listState.animateScrollToItem(0)
+                        }
+                    }
+                }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.height(20.dp),
+                    userScrollEnabled = false
+                ) {
+                    items(alerts.size, key = { alerts[it].title }) { index ->
+                        val alert = alerts[index]
+                        Text(
+                            text = alert.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = alertColor(alert.level),
+                            modifier = Modifier.height(20.dp)
+                        )
+                    }
+                }
             }
         }
     }
