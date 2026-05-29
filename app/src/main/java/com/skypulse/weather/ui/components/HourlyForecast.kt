@@ -21,6 +21,7 @@ import com.skypulse.weather.model.HourlyForecast
 import com.skypulse.weather.model.HourlySkycon
 import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.ui.theme.*
+import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
 private const val HOUR_WIDTH = 56
@@ -235,7 +236,7 @@ private fun HourlyTemperatureChart(
                 drawText(result, topLeft = Offset(point.x - result.size.width / 2, point.y - result.size.height - 6.dp.toPx()))
             }
 
-            val labelStyle = TextStyle(fontSize = 11.sp, color = Color.White.copy(alpha = 0.9f))
+            val labelStyle = TextStyle(fontSize = 11.sp, color = TextSecondary)
             val labelCenterY = curveAreaBottom + (canvasH - curveAreaBottom) * 0.45f
             for (i in 0 until itemCount) {
                 val skycon = skyconValues[i] ?: continue

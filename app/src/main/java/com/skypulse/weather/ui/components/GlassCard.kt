@@ -36,7 +36,7 @@ fun GlassCard(
                 )
             )
             .border(
-                BorderStroke(1.dp, theme.cardBorderBrush),
+                BorderStroke(1.dp, theme.cardBorderColor),
                 RoundedCornerShape(22.dp)
             ),
         content = content

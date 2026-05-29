@@ -4,6 +4,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -47,6 +49,13 @@ fun LocationHeader(
     onSettingsClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val isActive = refreshPhase != RefreshPhase.Idle
+    val textOffsetY by animateDpAsState(
+        targetValue = if (isActive) (-10).dp else 0.dp,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+        label = "textOffsetY"
+    )
+
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
         Row(
             modifier = Modifier
@@ -97,16 +106,58 @@ fun LocationHeader(
                 Box(
                     modifier = Modifier
                         .weight(1f, fill = false)
-                        .then(if (overflows) Modifier.fadingEdge() else Modifier)
+                        .height(36.dp)
                 ) {
                     Text(
                         text = locationName,
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 18.sp),
                         color = TextSecondary,
                         maxLines = 1,
-                        modifier = Modifier.basicMarquee(),
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .offset(y = textOffsetY)
+                            .then(if (overflows) Modifier.fadingEdge() else Modifier)
+                            .basicMarquee(),
                         onTextLayout = { overflows = it.didOverflowWidth }
                     )
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isActive,
+                        enter = fadeIn(tween(300)) + slideInVertically(
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            initialOffsetY = { it / 2 }
+                        ),
+                        exit = fadeOut(tween(200)) + slideOutVertically(
+                            animationSpec = tween(200),
+                            targetOffsetY = { it / 3 }
+                        ),
+                        modifier = Modifier.align(Alignment.BottomStart)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (refreshPhase == RefreshPhase.Refreshing) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 1.5.dp,
+                                    color = TextSecondary
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.CheckCircle,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = TextSecondary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(7.dp))
+                            Text(
+                                text = if (refreshPhase == RefreshPhase.Refreshing) "正在更新数据" else "更新成功",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -153,36 +204,6 @@ fun LocationHeader(
             }
         }
 
-        Box(modifier = Modifier.height(12.dp).padding(start = 3.dp)) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = refreshPhase != RefreshPhase.Idle,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (refreshPhase == RefreshPhase.Refreshing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            strokeWidth = 1.5.dp,
-                            color = TextSecondary
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = TextSecondary
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(7.dp))
-                    Text(
-                        text = if (refreshPhase == RefreshPhase.Refreshing) "正在更新数据" else "更新成功",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary.copy(alpha = 0.6f)
-                    )
-                }
-            }
-        }
     }
 }
 

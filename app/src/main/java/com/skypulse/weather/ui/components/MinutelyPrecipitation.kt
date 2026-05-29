@@ -19,8 +19,12 @@ import androidx.compose.ui.unit.dp
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import com.skypulse.weather.model.MinutelyForecast
+import com.skypulse.weather.ui.theme.PrecipBarBottom
+import com.skypulse.weather.ui.theme.PrecipBarShadow
+import com.skypulse.weather.ui.theme.PrecipBarTop
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.ui.theme.TextTertiary
 import kotlin.math.pow
 
 private const val BAR_COUNT = 48
@@ -127,7 +131,7 @@ private fun MinutelyBarChart(
                 // Shadow + blue fill for bars with precipitation
                 if (visualRatio > 0f) {
                     val shadowAlpha = (0.15f + 0.25f * visualRatio).coerceIn(0.15f, 0.4f)
-                    val shadowColor = Color(0xFF92DDFE).copy(alpha = shadowAlpha)
+                    val shadowColor = PrecipBarShadow.copy(alpha = shadowAlpha)
                     for (s in 1..3) {
                         val expand = s * 0.8f
                         drawRoundRect(
@@ -143,8 +147,8 @@ private fun MinutelyBarChart(
                     val bottomAlpha = (0.4f + 0.6f * visualRatio).coerceIn(0.4f, 1f)
                     val gradientBrush = Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xFFB0EAFF).copy(alpha = topAlpha),
-                            Color(0xFF92DDFE).copy(alpha = bottomAlpha)
+                            PrecipBarTop.copy(alpha = topAlpha),
+                            PrecipBarBottom.copy(alpha = bottomAlpha)
                         ),
                         startY = fillTop,
                         endY = fillTop + fillH
@@ -182,19 +186,19 @@ private fun MinutelyBarChart(
             Text(
                 text = t0,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
+                color = TextTertiary,
                 modifier = Modifier.align(BiasAlignment(-1f, 0f))
             )
             Text(
                 text = t1,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
+                color = TextTertiary,
                 modifier = Modifier.align(BiasAlignment(0f, 0f))
             )
             Text(
                 text = t2,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
+                color = TextTertiary,
                 modifier = Modifier.align(BiasAlignment(1f, 0f))
             )
         }

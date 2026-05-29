@@ -2,14 +2,15 @@ package com.skypulse.weather.ui.screen
 
 import android.Manifest
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -459,45 +460,38 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                     modifier = Modifier.offset(y = (-1).dp)
                 )
             } else {
-                val scrollDensity = androidx.compose.ui.platform.LocalDensity.current
-                val itemHeightPx = with(scrollDensity) { itemHeightDp.toPx() }
-                val scrollOffset = remember { Animatable(0f) }
                 var currentIndex by remember { mutableIntStateOf(0) }
-                val listState = rememberLazyListState()
 
                 LaunchedEffect(alerts) {
                     while (true) {
-                        kotlinx.coroutines.delay(4000)
-                        val nextIndex = if (currentIndex < alerts.size - 1) currentIndex + 1 else 0
-                        scrollOffset.snapTo(0f)
-                        scrollOffset.animateTo(
-                            targetValue = itemHeightPx,
-                            animationSpec = tween(durationMillis = 600, easing = EaseOut)
-                        )
-                        currentIndex = nextIndex
-                        listState.scrollToItem(currentIndex)
-                        scrollOffset.snapTo(0f)
+                        kotlinx.coroutines.delay(3500)
+                        currentIndex = if (currentIndex < alerts.size - 1) currentIndex + 1 else 0
                     }
                 }
 
-                Box(modifier = Modifier.height(itemHeightDp).clipToBounds()) {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.offset(
-                            y = with(scrollDensity) { (-scrollOffset.value).toDp() }
-                        ),
-                        userScrollEnabled = false
-                    ) {
-                        items(alerts.size, key = { alerts[it].title }) { index ->
-                            val alert = alerts[index]
-                            Text(
-                                text = alert.title,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = alertColor(alert.level),
-                                modifier = Modifier.height(itemHeightDp).offset(y = 1.dp)
-                            )
-                        }
-                    }
+                androidx.compose.animation.AnimatedContent(
+                    targetState = currentIndex,
+                    transitionSpec = {
+                        slideInVertically(
+                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        ) { height -> height } + fadeIn(
+                            animationSpec = tween(300)
+                        ) togetherWith slideOutVertically(
+                            animationSpec = tween(400, easing = FastOutSlowInEasing)
+                        ) { height -> -height } + fadeOut(
+                            animationSpec = tween(250)
+                        )
+                    },
+                    contentKey = { it },
+                    modifier = Modifier.height(itemHeightDp).clipToBounds()
+                ) { index ->
+                    val alert = alerts[index]
+                    Text(
+                        text = alert.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = alertColor(alert.level),
+                        modifier = Modifier.offset(y = 1.dp)
+                    )
                 }
             }
         }

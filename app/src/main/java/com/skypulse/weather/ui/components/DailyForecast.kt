@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.ui.theme.*
+import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
 private const val DAY_WIDTH = 56

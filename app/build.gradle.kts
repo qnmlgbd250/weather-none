@@ -1,4 +1,4 @@
-import java.util.Properties
+﻿import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -26,8 +26,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 144
-        versionName = "1.8.64"
+        versionCode = 154
+        versionName = "1.8.74"
 
         vectorDrawables {
             useSupportLibrary = true

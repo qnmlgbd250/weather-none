@@ -78,6 +78,8 @@ object WeatherUtils {
             end = androidx.compose.ui.geometry.Offset.Infinite
         )
 
+        val borderColor = if (isDay) CardBorderDay else CardBorderNight
+
         // --- Chart Colors ---
         val chartColors = if (isDay) {
             WeatherChartColors(
@@ -111,6 +113,7 @@ object WeatherUtils {
             cardTopAlpha = topAlpha,
             cardBottomAlpha = bottomAlpha,
             cardBorderBrush = borderBrush,
+            cardBorderColor = borderColor,
             chartColors = chartColors
         )
     }

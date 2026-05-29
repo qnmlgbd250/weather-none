@@ -14,9 +14,13 @@ data class WeatherTheme(
     val cardTopAlpha: Float,
     val cardBottomAlpha: Float,
     val cardBorderBrush: Brush,
+    val cardBorderColor: Color,
     val chartColors: WeatherChartColors,
     val textPrimary: Color = Color.White,
-    val textSecondary: Color = Color(0xD9FFFFFF)
+    val textSecondary: Color = TextSecondary,
+    val textTertiary: Color = TextTertiary,
+    val pressedOverlay: Color = PressedOverlay,
+    val disabledOverlay: Color = DisabledOverlay
 )
 
 @Immutable
@@ -40,15 +44,16 @@ val LocalWeatherTheme = staticCompositionLocalOf {
         cardTopAlpha = 0.28f,
         cardBottomAlpha = 0.12f,
         cardBorderBrush = Brush.linearGradient(listOf(Color.White, Color.Transparent)),
+        cardBorderColor = CardBorderDay,
         chartColors = WeatherChartColors(
-            clear = Color(0xFFFFFFF0) to Color(0xFFFFF9C4),
+            clear = Color(0xFFFFF8E1) to Color(0xFFFFD54F),
             partlyCloudy = Color(0xFFFFF8E1) to Color(0xFFFFECB3),
-            cloudy = Color(0xFF8AA4C4) to Color(0xFF6A8AAA),
-            rain = Color(0xFF467CD6) to Color(0xFF2E5AAC),
-            snow = Color(0xFF6FA0E8) to Color(0xFF467CD6),
-            wind = Color(0xFF5AACB8) to Color(0xFF3A8A98),
-            haze = Color(0xFF9A8A76) to Color(0xFF7A6A56),
-            storm = Color(0xFF1A3A7A) to Color(0xFF0D1F4A)
+            cloudy = Color(0xFF9DB5D0) to Color(0xFF7A9ABB),
+            rain = Color(0xFF5090E0) to Color(0xFF3570C0),
+            snow = Color(0xFF80B8F0) to Color(0xFF5090E0),
+            wind = Color(0xFF60C0D0) to Color(0xFF40A0B0),
+            haze = Color(0xFFAA9A86) to Color(0xFF8A7A66),
+            storm = Color(0xFF2A50A0) to Color(0xFF103070)
         )
     )
 }

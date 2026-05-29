@@ -21,7 +21,9 @@ private val DarkColorScheme = darkColorScheme(
     onBackground = Color.White,
     onSurface = Color.White,
     surfaceVariant = CardSurfaceLight,
-    onSurfaceVariant = TextSecondary
+    onSurfaceVariant = TextSecondary,
+    error = AlertRed,
+    onError = Color.White
 )
 
 @Composable

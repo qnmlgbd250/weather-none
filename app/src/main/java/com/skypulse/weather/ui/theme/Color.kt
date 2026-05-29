@@ -9,8 +9,35 @@ val WarmGold = Color(0xFFFFD54F)
 // ============ Surface Colors ============
 val CardSurface = Color(0x33FFFFFF)
 val CardSurfaceLight = Color(0x1AFFFFFF)
+val CardSurfaceNight = Color(0x1AFFFFFF)
+val CardSurfaceNightLight = Color(0x0DFFFFFF)
+
+// ============ Text Hierarchy ============
+// 100% white — headlines, temperature, key data
 val TextPrimary = Color(0xFFFFFFFF)
+// 85% white — weather description, labels
 val TextSecondary = Color(0xD9FFFFFF)
+// 60% white — tertiary labels, footnotes, timestamps
+val TextTertiary = Color(0x99FFFFFF)
+// 40% white — disabled / placeholder text
+val TextDisabled = Color(0x66FFFFFF)
+
+// ============ Alert Semantic Colors ============
+val AlertRed = Color(0xFFFF4444)
+val AlertOrange = Color(0xFFFF8C00)
+val AlertYellow = Color(0xFFFFD54F)   // same hue as WarmGold
+val AlertBlue = Color(0xFF4488FF)
+
+// ============ Precipitation Bar Colors ============
+val PrecipBarTop = Color(0xFFB0EAFF)
+val PrecipBarBottom = Color(0xFF92DDFE)
+val PrecipBarShadow = Color(0xFF92DDFE)
+
+// ============ Interactive State Colors ============
+val PressedOverlay = Color(0x14FFFFFF)   // ~8% white overlay on press
+val DisabledOverlay = Color(0x1A000000)  // ~10% black overlay on disabled
+val CardBorderDay = Color(0x66FFFFFF)    // 40% white — visible in bright sun
+val CardBorderNight = Color(0x22FFFFFF)  // 13% white — subtle at night
 
 // ============ iOS Weather-style Background Gradients ============
 // Each gradient uses 5 stops for smooth, natural sky transitions
