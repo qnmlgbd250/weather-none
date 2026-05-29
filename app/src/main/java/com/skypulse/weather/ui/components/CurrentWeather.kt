@@ -153,7 +153,7 @@ fun LocationHeader(
             }
         }
 
-        Box(modifier = Modifier.height(20.dp).padding(start = 3.dp)) {
+        Box(modifier = Modifier.height(12.dp).padding(start = 3.dp)) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = refreshPhase != RefreshPhase.Idle,
                 enter = fadeIn(),

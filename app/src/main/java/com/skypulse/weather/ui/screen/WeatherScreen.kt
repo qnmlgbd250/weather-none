@@ -232,7 +232,9 @@ private fun WeatherContent(
                 .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(if (alerts.isNotEmpty()) 8.dp else 20.dp))
+            if (alerts.isEmpty()) {
+                Spacer(modifier = Modifier.height(20.dp))
+            }
 
             if (alerts.isNotEmpty()) {
                 AlertBanner(alerts = alerts)
@@ -408,19 +410,19 @@ private fun AlertBanner(alerts: List<AlertItem>) {
 
     Surface(
         onClick = {},
-        modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+        modifier = Modifier.padding(start = 16.dp),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
         color = Color.White.copy(alpha = 0.08f)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
             Icon(
                 imageVector = Icons.Outlined.Notifications,
                 contentDescription = "预警",
                 tint = iconTint,
-                modifier = Modifier.size(14.dp).offset(y = (-0.5).dp)
+                modifier = Modifier.size(13.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
 
