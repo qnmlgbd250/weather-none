@@ -59,6 +59,10 @@
 Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipitation.kt 璺?WeatherScreen.kt 璺?CurrentWeather.kt 璺?HourlyForecast.kt 璺?DailyForecast.kt 璺?WeatherUtils.kt
 
 ---
+## [1.8.80] 鈥?2026-05-31
+
+- fix: 预警详情页背景改为与城市列表/关于页一致的深色渐变
+
 ## [1.8.79] 鈥?2026-05-31
 
 - fix: 多条预警轮播点击后详情页直接展示全部预警
