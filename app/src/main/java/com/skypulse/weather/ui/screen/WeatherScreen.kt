@@ -158,7 +158,7 @@ fun WeatherScreen(
                                     onRefresh = { viewModel.refresh() },
                                     onListClick = { viewModel.navigateToCityList() },
                                     onSettingsClick = { viewModel.navigateToSettings() },
-                                    onAlertClick = { idx -> viewModel.navigateToAlertDetail(idx) }
+                                    onAlertClick = { viewModel.navigateToAlertDetail(0) }
                                 )
                             }
 
