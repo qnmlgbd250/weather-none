@@ -522,6 +522,7 @@ private fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun AlertDetailScreen(
     alerts: List<com.skypulse.weather.model.AlertContent>,
     initialSelectedIndex: Int = 0,
@@ -542,19 +543,21 @@ private fun AlertDetailScreen(
             .fillMaxSize()
             .background(Brush.verticalGradient(colors = NightFallbackGradient))
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 8.dp)
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "预警详情", style = MaterialTheme.typography.titleLarge)
-        }
+        TopAppBar(
+            title = { Text("预警详情", color = TextPrimary) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "返回",
+                        tint = TextSecondary
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = androidx.compose.ui.graphics.Color.Transparent
+            )
+        )
 
         if (alerts.isEmpty()) {
             Box(

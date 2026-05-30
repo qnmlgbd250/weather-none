@@ -59,6 +59,10 @@
 Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipitation.kt 璺?WeatherScreen.kt 璺?CurrentWeather.kt 璺?HourlyForecast.kt 璺?DailyForecast.kt 璺?WeatherUtils.kt
 
 ---
+## [1.8.81] 鈥?2026-05-31
+
+- fix: 预警详情页标题与返回图标颜色改为与关于页一致
+
 ## [1.8.80] 鈥?2026-05-31
 
 - fix: 预警详情页背景改为与城市列表/关于页一致的深色渐变
