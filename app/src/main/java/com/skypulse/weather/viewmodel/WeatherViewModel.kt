@@ -54,7 +54,7 @@ enum class RefreshPhase {
 }
 
 enum class AppScreen {
-    CityList, CityDetail, Settings
+    CityList, CityDetail, Settings, AlertDetail
 }
 
 data class CityWeatherData(
@@ -101,6 +101,9 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
     // --- Selected city for detail view ---
     private val _selectedCityId = MutableStateFlow<String?>(null)
     val selectedCityId: StateFlow<String?> = _selectedCityId.asStateFlow()
+    // --- Alert detail selection ---
+    private val _selectedAlertIndex = MutableStateFlow(0)
+    val selectedAlertIndex: StateFlow<Int> = _selectedAlertIndex.asStateFlow()
 
     // --- City search ---
     private val _searchResults = MutableStateFlow<List<CitySearchResult>>(emptyList())
@@ -198,9 +201,14 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
         _currentScreen.value = AppScreen.Settings
     }
 
+    fun navigateToAlertDetail(alertIndex: Int = 0) {
+        _selectedAlertIndex.value = alertIndex
+        _currentScreen.value = AppScreen.AlertDetail
+    }
+
     fun navigateBack() {
         when (_currentScreen.value) {
-            AppScreen.Settings, AppScreen.CityList -> _currentScreen.value = AppScreen.CityDetail
+            AppScreen.Settings, AppScreen.CityList, AppScreen.AlertDetail -> _currentScreen.value = AppScreen.CityDetail
             else -> {}
         }
     }

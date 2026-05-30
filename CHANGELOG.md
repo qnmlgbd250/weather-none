@@ -59,6 +59,10 @@
 Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipitation.kt 璺?WeatherScreen.kt 璺?CurrentWeather.kt 璺?HourlyForecast.kt 璺?DailyForecast.kt 璺?WeatherUtils.kt
 
 ---
+## [1.8.78] 鈥?2026-05-31
+
+- feat: 预警按钮点击跳转预警详情页
+
 
 ## [1.8.75] - 2026-05-29
 

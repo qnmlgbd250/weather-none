@@ -10,11 +10,16 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -152,7 +157,8 @@ fun WeatherScreen(
                                     onLocationClick = { viewModel.relocateAndRefresh() },
                                     onRefresh = { viewModel.refresh() },
                                     onListClick = { viewModel.navigateToCityList() },
-                                    onSettingsClick = { viewModel.navigateToSettings() }
+                                    onSettingsClick = { viewModel.navigateToSettings() },
+                                    onAlertClick = { idx -> viewModel.navigateToAlertDetail(idx) }
                                 )
                             }
 
@@ -197,6 +203,20 @@ fun WeatherScreen(
                     onClearUpdateState = { viewModel.clearUpdateState() }
                 )
             }
+
+            AppScreen.AlertDetail -> {
+                val detailState by viewModel.uiState.collectAsState()
+                val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
+                val contents = when (val s = detailState) {
+                    is WeatherUiState.Success -> s.weather.result?.alert?.content.orEmpty()
+                    else -> emptyList()
+                }
+                AlertDetailScreen(
+                    alerts = contents,
+                    initialSelectedIndex = selectedAlertIndex,
+                    onBack = { viewModel.navigateBack() }
+                )
+            }
         }
     }
 }
@@ -209,7 +229,8 @@ private fun WeatherContent(
     onLocationClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onListClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    onAlertClick: (Int) -> Unit = {}
 ) {
     val result = state.weather.result
     val realtime = result?.realtime
@@ -245,7 +266,7 @@ private fun WeatherContent(
             }
 
             if (alerts.isNotEmpty()) {
-                AlertBanner(alerts = alerts)
+                AlertBanner(alerts = alerts, onClick = onAlertClick)
             }
 
             CurrentWeather(
@@ -403,7 +424,7 @@ private fun PermissionRequestContent(
 private data class AlertItem(val title: String, val level: String?)
 
 @Composable
-private fun AlertBanner(alerts: List<AlertItem>) {
+private fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
     val alertColor = { level: String? ->
         when {
             level?.contains("红") == true -> Color(0xFFFF4444)
@@ -434,8 +455,10 @@ private fun AlertBanner(alerts: List<AlertItem>) {
         }
     }
 
+    var currentAlertIndex by remember { mutableIntStateOf(0) }
+
     Surface(
-        onClick = {},
+        onClick = { onClick(if (alerts.size == 1) 0 else currentAlertIndex) },
         modifier = Modifier.padding(start = 20.dp),
         shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
         color = Color.White.copy(alpha = 0.08f)
@@ -457,20 +480,18 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                     text = alerts[0].title,
                     style = MaterialTheme.typography.bodyMedium,
                     color = alertColor(alerts[0].level),
-                    modifier = Modifier.offset(y = (-1).dp)
+                    modifier = Modifier.offset(y = (-1).dp).clickable { onClick(0) }
                 )
             } else {
-                var currentIndex by remember { mutableIntStateOf(0) }
-
                 LaunchedEffect(alerts) {
                     while (true) {
                         kotlinx.coroutines.delay(3500)
-                        currentIndex = if (currentIndex < alerts.size - 1) currentIndex + 1 else 0
+                        currentAlertIndex = if (currentAlertIndex < alerts.size - 1) currentAlertIndex + 1 else 0
                     }
                 }
 
                 androidx.compose.animation.AnimatedContent(
-                    targetState = currentIndex,
+                    targetState = currentAlertIndex,
                     transitionSpec = {
                         slideInVertically(
                             animationSpec = tween(400, easing = FastOutSlowInEasing)
@@ -492,6 +513,123 @@ private fun AlertBanner(alerts: List<AlertItem>) {
                         color = alertColor(alert.level),
                         modifier = Modifier.offset(y = 1.dp)
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AlertDetailScreen(
+    alerts: List<com.skypulse.weather.model.AlertContent>,
+    initialSelectedIndex: Int = 0,
+    onBack: () -> Unit = {}
+) {
+    val alertColor = { level: String? ->
+        when {
+            level?.contains("红") == true -> Color(0xFFFF4444)
+            level?.contains("橙") == true -> Color(0xFFFF8C00)
+            level?.contains("黄") == true -> WarmGold
+            level?.contains("蓝") == true -> Color(0xFF4488FF)
+            else -> WarmGold
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 8.dp)
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "预警详情", style = MaterialTheme.typography.titleLarge)
+        }
+
+        if (alerts.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "暂无预警信息", color = TextSecondary)
+            }
+        } else {
+            val safeInitialIndex = remember(alerts, initialSelectedIndex) {
+                initialSelectedIndex.coerceIn(alerts.indices)
+            }
+            LazyColumn(
+                state = rememberLazyListState(
+                    initialFirstVisibleItemIndex = safeInitialIndex
+                ),
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                itemsIndexed(alerts) { _, alert ->
+                    val title = alert.title
+                        ?.replace(Regex("\\[.*?\\]"), "")
+                        ?.replace(Regex("^.*发布"), "")
+                        ?.trim()
+                        ?.ifBlank { null }
+                    val levelColor = alertColor(alert.level)
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            if (!title.isNullOrBlank()) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = levelColor
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            val metaParts = listOfNotNull(
+                                alert.level?.let { "级别：$it" },
+                                alert.type?.let { "类型：$it" },
+                                alert.status?.let { "状态：$it" }
+                            )
+                            if (metaParts.isNotEmpty()) {
+                                Text(
+                                    text = metaParts.joinToString(separator = "  |  "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                            }
+
+                            val regionParts = listOfNotNull(
+                                alert.province?.takeIf { it.isNotBlank() },
+                                alert.city?.takeIf { it.isNotBlank() },
+                                alert.county?.takeIf { it.isNotBlank() }
+                            )
+                            if (regionParts.isNotEmpty()) {
+                                Text(
+                                    text = regionParts.joinToString(separator = " "),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                            }
+
+                            if (!alert.description.isNullOrBlank()) {
+                                Text(
+                                    text = alert.description,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
