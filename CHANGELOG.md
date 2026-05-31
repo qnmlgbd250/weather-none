@@ -1,9 +1,12 @@
-﻿# SkyPulse 閳?Changelog & Memory
+# SkyPulse 閳?Changelog & Memory
 
 > Auto-maintained by Codex. Each modification bumps the patch version.
 
----
 
+## [1.8.88] - 2026-05-31
+
+- **新增桌面小组件 2x2**: 左上角显示精简位置（3字），左侧中间实时温度，左侧底部天气现象和最高/最低温，右上角天气图标，配色随天气变化
+- **WorkManager自定义初始化**: 实现Configuration.Provider，移除默认InitializationProvider
 ## [1.8.75] - 2026-05-29
 
 - **城市列表卡片高度稳定**: 移除条件渲染，数据未加载时用占位符填充，卡片不再因数据加载而展开/收缩
@@ -58,7 +61,11 @@
 **Files changed** (9):
 Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipitation.kt 璺?WeatherScreen.kt 璺?CurrentWeather.kt 璺?HourlyForecast.kt 璺?DailyForecast.kt 璺?WeatherUtils.kt
 
----
+
+## [1.8.88] - 2026-05-31
+
+- **新增桌面小组件 2x2**: 左上角显示精简位置（3字），左侧中间实时温度，左侧底部天气现象和最高/最低温，右上角天气图标，配色随天气变化
+- **WorkManager自定义初始化**: 实现Configuration.Provider，移除默认InitializationProvider
 ## [1.8.87] 鈥?2026-05-31
 
 - fix: 捐赠鸣谢使用真实数据
@@ -160,8 +167,11 @@ Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipita
 
 - Project handed to Codex. Starting version: 1.8.64 (versionCode 144).
 
----
 
+## [1.8.88] - 2026-05-31
+
+- **新增桌面小组件 2x2**: 左上角显示精简位置（3字），左侧中间实时温度，左侧底部天气现象和最高/最低温，右上角天气图标，配色随天气变化
+- **WorkManager自定义初始化**: 实现Configuration.Provider，移除默认InitializationProvider
 ## [1.8.75] - 2026-05-29
 
 - **城市列表卡片高度稳定**: 移除条件渲染，数据未加载时用占位符填充，卡片不再因数据加载而展开/收缩
