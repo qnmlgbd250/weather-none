@@ -59,6 +59,10 @@
 Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipitation.kt 璺?WeatherScreen.kt 璺?CurrentWeather.kt 璺?HourlyForecast.kt 璺?DailyForecast.kt 璺?WeatherUtils.kt
 
 ---
+## [1.8.85] 鈥?2026-05-31
+
+- fix: 图标占比微调
+
 ## [1.8.84] 鈥?2026-05-31
 
 - fix: 图标前景尺寸调整
