@@ -76,7 +76,7 @@ $apkDir = Join-Path $PSScriptRoot "..\app\build\outputs\apk\release"
 $apkSrc = Join-Path $apkDir "app-release.apk"
 $apkDst = Join-Path $apkDir "SkyPulse-v$newVersion.apk"
 if (Test-Path $apkSrc) {
-    Rename-Item $apkSrc $apkDst -Force
+    Move-Item -Path $apkSrc -Destination $apkDst -Force
     Write-Host "APK renamed: SkyPulse-v$newVersion.apk"
 
     # --- Upload to cloud clipboard ---

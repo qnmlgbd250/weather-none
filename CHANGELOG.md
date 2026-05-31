@@ -224,3 +224,34 @@ Color.kt 璺?WeatherTheme.kt 璺?Theme.kt 璺?GlassCard.kt 璺?MinutelyPrecipita
 - JAVA_HOME: C:\Program Files\Android\Android Studio\jbr
 - Gradle: C:\Users\phil\.gradle\wrapper\dists\gradle-8.5-bin\5t9huq95ubn472n8rpzujfbqh\gradle-8.5
 - 不能用 gradlew（sandbox 会阻止 wrapper 的网络检查），必须直接调用 gradle.bat
+## [1.8.89] — 2026-05-31
+
+- Fixed widget crash caused by Color.hashCode() instead of toArgb() in gradient rendering
+
+## [1.8.90] — 2026-05-31
+
+- Fixed widget crash: setImageViewBitmap was called on RelativeLayout instead of ImageView
+
+## [1.8.91] — 2026-05-31
+
+- Fixed widget: removed self-drawn rounded corners (let system handle), fixed content clipping
+
+## [1.8.92] — 2026-05-31
+
+- Widget: smart location name, pin icon, temperature closer to city
+
+## [1.8.93] — 2026-05-31
+
+- Widget location icon matches main app Material LocationOn icon
+
+## [1.8.94] — 2026-05-31
+
+- Widget: increased font sizes for temperature and text
+
+## [1.8.95] — 2026-05-31
+
+- Widget: temp 38sp, min/max order fixed, pin icon lowered
+
+## [1.8.96] — 2026-05-31
+
+- Widget: fixed pin/city alignment using LinearLayout row
