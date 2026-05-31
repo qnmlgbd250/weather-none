@@ -22,7 +22,8 @@ fun DonateDialog(
     onDismiss: () -> Unit
 ) {
     val donors = listOf(
-        "小明" to "8.8"
+        "芳华" to "66",
+        "鸡祖" to "8.8"
     )
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -76,7 +77,7 @@ fun DonateDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        donors.forEach { (name, amount) ->
+                        donors.take(10).forEach { (name, amount) ->
                             SuggestionChip(
                                 onClick = {},
                                 label = { Text(text = "$name：￥$amount") }
