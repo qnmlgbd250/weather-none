@@ -13,3 +13,6 @@ local.properties
 .claude
 *.jks
 *.keystore
+
+scripts/tools/
+

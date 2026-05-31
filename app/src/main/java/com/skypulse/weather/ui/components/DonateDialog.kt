@@ -17,16 +17,20 @@ import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun DonateDialog(
     onDismiss: () -> Unit
 ) {
+    val donors = listOf(
+        "小明" to "8.8"
+    )
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1E1E2E),
         shape = RoundedCornerShape(22.dp),
         title = {
             Text(
-                text = "打赏作者",
+                text = "捐赠支持",
                 style = MaterialTheme.typography.headlineSmall,
                 color = TextPrimary
             )
@@ -57,6 +61,29 @@ fun DonateDialog(
                     style = MaterialTheme.typography.labelMedium,
                     color = TextSecondary
                 )
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "打赏鸣谢",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TextPrimary
+                    )
+
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        donors.forEach { (name, amount) ->
+                            SuggestionChip(
+                                onClick = {},
+                                label = { Text(text = "$name：￥$amount") }
+                            )
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
