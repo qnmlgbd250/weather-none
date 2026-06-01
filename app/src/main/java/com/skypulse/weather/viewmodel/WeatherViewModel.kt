@@ -21,6 +21,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -115,8 +116,10 @@ class WeatherViewModel @Inject constructor(
     private val _updateState = MutableStateFlow<UpdateCheckResult?>(null)
     val updateState: StateFlow<UpdateCheckResult?> = _updateState.asStateFlow()
 
+    private var citiesLoadJob: Job? = null
+
     init {
-        viewModelScope.launch {
+        citiesLoadJob = viewModelScope.launch {
             val cities = cityDataStore.getCities()
             _savedCities.value = cities
             // Load cached weather data so city list has data immediately
@@ -244,6 +247,7 @@ class WeatherViewModel @Inject constructor(
 
     fun ensureCurrentLocationCity() {
         viewModelScope.launch {
+            citiesLoadJob?.join()
             val cities = _savedCities.value.toMutableList()
             val hasCurrentLocation = cities.any { it.isCurrentLocation }
             if (!hasCurrentLocation) {
