@@ -38,7 +38,7 @@ object WeatherWidgetUpdater {
             val cityText = shortenLocation(city?.name ?: "--")
             val detailText = "${info.description}  $minTemp / $maxTemp"
             val iconBitmap = renderIcon(context, info.icon)
-            val bgBitmap = buildGradientBitmap(context, skycon)
+            val bgBitmap = buildGradientBitmap(skycon)
             ids.forEach { widgetId ->
                 val views = RemoteViews(context.packageName, R.layout.widget_small)
                 views.setTextViewText(R.id.widget_city, cityText)
@@ -99,7 +99,7 @@ object WeatherWidgetUpdater {
         }
     }
 
-    private fun buildGradientBitmap(context: Context, skycon: String?): Bitmap {
+    private fun buildGradientBitmap(skycon: String?): Bitmap {
         val width = 2
         val height = 2
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)

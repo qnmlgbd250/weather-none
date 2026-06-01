@@ -253,7 +253,7 @@ object WeatherUtils {
     fun formatHourShort(datetime: String?): String {
         if (datetime == null) return ""
         return try {
-            val date = hourFormat.get().parse(datetime) ?: return ""
+            val date = hourFormat.get()!!.parse(datetime) ?: return ""
             val cal = Calendar.getInstance()
             cal.time = date
             val hour = cal.get(Calendar.HOUR_OF_DAY)
@@ -266,7 +266,7 @@ object WeatherUtils {
     fun formatWeekday(dateStr: String?): String {
         if (dateStr == null) return ""
         return try {
-            val date = dateFormat.get().parse(dateStr) ?: return ""
+            val date = dateFormat.get()!!.parse(dateStr) ?: return ""
             val cal = Calendar.getInstance()
             val today = Calendar.getInstance()
             cal.time = date
@@ -291,7 +291,7 @@ object WeatherUtils {
     fun isTomorrow(dateStr: String?): Boolean {
         if (dateStr == null) return false
         return try {
-            val date = dateFormat.get().parse(dateStr) ?: return false
+            val date = dateFormat.get()!!.parse(dateStr) ?: return false
             val cal = Calendar.getInstance()
             val today = Calendar.getInstance()
             cal.time = date

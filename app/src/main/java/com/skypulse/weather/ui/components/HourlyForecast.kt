@@ -30,12 +30,12 @@ private val SIDE_PADDING = 12
 @Composable
 fun HourlyForecastCard(
     hourly: HourlyForecast?,
-    currentSkycon: String? = null,
+    @Suppress("UNUSED_PARAMETER") currentSkycon: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourly?.temperature.isNullOrEmpty()) return
     val data = hourly ?: return
-    val temps = data.temperature ?: return
+    data.temperature ?: return
 
     var visible by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
@@ -186,7 +186,7 @@ private fun HourlyTemperatureChart(
             for (i in 0 until itemCount) {
                 val leftX = if (i == 0) 0f else (points[i - 1].x + points[i].x) / 2f
                 val rightX = if (i == itemCount - 1) size.width else (points[i].x + points[i + 1].x) / 2f
-                val (topColor, bottomColor) = barColorPairs[i]
+                val (topColor, _) = barColorPairs[i]
 
                 val barSteps = ((rightX - leftX) / (2f * density)).toInt().coerceIn(10, 50)
                 val sampledYs = FloatArray(barSteps + 1)

@@ -268,7 +268,7 @@ private val shortDateFmt: java.lang.ThreadLocal<java.text.SimpleDateFormat> = ja
 private fun formatShortDate(dateStr: String?): String {
     if (dateStr == null) return ""
     return try {
-        val date = shortDateFmt.get().parse(dateStr) ?: return ""
+        val date = shortDateFmt.get()!!.parse(dateStr) ?: return ""
         val cal = java.util.Calendar.getInstance()
         cal.time = date
         "${cal.get(java.util.Calendar.MONTH) + 1}/${cal.get(java.util.Calendar.DAY_OF_MONTH)}"
