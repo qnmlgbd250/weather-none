@@ -165,6 +165,20 @@ class WeatherViewModel @Inject constructor(
     fun navigateToCityDetail(cityId: String) {
         _selectedCityId.value = cityId
         _currentScreen.value = AppScreen.CityDetail
+        // Load selected city's weather into uiState
+        val city = _savedCities.value.find { it.id == cityId }
+        if (city != null) {
+            val cached = _cityWeatherMap.value[cityId]
+            if (cached?.weather != null) {
+                _uiState.value = WeatherUiState.Success(
+                    weather = cached.weather,
+                    locationName = city.name
+                )
+            } else {
+                // Fetch if not cached
+                fetchWeatherForCity(city)
+            }
+        }
     }
 
     fun navigateToSettings() {
@@ -178,8 +192,24 @@ class WeatherViewModel @Inject constructor(
 
     fun navigateBack() {
         when (_currentScreen.value) {
-            AppScreen.Settings, AppScreen.CityList, AppScreen.AlertDetail ->
+            AppScreen.Settings, AppScreen.AlertDetail -> {
                 _currentScreen.value = AppScreen.CityDetail
+            }
+            AppScreen.CityList -> {
+                _currentScreen.value = AppScreen.CityDetail
+                // Restore selected city's weather when going back from city list
+                val cityId = _selectedCityId.value
+                if (cityId != null) {
+                    val city = _savedCities.value.find { it.id == cityId }
+                    val cached = _cityWeatherMap.value[cityId]
+                    if (city != null && cached?.weather != null) {
+                        _uiState.value = WeatherUiState.Success(
+                            weather = cached.weather,
+                            locationName = city.name
+                        )
+                    }
+                }
+            }
             else -> {}
         }
     }
