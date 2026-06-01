@@ -2,10 +2,8 @@ package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -61,36 +59,16 @@ fun HourlyForecastCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Box {
-                val scrollState = rememberScrollState()
-                HourlyTemperatureChart(
-                    hourlyData = data,
-                    scrollState = scrollState
-                )
-                if (scrollState.value > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = 8.dp)
-                            .background(Color.Black.copy(alpha = 0.4f), CircleShape)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "现在",
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = Color.White
-                        )
-                    }
-                }
-            }
+            HourlyTemperatureChart(
+                hourlyData = data
+            )
         }
     }
 }
 
 @Composable
 private fun HourlyTemperatureChart(
-    hourlyData: HourlyForecast,
-    scrollState: androidx.compose.foundation.ScrollState = rememberScrollState()
+    hourlyData: HourlyForecast
 ) {
     val temperatures = hourlyData.temperature?.take(24) ?: return
     val skycons = hourlyData.skycon?.take(24)
@@ -121,7 +99,7 @@ private fun HourlyTemperatureChart(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(scrollState)
+            .horizontalScroll(rememberScrollState())
     ) {
         Canvas(
             modifier = Modifier

@@ -4,6 +4,12 @@
 - fix: 逐小时预报滚动后显示“现在”浮动指示器
 - 补充background导入
 
+## [1.8.99] - 2026-06-01
+
+- revert: 回滚温度条对比度优化(8dp+端点圆点)
+- revert: 回滚逐小时预报滚动指示器
+- 保留动画延迟改动(Minutely=150, Hourly=300, Daily=450)
+
 # SkyPulse 闁?Changelog & Memory
 
 > Auto-maintained by Codex. Each modification bumps the patch version.

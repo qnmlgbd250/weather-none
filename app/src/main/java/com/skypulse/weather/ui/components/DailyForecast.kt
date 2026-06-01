@@ -168,7 +168,7 @@ private fun DailyColumn(
             globalMin = globalMin,
             globalMax = globalMax,
             modifier = Modifier
-                .width(8.dp)
+                .width(6.dp)
                 .height(56.dp)
         )
 
@@ -257,19 +257,6 @@ private fun VerticalTempBar(
             topLeft = Offset(0f, activeTop),
             size = Size(barW, activeHeight),
             cornerRadius = CornerRadius(corner)
-        )
-
-        // Endpoint dots for contrast
-        val dotRadius = barW / 2f + 1f
-        drawCircle(
-            color = topColor,
-            radius = dotRadius,
-            center = Offset(barW / 2f, activeTop)
-        )
-        drawCircle(
-            color = bottomColor,
-            radius = dotRadius,
-            center = Offset(barW / 2f, activeTop + activeHeight)
         )
     }
 }
