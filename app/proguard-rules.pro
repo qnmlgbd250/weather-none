@@ -57,3 +57,10 @@
 -keep class com.amap.api.** { *; }
 -keep class com.amap.api.services.** { *; }
 -dontwarn com.amap.api.**
+
+# === Hilt / Dagger ===
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager { *; }
+-dontwarn dagger.hilt.**
+-dontwarn javax.inject.**

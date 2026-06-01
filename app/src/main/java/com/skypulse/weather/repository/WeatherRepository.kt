@@ -1,11 +1,16 @@
 package com.skypulse.weather.repository
 
-import com.skypulse.weather.api.ApiClient
+import com.skypulse.weather.api.CaiyunApi
 import com.skypulse.weather.model.WeatherResponse
+import javax.inject.Inject
 
-class WeatherRepository {
+class WeatherRepository @Inject constructor(
+    private val api: CaiyunApi
+) {
 
-    private val api = ApiClient.caiyunApi
+    companion object {
+        const val CAIYUN_TOKEN = "Y2FpeXVuIGFuZHJpb2QgYXBp"
+    }
 
     suspend fun getWeather(
         longitude: Double,
@@ -13,7 +18,7 @@ class WeatherRepository {
     ): Result<WeatherResponse> {
         return try {
             val response = api.getWeather(
-                token = ApiClient.CAIYUN_TOKEN,
+                token = CAIYUN_TOKEN,
                 longitude = longitude,
                 latitude = latitude
             )

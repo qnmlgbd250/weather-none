@@ -4,6 +4,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.kapt")
+    id("com.google.dagger.hilt.android")
 }
 
 val localProperties = Properties().apply {
@@ -84,12 +85,14 @@ android {
 }
 
 dependencies {
+    // Core
     implementation(libs.core.ktx)
     implementation(libs.lifecycle.runtime.ktx)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.activity.compose)
 
+    // Compose
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.graphics)
@@ -99,20 +102,39 @@ dependencies {
     implementation(libs.compose.animation)
     implementation(libs.compose.material.icons.extended)
 
+    // Networking
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.moshi)
     implementation(libs.moshi.kotlin)
     kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.0")
     implementation(libs.okhttp.logging)
 
+    // Location
     implementation(libs.play.services.location)
     implementation(libs.amap.location)
     implementation(libs.amap.search)
     implementation(libs.accompanist.permissions)
+
+    // UI
     implementation(libs.lottie.compose)
     implementation(libs.browser)
 
+    // DI
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Testing
+    testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
 }
+

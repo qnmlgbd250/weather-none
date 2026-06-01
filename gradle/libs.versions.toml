@@ -14,6 +14,12 @@ amap-search = "9.4.5"
 accompanist = "0.34.0"
 lottie = "6.3.0"
 browser = "1.7.0"
+hilt = "2.50"
+hilt-navigation-compose = "1.1.0"
+junit = "4.13.2"
+coroutines-test = "1.7.3"
+mockk = "1.13.9"
+turbine = "1.0.0"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -34,6 +40,7 @@ compose-material-icons-extended = { group = "androidx.compose.material", name = 
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-converter-moshi = { group = "com.squareup.retrofit2", name = "converter-moshi", version.ref = "retrofit" }
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshi" }
+moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshi" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "play-services-location" }
@@ -44,6 +51,18 @@ accompanist-permissions = { group = "com.google.accompanist", name = "accompanis
 lottie-compose = { group = "com.airbnb.android", name = "lottie-compose", version.ref = "lottie" }
 browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
+
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines-test" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version = "1.9.22-1.0.17" }
+

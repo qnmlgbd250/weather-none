@@ -24,9 +24,9 @@ object WeatherWidgetUpdater {
             val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
             if (ids.isEmpty()) return
 
-            val cities = CityManager(context).getCities()
+            val cities = CityManager(context, com.squareup.moshi.Moshi.Builder().build()).getCities()
             val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
-            val weather = city?.let { WeatherCache(context).load(it.id) }
+            val weather = city?.let { WeatherCache(context, com.squareup.moshi.Moshi.Builder().build()).load(it.id) }
 
             val realtime = weather?.result?.realtime
             val daily = weather?.result?.daily

@@ -1,10 +1,15 @@
 package com.skypulse.weather.data
 
 import android.content.Context
-import com.skypulse.weather.api.ApiClient
 import com.skypulse.weather.model.WeatherResponse
+import com.squareup.moshi.Moshi
+import javax.inject.Inject
+import dagger.hilt.android.qualifiers.ApplicationContext
 
-class WeatherCache(context: Context) {
+class WeatherCache @Inject constructor(
+    @ApplicationContext context: Context,
+    moshi: Moshi
+) {
 
     companion object {
         private const val PREFS_NAME = "sky_pulse_weather_cache"
@@ -12,7 +17,7 @@ class WeatherCache(context: Context) {
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    private val adapter = ApiClient.moshi.adapter(WeatherResponse::class.java)
+    private val adapter = moshi.adapter(WeatherResponse::class.java)
 
     fun save(cityId: String, weather: WeatherResponse) {
         prefs.edit()
@@ -39,3 +44,4 @@ class WeatherCache(context: Context) {
             .apply()
     }
 }
+

@@ -1,11 +1,7 @@
 package com.skypulse.weather
 
 import android.app.Application
-import androidx.work.Configuration
+import dagger.hilt.android.HiltAndroidApp
 
-class SkyPulseApp : Application(), Configuration.Provider {
-    override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build()
-}
+@HiltAndroidApp
+class SkyPulseApp : Application()

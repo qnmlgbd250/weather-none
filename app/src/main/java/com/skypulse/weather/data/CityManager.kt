@@ -2,10 +2,15 @@ package com.skypulse.weather.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.skypulse.weather.api.ApiClient
 import com.skypulse.weather.model.City
+import com.squareup.moshi.Moshi
+import javax.inject.Inject
+import dagger.hilt.android.qualifiers.ApplicationContext
 
-class CityManager(context: Context) {
+class CityManager @Inject constructor(
+    @ApplicationContext context: Context,
+    moshi: Moshi
+) {
 
     companion object {
         private const val PREFS_NAME = "sky_pulse_cities"
@@ -15,7 +20,7 @@ class CityManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    private val cityAdapter = ApiClient.moshi.adapter(City::class.java)
+    private val cityAdapter = moshi.adapter(City::class.java)
 
     fun getCities(): List<City> {
         val json = prefs.getString(KEY_CITIES, null) ?: return emptyList()
@@ -69,3 +74,4 @@ class CityManager(context: Context) {
         return cities
     }
 }
+

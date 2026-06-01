@@ -34,7 +34,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -47,12 +47,14 @@ import com.skypulse.weather.viewmodel.AppScreen
 import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
 import com.skypulse.weather.viewmodel.UpdateCheckResult
+import com.skypulse.weather.viewmodel.CitySearchViewModel
 import com.skypulse.weather.viewmodel.WeatherViewModel
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WeatherScreen(
-    viewModel: WeatherViewModel = viewModel()
+    viewModel: WeatherViewModel = hiltViewModel(),
+    searchViewModel: CitySearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val refreshPhase by viewModel.refreshPhase.collectAsState()
@@ -60,8 +62,8 @@ fun WeatherScreen(
     val currentScreen by viewModel.currentScreen.collectAsState()
     val savedCities by viewModel.savedCities.collectAsState()
     val cityWeatherMap by viewModel.cityWeatherMap.collectAsState()
-    val searchResults by viewModel.searchResults.collectAsState()
-    val isSearching by viewModel.isSearching.collectAsState()
+    val searchResults by searchViewModel.searchResults.collectAsState()
+    val isSearching by searchViewModel.isSearching.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
 
     val locationPermissions = rememberMultiplePermissionsState(
@@ -132,10 +134,10 @@ fun WeatherScreen(
                     searchResults = searchResults,
                     isSearching = isSearching,
                     onCityClick = { cityId -> viewModel.navigateToCityDetail(cityId) },
-                    onAddCity = { result -> viewModel.addCity(result) },
+                    onAddCity = { result -> viewModel.addCity(result.name, result.longitude, result.latitude) },
                     onRemoveCity = { cityId -> viewModel.removeCity(cityId) },
-                    onSearch = { query -> viewModel.searchCities(query) },
-                    onClearSearch = { viewModel.clearSearchResults() }
+                    onSearch = { query -> searchViewModel.searchCities(query) },
+                    onClearSearch = { searchViewModel.clearSearchResults() }
                 )
             }
 
@@ -645,3 +647,6 @@ private fun AlertDetailScreen(
         }
     }
 }
+
+
+
