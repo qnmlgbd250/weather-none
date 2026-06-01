@@ -41,7 +41,7 @@ fun DailyForecastCard(
     var visible by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(600, delayMillis = 400),
+        animationSpec = tween(600, delayMillis = 450),
         label = "card_fade"
     )
 
@@ -168,7 +168,7 @@ private fun DailyColumn(
             globalMin = globalMin,
             globalMax = globalMax,
             modifier = Modifier
-                .width(6.dp)
+                .width(8.dp)
                 .height(56.dp)
         )
 
@@ -257,6 +257,19 @@ private fun VerticalTempBar(
             topLeft = Offset(0f, activeTop),
             size = Size(barW, activeHeight),
             cornerRadius = CornerRadius(corner)
+        )
+
+        // Endpoint dots for contrast
+        val dotRadius = barW / 2f + 1f
+        drawCircle(
+            color = topColor,
+            radius = dotRadius,
+            center = Offset(barW / 2f, activeTop)
+        )
+        drawCircle(
+            color = bottomColor,
+            radius = dotRadius,
+            center = Offset(barW / 2f, activeTop + activeHeight)
         )
     }
 }

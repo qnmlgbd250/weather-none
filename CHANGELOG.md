@@ -1,4 +1,10 @@
-﻿# SkyPulse 闁?Changelog & Memory
+## [1.8.98] - 2026-06-01
+
+- fix: 温度条对比度优化：宽度6dp->8dp，添加端点圆点
+- fix: 逐小时预报滚动后显示“现在”浮动指示器
+- 补充background导入
+
+# SkyPulse 闁?Changelog & Memory
 
 > Auto-maintained by Codex. Each modification bumps the patch version.
 

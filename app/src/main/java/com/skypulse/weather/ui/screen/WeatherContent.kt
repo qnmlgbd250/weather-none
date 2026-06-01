@@ -6,6 +6,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.TextSecondary
@@ -36,6 +38,7 @@ internal fun WeatherContent(
         if (!title.isNullOrBlank()) AlertItem(title, content.level) else null
     }.orEmpty()
 
+    val haptic = LocalHapticFeedback.current
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -59,7 +62,10 @@ internal fun WeatherContent(
             }
 
             if (alerts.isNotEmpty()) {
-                AlertBanner(alerts = alerts, onClick = onAlertClick)
+                AlertBanner(alerts = alerts, onClick = { idx ->
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onAlertClick(idx)
+                })
             }
 
             CurrentWeather(

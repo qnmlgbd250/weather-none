@@ -19,6 +19,9 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.ErrorOutline
 import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.viewmodel.AppScreen
 import com.skypulse.weather.viewmodel.WeatherUiState
@@ -40,6 +43,7 @@ fun WeatherScreen(
     val searchResults by searchViewModel.searchResults.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
+    val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
 
     val locationPermissions = rememberMultiplePermissionsState(
         permissions = listOf(
@@ -172,9 +176,7 @@ fun WeatherScreen(
             }
 
             AppScreen.AlertDetail -> {
-                val detailState by viewModel.uiState.collectAsState()
-                val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
-                val contents = when (val s = detailState) {
+                val contents = when (val s = uiState) {
                     is WeatherUiState.Success -> s.weather.result?.alert?.content.orEmpty()
                     else -> emptyList()
                 }
@@ -199,6 +201,13 @@ private fun ErrorContent(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            contentDescription = null,
+            tint = TextSecondary.copy(alpha = 0.6f),
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "加载失败",
             style = MaterialTheme.typography.headlineMedium,
@@ -238,6 +247,13 @@ private fun PermissionRequestContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "需要定位权限",
                     style = MaterialTheme.typography.headlineMedium,

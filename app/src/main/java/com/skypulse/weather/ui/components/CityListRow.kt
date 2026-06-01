@@ -41,6 +41,8 @@ import com.skypulse.weather.ui.theme.NightFallbackGradient
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.util.WeatherUtils
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlin.math.roundToInt
 
 @Composable
@@ -54,6 +56,7 @@ fun SwipeableCityListRow(
 ) {
     val deleteButtonWidth = 80.dp
     val deleteButtonWidthPx = with(LocalDensity.current) { deleteButtonWidth.toPx() }
+    val haptic = LocalHapticFeedback.current
     var offsetX by remember { mutableFloatStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(
         targetValue = offsetX,

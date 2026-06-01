@@ -2,8 +2,10 @@ package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,7 +42,7 @@ fun HourlyForecastCard(
     var visible by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(600, delayMillis = 200),
+        animationSpec = tween(600, delayMillis = 300),
         label = "card_fade"
     )
 
@@ -59,16 +61,36 @@ fun HourlyForecastCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            HourlyTemperatureChart(
-                hourlyData = data
-            )
+            Box {
+                val scrollState = rememberScrollState()
+                HourlyTemperatureChart(
+                    hourlyData = data,
+                    scrollState = scrollState
+                )
+                if (scrollState.value > 0) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 8.dp)
+                            .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "现在",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = Color.White
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun HourlyTemperatureChart(
-    hourlyData: HourlyForecast
+    hourlyData: HourlyForecast,
+    scrollState: androidx.compose.foundation.ScrollState = rememberScrollState()
 ) {
     val temperatures = hourlyData.temperature?.take(24) ?: return
     val skycons = hourlyData.skycon?.take(24)
@@ -99,7 +121,7 @@ private fun HourlyTemperatureChart(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .horizontalScroll(scrollState)
     ) {
         Canvas(
             modifier = Modifier

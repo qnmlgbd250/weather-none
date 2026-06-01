@@ -48,7 +48,7 @@ fun MinutelyPrecipitationCard(
     var visible by remember { mutableStateOf(false) }
     val alpha by animateFloatAsState(
         targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(600, delayMillis = 200),
+        animationSpec = tween(600, delayMillis = 150),
         label = "minutely_fade"
     )
     LaunchedEffect(Unit) { visible = true }
