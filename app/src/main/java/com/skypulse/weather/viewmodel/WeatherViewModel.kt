@@ -8,9 +8,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skypulse.weather.BuildConfig
-import com.skypulse.weather.data.CityManager
+import com.skypulse.weather.data.CityDataStore
 import com.skypulse.weather.data.LocationManager
-import com.skypulse.weather.data.WeatherCache
+import com.skypulse.weather.data.WeatherDataStore
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.WeatherRepository
@@ -66,8 +66,8 @@ sealed class UpdateCheckResult {
 class WeatherViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val repository: WeatherRepository,
-    private val cityManager: CityManager,
-    private val weatherCache: WeatherCache,
+    private val cityDataStore: CityDataStore,
+    private val weatherDataStore: WeatherDataStore,
     private val locationManager: LocationManager
 ) : ViewModel() {
 
@@ -116,27 +116,30 @@ class WeatherViewModel @Inject constructor(
     val updateState: StateFlow<UpdateCheckResult?> = _updateState.asStateFlow()
 
     init {
-        _savedCities.value = cityManager.getCities()
-        // Load cached weather data so city list has data immediately
-        val cachedMap = mutableMapOf<String, CityWeatherData>()
-        for (city in _savedCities.value) {
-            val cached = weatherCache.load(city.id)
-            if (cached != null) {
-                cachedMap[city.id] = CityWeatherData(weather = cached)
+        viewModelScope.launch {
+            val cities = cityDataStore.getCities()
+            _savedCities.value = cities
+            // Load cached weather data so city list has data immediately
+            val cachedMap = mutableMapOf<String, CityWeatherData>()
+            for (city in cities) {
+                val cached = weatherDataStore.load(city.id)
+                if (cached != null) {
+                    cachedMap[city.id] = CityWeatherData(weather = cached)
+                }
             }
-        }
-        if (cachedMap.isNotEmpty()) {
-            _cityWeatherMap.value = cachedMap
-        }
-        // Initialize detail screen with cached data for current location
-        val currentCity = _savedCities.value.find { it.isCurrentLocation }
-        if (currentCity != null) {
-            val cachedWeather = weatherCache.load(currentCity.id)
-            if (cachedWeather != null) {
-                _uiState.value = WeatherUiState.Success(
-                    weather = cachedWeather,
-                    locationName = currentCity.name
-                )
+            if (cachedMap.isNotEmpty()) {
+                _cityWeatherMap.value = cachedMap
+            }
+            // Initialize detail screen with cached data for current location
+            val currentCity = cities.find { it.isCurrentLocation }
+            if (currentCity != null) {
+                val cachedWeather = weatherDataStore.load(currentCity.id)
+                if (cachedWeather != null) {
+                    _uiState.value = WeatherUiState.Success(
+                        weather = cachedWeather,
+                        locationName = currentCity.name
+                    )
+                }
             }
         }
     }
@@ -184,61 +187,71 @@ class WeatherViewModel @Inject constructor(
     // ============ City Management ============
 
     fun addCity(name: String, longitude: Double, latitude: Double) {
-        val city = City(
-            id = UUID.randomUUID().toString(),
-            name = name,
-            longitude = longitude,
-            latitude = latitude,
-            isCurrentLocation = false
-        )
-        cityManager.addCity(city)
-        _savedCities.value = cityManager.getCities()
-        viewModelScope.launch { loadWeatherForCity(city) }
+        viewModelScope.launch {
+            val city = City(
+                id = UUID.randomUUID().toString(),
+                name = name,
+                longitude = longitude,
+                latitude = latitude,
+                isCurrentLocation = false
+            )
+            cityDataStore.addCity(city)
+            _savedCities.value = cityDataStore.getCities()
+            loadWeatherForCity(city)
+        }
     }
 
     fun removeCity(cityId: String) {
-        cityManager.removeCity(cityId)
-        _savedCities.value = cityManager.getCities()
-        val currentMap = _cityWeatherMap.value.toMutableMap()
-        currentMap.remove(cityId)
-        _cityWeatherMap.value = currentMap
-        weatherCache.remove(cityId)
+        viewModelScope.launch {
+            cityDataStore.removeCity(cityId)
+            _savedCities.value = cityDataStore.getCities()
+            val currentMap = _cityWeatherMap.value.toMutableMap()
+            currentMap.remove(cityId)
+            _cityWeatherMap.value = currentMap
+            weatherDataStore.remove(cityId)
+        }
     }
 
     fun ensureCurrentLocationCity() {
-        val cities = _savedCities.value.toMutableList()
-        val hasCurrentLocation = cities.any { it.isCurrentLocation }
-        if (!hasCurrentLocation) {
-            val currentLocationCity = City(
-                id = "current_location",
-                name = "北京市",
-                longitude = LocationManager.DEFAULT_LONGITUDE,
-                latitude = LocationManager.DEFAULT_LATITUDE,
-                isCurrentLocation = true
-            )
-            cities.add(0, currentLocationCity)
-            cityManager.saveCities(cities)
-            _savedCities.value = cities
+        viewModelScope.launch {
+            val cities = _savedCities.value.toMutableList()
+            val hasCurrentLocation = cities.any { it.isCurrentLocation }
+            if (!hasCurrentLocation) {
+                val currentLocationCity = City(
+                    id = "current_location",
+                    name = "北京市",
+                    longitude = LocationManager.DEFAULT_LONGITUDE,
+                    latitude = LocationManager.DEFAULT_LATITUDE,
+                    isCurrentLocation = true
+                )
+                cities.add(0, currentLocationCity)
+                cityDataStore.saveCities(cities)
+                _savedCities.value = cities
+            }
         }
     }
 
     fun updateCurrentLocationCityName(name: String) {
-        val cities = _savedCities.value.toMutableList()
-        val index = cities.indexOfFirst { it.isCurrentLocation }
-        if (index >= 0) {
-            cities[index] = cities[index].copy(name = name)
-            cityManager.saveCities(cities)
-            _savedCities.value = cities
+        viewModelScope.launch {
+            val cities = _savedCities.value.toMutableList()
+            val index = cities.indexOfFirst { it.isCurrentLocation }
+            if (index >= 0) {
+                cities[index] = cities[index].copy(name = name)
+                cityDataStore.saveCities(cities)
+                _savedCities.value = cities
+            }
         }
     }
 
     fun updateCurrentLocationCityCoords(lon: Double, lat: Double) {
-        val cities = _savedCities.value.toMutableList()
-        val index = cities.indexOfFirst { it.isCurrentLocation }
-        if (index >= 0) {
-            cities[index] = cities[index].copy(longitude = lon, latitude = lat)
-            cityManager.saveCities(cities)
-            _savedCities.value = cities
+        viewModelScope.launch {
+            val cities = _savedCities.value.toMutableList()
+            val index = cities.indexOfFirst { it.isCurrentLocation }
+            if (index >= 0) {
+                cities[index] = cities[index].copy(longitude = lon, latitude = lat)
+                cityDataStore.saveCities(cities)
+                _savedCities.value = cities
+            }
         }
     }
 
@@ -250,7 +263,7 @@ class WeatherViewModel @Inject constructor(
         result.fold(
             onSuccess = { response ->
                 updatedMap[city.id] = CityWeatherData(weather = response)
-                weatherCache.save(city.id, response)
+                weatherDataStore.save(city.id, response)
             },
             onFailure = { e ->
                 updatedMap[city.id] = CityWeatherData(error = mapError(e))
@@ -270,7 +283,7 @@ class WeatherViewModel @Inject constructor(
                         weather = response,
                         locationName = city.name
                     )
-                    weatherCache.save(city.id, response)
+                    weatherDataStore.save(city.id, response)
                 },
                 onFailure = { e ->
                     _uiState.value = WeatherUiState.Error(mapError(e))
@@ -404,7 +417,7 @@ class WeatherViewModel @Inject constructor(
                 )
                 val currentCity = _savedCities.value.find { it.isCurrentLocation }
                 if (currentCity != null) {
-                    weatherCache.save(currentCity.id, response)
+                    weatherDataStore.save(currentCity.id, response)
                 }
             },
             onFailure = { e ->

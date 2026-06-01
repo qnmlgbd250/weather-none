@@ -16,3 +16,6 @@ local.properties
 
 scripts/tools/
 
+# Build artifacts
+*.apk
+

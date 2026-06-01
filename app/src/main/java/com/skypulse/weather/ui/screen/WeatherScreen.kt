@@ -2,35 +2,12 @@ package com.skypulse.weather.ui.screen
 
 import android.Manifest
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -44,9 +21,7 @@ import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.viewmodel.AppScreen
-import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
-import com.skypulse.weather.viewmodel.UpdateCheckResult
 import com.skypulse.weather.viewmodel.CitySearchViewModel
 import com.skypulse.weather.viewmodel.WeatherViewModel
 
@@ -75,17 +50,13 @@ fun WeatherScreen(
     val hasLocationPermission = locationPermissions.permissions.any { it.status.isGranted }
     var useDefaultLocation by rememberSaveable { mutableStateOf(false) }
 
-    // Track when app went to background for auto-refresh
+    // Auto-refresh on resume
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
     val lifecycleOwner = LocalLifecycleOwner.current
-
-    // Silent refresh every time app returns from background
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> {
-                    backgroundTimestamp = System.currentTimeMillis()
-                }
+                Lifecycle.Event.ON_PAUSE -> backgroundTimestamp = System.currentTimeMillis()
                 Lifecycle.Event.ON_RESUME -> {
                     if (backgroundTimestamp > 0L) {
                         viewModel.silentRefresh()
@@ -96,9 +67,7 @@ fun WeatherScreen(
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     LaunchedEffect(hasLocationPermission) {
@@ -115,7 +84,6 @@ fun WeatherScreen(
         is WeatherUiState.Success -> state.weather.result?.realtime?.skycon
         else -> null
     }
-
     val isDay = WeatherUtils.isCurrentlyDay()
     val weatherTheme = remember(skycon, isDay) {
         WeatherUtils.getWeatherTheme(skycon, isDay)
@@ -147,12 +115,9 @@ fun WeatherScreen(
                         when (val state = uiState) {
                             is WeatherUiState.Loading -> {
                                 LoadingShimmer(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .statusBarsPadding()
+                                    modifier = Modifier.fillMaxSize().statusBarsPadding()
                                 )
                             }
-
                             is WeatherUiState.Success -> {
                                 WeatherContent(
                                     state = state,
@@ -165,7 +130,6 @@ fun WeatherScreen(
                                     onAlertClick = { viewModel.navigateToAlertDetail(0) }
                                 )
                             }
-
                             is WeatherUiState.Error -> {
                                 ErrorContent(
                                     message = state.message,
@@ -184,7 +148,6 @@ fun WeatherScreen(
                             }
                         }
 
-                        // Permission request overlay
                         if (!hasLocationPermission && !useDefaultLocation) {
                             PermissionRequestContent(
                                 shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
@@ -226,109 +189,6 @@ fun WeatherScreen(
 }
 
 @Composable
-private fun WeatherContent(
-    state: WeatherUiState.Success,
-    isLocating: Boolean = false,
-    refreshPhase: RefreshPhase = RefreshPhase.Idle,
-    onLocationClick: () -> Unit = {},
-    onRefresh: () -> Unit = {},
-    onListClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {},
-    onAlertClick: (Int) -> Unit = {}
-) {
-    val result = state.weather.result
-    val realtime = result?.realtime
-    val todayTemp = result?.daily?.temperature?.firstOrNull()
-    val alerts = result?.alert?.content?.mapNotNull { content ->
-        val title = content.title
-            ?.replace(Regex("\\[.*?\\]"), "")
-            ?.replace(Regex("^.*发布"), "")
-            ?.trim()
-        if (!title.isNullOrBlank()) AlertItem(title, content.level) else null
-    }.orEmpty()
-
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-        Spacer(modifier = Modifier.height(12.dp))
-
-        LocationHeader(
-            locationName = state.locationName,
-            isLocating = isLocating,
-            refreshPhase = refreshPhase,
-            onLocationClick = onLocationClick,
-            onListClick = onListClick,
-            onSettingsClick = onSettingsClick
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding()
-                .verticalScroll(rememberScrollState())
-        ) {
-            if (alerts.isEmpty()) {
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-
-            if (alerts.isNotEmpty()) {
-                AlertBanner(alerts = alerts, onClick = onAlertClick)
-            }
-
-            CurrentWeather(
-                realtime = realtime,
-                todayHigh = todayTemp?.max,
-                todayLow = todayTemp?.min,
-                onRefresh = onRefresh
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            result?.forecastKeypoint?.let { keypoint ->
-                GlassCard(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    Text(
-                        text = keypoint,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            val minutelyData = result?.minutely?.precipitation_2h
-            val showMinutely = !minutelyData.isNullOrEmpty() && minutelyData.any { it != 0.0 }
-
-            if (showMinutely) {
-                MinutelyPrecipitationCard(
-                    minutely = result?.minutely,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            HourlyForecastCard(
-                hourly = result?.hourly,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            DailyForecastCard(
-                daily = result?.daily,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
-
-@Composable
 private fun ErrorContent(
     message: String,
     onRetry: () -> Unit,
@@ -344,28 +204,18 @@ private fun ErrorContent(
             style = MaterialTheme.typography.headlineMedium,
             color = TextPrimary
         )
-
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary
         )
-
         Spacer(modifier = Modifier.height(24.dp))
-
         Button(
             onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            )
-        ) {
-            Text("重试")
-        }
-
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) { Text("重试") }
         Spacer(modifier = Modifier.height(8.dp))
-
         TextButton(onClick = onUseDefault) {
             Text("使用默认位置", color = TextSecondary)
         }
@@ -393,7 +243,6 @@ private fun PermissionRequestContent(
                     style = MaterialTheme.typography.headlineMedium,
                     color = TextPrimary
                 )
-
                 Text(
                     text = if (shouldShowRationale) {
                         "为了获取您当前位置的天气信息，需要授予定位权限。"
@@ -403,250 +252,16 @@ private fun PermissionRequestContent(
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary
                 )
-
                 Button(
                     onClick = onRequestPermission,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("授权定位")
-                }
-
+                ) { Text("授权定位") }
                 TextButton(
                     onClick = onUseDefault,
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("使用默认位置", color = TextSecondary)
-                }
+                ) { Text("使用默认位置", color = TextSecondary) }
             }
         }
     }
 }
-
-private data class AlertItem(val title: String, val level: String?)
-
-@Composable
-private fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
-    val alertColor = { level: String? ->
-        when {
-            level?.contains("红") == true -> Color(0xFFFF4444)
-            level?.contains("橙") == true -> Color(0xFFFF8C00)
-            level?.contains("黄") == true -> WarmGold
-            level?.contains("蓝") == true -> Color(0xFF4488FF)
-            else -> WarmGold
-        }
-    }
-
-    val iconTint = if (alerts.size == 1) alertColor(alerts[0].level) else alertColor(alerts.first().level)
-    val itemHeightDp = 20.dp
-
-    val rawPainter = androidx.compose.ui.graphics.vector.rememberVectorPainter(Icons.Outlined.Notifications)
-    val iconSizeDp = 14.dp
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val iconSizePx = with(density) { iconSizeDp.toPx() }
-    val croppedPainter = remember(rawPainter, iconSizePx) {
-        object : androidx.compose.ui.graphics.painter.Painter() {
-            override val intrinsicSize = androidx.compose.ui.geometry.Size(iconSizePx, iconSizePx)
-            override fun DrawScope.onDraw() {
-                val scale = iconSizePx / 20f
-                val offsetPx = -2f * scale
-                translate(left = offsetPx, top = offsetPx) {
-                    with(rawPainter) { draw(androidx.compose.ui.geometry.Size(24f * scale, 24f * scale)) }
-                }
-            }
-        }
-    }
-
-    var currentAlertIndex by remember { mutableIntStateOf(0) }
-
-    Surface(
-        onClick = { onClick(if (alerts.size == 1) 0 else currentAlertIndex) },
-        modifier = Modifier.padding(start = 20.dp),
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
-        color = Color.White.copy(alpha = 0.08f)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 5.dp, bottom = 3.dp)
-        ) {
-            Image(
-                painter = croppedPainter,
-                contentDescription = "预警",
-                modifier = Modifier.size(iconSizeDp).offset(y = (-1).dp),
-                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(iconTint)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-
-            if (alerts.size == 1) {
-                Text(
-                    text = alerts[0].title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = alertColor(alerts[0].level),
-                    modifier = Modifier.offset(y = (-1).dp).clickable { onClick(0) }
-                )
-            } else {
-                LaunchedEffect(alerts) {
-                    while (true) {
-                        kotlinx.coroutines.delay(3500)
-                        currentAlertIndex = if (currentAlertIndex < alerts.size - 1) currentAlertIndex + 1 else 0
-                    }
-                }
-
-                androidx.compose.animation.AnimatedContent(
-                    targetState = currentAlertIndex,
-                    transitionSpec = {
-                        slideInVertically(
-                            animationSpec = tween(400, easing = FastOutSlowInEasing)
-                        ) { height -> height } + fadeIn(
-                            animationSpec = tween(300)
-                        ) togetherWith slideOutVertically(
-                            animationSpec = tween(400, easing = FastOutSlowInEasing)
-                        ) { height -> -height } + fadeOut(
-                            animationSpec = tween(250)
-                        )
-                    },
-                    contentKey = { it },
-                    modifier = Modifier.height(itemHeightDp).clipToBounds()
-                ) { index ->
-                    val alert = alerts[index]
-                    Text(
-                        text = alert.title,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = alertColor(alert.level),
-                        modifier = Modifier.offset(y = 1.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun AlertDetailScreen(
-    alerts: List<com.skypulse.weather.model.AlertContent>,
-    initialSelectedIndex: Int = 0,
-    onBack: () -> Unit = {}
-) {
-    val alertColor = { level: String? ->
-        when {
-            level?.contains("红") == true -> Color(0xFFFF4444)
-            level?.contains("橙") == true -> Color(0xFFFF8C00)
-            level?.contains("黄") == true -> WarmGold
-            level?.contains("蓝") == true -> Color(0xFF4488FF)
-            else -> WarmGold
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(colors = NightFallbackGradient))
-    ) {
-        TopAppBar(
-            title = { Text("预警详情", color = TextPrimary) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
-                        tint = TextSecondary
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = androidx.compose.ui.graphics.Color.Transparent
-            )
-        )
-
-        if (alerts.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "暂无预警信息", color = TextSecondary)
-            }
-        } else {
-            val safeInitialIndex = remember(alerts, initialSelectedIndex) {
-                initialSelectedIndex.coerceIn(alerts.indices)
-            }
-            LazyColumn(
-                state = rememberLazyListState(
-                    initialFirstVisibleItemIndex = safeInitialIndex
-                ),
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
-                itemsIndexed(alerts) { _, alert ->
-                    val title = alert.title
-                        ?.replace(Regex("\\[.*?\\]"), "")
-                        ?.replace(Regex("^.*发布"), "")
-                        ?.trim()
-                        ?.ifBlank { null }
-                    val levelColor = alertColor(alert.level)
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f))
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            if (!title.isNullOrBlank()) {
-                                Text(
-                                    text = title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = levelColor
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            val metaParts = listOfNotNull(
-                                alert.level?.let { "级别：$it" },
-                                alert.type?.let { "类型：$it" },
-                                alert.status?.let { "状态：$it" }
-                            )
-                            if (metaParts.isNotEmpty()) {
-                                Text(
-                                    text = metaParts.joinToString(separator = "  |  "),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                            }
-
-                            val regionParts = listOfNotNull(
-                                alert.province?.takeIf { it.isNotBlank() },
-                                alert.city?.takeIf { it.isNotBlank() },
-                                alert.county?.takeIf { it.isNotBlank() }
-                            )
-                            if (regionParts.isNotEmpty()) {
-                                Text(
-                                    text = regionParts.joinToString(separator = " "),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                            }
-
-                            if (!alert.description.isNullOrBlank()) {
-                                Text(
-                                    text = alert.description,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-
