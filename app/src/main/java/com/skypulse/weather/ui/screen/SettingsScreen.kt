@@ -172,19 +172,9 @@ fun SettingsScreen(
                     }
                 )
 
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    color = TextSecondary.copy(alpha = 0.1f)
-                )
-
                 SimpleItem(
                     title = "\u6350\u8d60\u652f\u6301",
                     onClick = { showDonateDialog = true }
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 20.dp),
-                    color = TextSecondary.copy(alpha = 0.1f)
                 )
 
                 Row(
@@ -288,14 +278,14 @@ private fun ToggleItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary,
-            modifier = Modifier.weight(1f)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f)
         )
         Switch(
             checked = checked,
