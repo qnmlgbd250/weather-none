@@ -279,13 +279,13 @@ private fun ToggleItem(
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TextPrimary,
-                        modifier = Modifier.weight(1f)
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextPrimary,
+            modifier = Modifier.weight(1f)
         )
         Switch(
             checked = checked,
