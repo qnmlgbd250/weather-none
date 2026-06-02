@@ -1,4 +1,4 @@
-ï»¿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast
@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.ui.components.DonateDialog
@@ -58,7 +59,6 @@ fun SettingsScreen(
         animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing)),
         label = "refresh_rotation"
     )
-    // Hold last rotation when not checking so it doesn't snap back
     var frozenRotation by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(isChecking) {
         if (isChecking) frozenRotation = 0f
@@ -68,7 +68,7 @@ fun SettingsScreen(
     LaunchedEffect(updateState) {
         when (updateState) {
             is UpdateCheckResult.UpToDate -> {
-                Toast.makeText(context, "å·²æ˜¯æœ€æ–°ç‰ˆæœ¬", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "ÒÑÊÇ×îÐÂ°æ±¾", Toast.LENGTH_SHORT).show()
                 onClearUpdateState()
             }
             is UpdateCheckResult.Error -> {
@@ -96,7 +96,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "è¿”å›ž",
+                            contentDescription = "·µ»Ø",
                             tint = TextSecondary
                         )
                     }
@@ -113,8 +113,61 @@ fun SettingsScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // ===== ÌìÆøÌáÐÑ =====
+                SectionHeader(title = "\u5929\u6c14\u63d0\u9192")
+
+                ToggleItem(
+                    title = "\u77ed\u4e34\u96e8\u6c34\u63d0\u9192",
+                    checked = rainAlert,
+                    onCheckedChange = {
+                        rainAlert = it
+                        prefs.edit().putBoolean("rain_alert", it).apply()
+                    }
+                )
+
+                ToggleItem(
+                    title = "\u9884\u8b66\u4fe1\u606f\u63d0\u9192",
+                    checked = warningAlert,
+                    onCheckedChange = {
+                        warningAlert = it
+                        prefs.edit().putBoolean("warning_alert", it).apply()
+                    }
+                )
+
+                ToggleItem(
+                    title = "\u53d8\u6e29\u63d0\u9192",
+                    checked = tempChangeAlert,
+                    onCheckedChange = {
+                        tempChangeAlert = it
+                        prefs.edit().putBoolean("temp_change_alert", it).apply()
+                    }
+                )
+
+                ToggleItem(
+                    title = "\u5927\u98ce\u63d0\u9192",
+                    checked = windAlert,
+                    onCheckedChange = {
+                        windAlert = it
+                        prefs.edit().putBoolean("wind_alert", it).apply()
+                    }
+                )
+
+                ToggleItem(
+                    title = "\u53f0\u98ce\u4fe1\u606f\u63d0\u9192",
+                    checked = typhoonAlert,
+                    onCheckedChange = {
+                        typhoonAlert = it
+                        prefs.edit().putBoolean("typhoon_alert", it).apply()
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ===== ¹ØÓÚ =====
+                SectionHeader(title = "\u5173\u4e8e")
+
                 SimpleItem(
-                    title = "å¼€æºä»£ç ",
+                    title = "\u5f00\u6e90\u4ee3\u7801",
                     onClick = {
                         val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
                         context.startActivity(intent)
@@ -127,7 +180,7 @@ fun SettingsScreen(
                 )
 
                 SimpleItem(
-                    title = "æèµ æ”¯æŒ",
+                    title = "\u6350\u8d60\u652f\u6301",
                     onClick = { showDonateDialog = true }
                 )
 
@@ -136,7 +189,6 @@ fun SettingsScreen(
                     color = TextSecondary.copy(alpha = 0.1f)
                 )
 
-                // æ£€æŸ¥æ›´æ–°
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -147,14 +199,14 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "æ£€æŸ¥æ›´æ–°",
+                        text = "\u68c0\u67e5\u66f4\u65b0",
                         style = MaterialTheme.typography.bodyLarge,
                         color = TextPrimary,
                         modifier = Modifier.weight(1f)
                     )
                     Icon(
                         imageVector = Icons.Outlined.Autorenew,
-                        contentDescription = "æ£€æŸ¥æ›´æ–°",
+                        contentDescription = "¼ì²é¸üÐÂ",
                         tint = TextSecondary,
                         modifier = Modifier
                             .size(20.dp)
@@ -177,7 +229,7 @@ fun SettingsScreen(
                             contentColor = TextPrimary
                         )
                     ) {
-                        Text("å‰å¾€ä¸‹è½½ v${updateState.version}")
+                        Text("\u524d\u5f80\u4e0b\u8f7d v")
                     }
                 }
 
@@ -194,7 +246,7 @@ fun SettingsScreen(
                 )
 
                 Text(
-                    text = "QQç¾¤ï¼š758426293",
+                    text = "QQÈº£º758426293",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary.copy(alpha = 0.4f),
                     modifier = Modifier
@@ -204,7 +256,7 @@ fun SettingsScreen(
                 )
 
                 Text(
-                    text = "SkyPulse v${BuildConfig.VERSION_NAME}",
+                    text = "SkyPulse v",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary.copy(alpha = 0.4f),
                     modifier = Modifier
@@ -214,6 +266,49 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = TextSecondary,
+        fontSize = 13.sp,
+        modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+private fun ToggleItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextPrimary,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = TextPrimary,
+                checkedTrackColor = TextSecondary.copy(alpha = 0.3f),
+                uncheckedThumbColor = TextSecondary,
+                uncheckedTrackColor = TextSecondary.copy(alpha = 0.1f)
+            )
+        )
     }
 }
 
