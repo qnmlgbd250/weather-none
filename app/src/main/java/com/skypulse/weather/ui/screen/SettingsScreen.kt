@@ -68,7 +68,7 @@ fun SettingsScreen(
     LaunchedEffect(updateState) {
         when (updateState) {
             is UpdateCheckResult.UpToDate -> {
-                Toast.makeText(context, "已是最新版本", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "\u5df2\u662f\u6700\u65b0\u7248\u672c", Toast.LENGTH_SHORT).show()
                 onClearUpdateState()
             }
             is UpdateCheckResult.Error -> {
@@ -96,7 +96,7 @@ fun SettingsScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "返回",
+                            contentDescription = "\u8fd4\u56de",
                             tint = TextSecondary
                         )
                     }
@@ -113,7 +113,6 @@ fun SettingsScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ===== 天气提醒 =====
                 SectionHeader(title = "\u5929\u6c14\u63d0\u9192")
 
                 ToggleItem(
@@ -163,7 +162,6 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // ===== 关于 =====
                 SectionHeader(title = "\u5173\u4e8e")
 
                 SimpleItem(
@@ -206,7 +204,7 @@ fun SettingsScreen(
                     )
                     Icon(
                         imageVector = Icons.Outlined.Autorenew,
-                        contentDescription = "检查更新",
+                        contentDescription = "\u68c0\u67e5\u66f4\u65b0",
                         tint = TextSecondary,
                         modifier = Modifier
                             .size(20.dp)
@@ -229,7 +227,7 @@ fun SettingsScreen(
                             contentColor = TextPrimary
                         )
                     ) {
-                        Text("\u524d\u5f80\u4e0b\u8f7d v")
+                        Text("\u524d\u5f80\u4e0b\u8f7d v${updateState.version}")
                     }
                 }
 
@@ -246,7 +244,7 @@ fun SettingsScreen(
                 )
 
                 Text(
-                    text = "QQ群：758426293",
+                    text = "QQ\u7fa4\uff1a758426293",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary.copy(alpha = 0.4f),
                     modifier = Modifier
@@ -256,7 +254,7 @@ fun SettingsScreen(
                 )
 
                 Text(
-                    text = "SkyPulse v",
+                    text = "SkyPulse v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary.copy(alpha = 0.4f),
                     modifier = Modifier
@@ -290,7 +288,7 @@ private fun ToggleItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
