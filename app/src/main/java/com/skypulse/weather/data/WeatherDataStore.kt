@@ -1,4 +1,4 @@
-package com.skypulse.weather.data
+﻿package com.skypulse.weather.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -52,6 +52,16 @@ class WeatherDataStore @Inject constructor(
         }
     }
 
+    suspend fun loadCached(cityId: String): WeatherResponse? {
+        val key = stringPreferencesKey(cityId)
+        val prefs = context.weatherDataStore.data.first()
+        val json = prefs[key] ?: return null
+        return try {
+            adapter.fromJson(json)
+        } catch (_: Exception) {
+            null
+        }
+    }
     suspend fun remove(cityId: String) {
         val key = stringPreferencesKey(cityId)
         val timeKey = longPreferencesKey("${cityId}_time")

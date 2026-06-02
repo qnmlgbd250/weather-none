@@ -289,3 +289,43 @@ Color.kt 閻?WeatherTheme.kt 閻?Theme.kt 閻?GlassCard.kt 閻?MinutelyPrecipita
 ## [1.9.6] - 2026-06-02
 
 - 位置显示优化：区和市同时存在时只显示区
+
+## [1.9.7] - 2026-06-02
+
+- 修复小组件不显示数据：数据源对齐WeatherCache；无数据时显示默认背景；首次创建立即刷新；修复shortenLocation乱码
+
+## [1.9.8] - 2026-06-02
+
+- 修复小组件崩溃：恢复WorkManager初始化，WorkManager调用加异常保护
+
+## [1.9.9] - 2026-06-02
+
+- 修复小组件无数据：app启动时同步缓存到WeatherCache供小组件读取
+
+## [1.9.10] - 2026-06-02
+
+- 小组件统一从WeatherDataStore读取数据，移除WeatherCache依赖
+
+## [1.9.11] - 2026-06-02
+
+- 小组件缓存读取忽略过期；MainActivity改为singleTask修复返回手势
+
+## [1.9.12] - 2026-06-02
+
+- 小组件回归SharedPreferences直接读写WeatherCache，主app双写保证同步
+
+## [1.9.14] - 2026-06-02
+
+- 小组件onUpdate同步读WeatherCache，不依赖Worker
+
+## [1.9.15] - 2026-06-02
+
+- 小组件增加调试日志定位数据读取问题
+
+## [1.9.16] - 2026-06-02
+
+- 根治小组件：主app城市数据同步写入CityManager(SharedPreferences)供小组件读取
+
+## [1.9.18] - 2026-06-02
+
+- 修复小组件：底部温度和天气图标显示

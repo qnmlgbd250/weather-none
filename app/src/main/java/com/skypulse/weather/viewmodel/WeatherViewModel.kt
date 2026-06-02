@@ -9,7 +9,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.data.CityDataStore
+import com.skypulse.weather.data.CityManager
 import com.skypulse.weather.data.LocationManager
+import com.skypulse.weather.data.WeatherCache
 import com.skypulse.weather.data.WeatherDataStore
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
@@ -69,7 +71,9 @@ class WeatherViewModel @Inject constructor(
     private val repository: WeatherRepository,
     private val cityDataStore: CityDataStore,
     private val weatherDataStore: WeatherDataStore,
-    private val locationManager: LocationManager
+    private val weatherCache: WeatherCache,
+    private val cityManager: CityManager,
+    private val locationManager: LocationManager,
 ) : ViewModel() {
 
     companion object {
@@ -122,6 +126,7 @@ class WeatherViewModel @Inject constructor(
         citiesLoadJob = viewModelScope.launch {
             val cities = cityDataStore.getCities()
             _savedCities.value = cities
+            syncCitiesToWidget()
             // Load cached weather data so city list has data immediately
             val cachedMap = mutableMapOf<String, CityWeatherData>()
             for (city in cities) {
@@ -132,6 +137,9 @@ class WeatherViewModel @Inject constructor(
             }
             if (cachedMap.isNotEmpty()) {
                 _cityWeatherMap.value = cachedMap
+                for ((cityId, data) in cachedMap) {
+                    data.weather?.let { weatherCache.save(cityId, it) }
+                }
             }
             // Initialize detail screen with cached data for current location
             val currentCity = cities.find { it.isCurrentLocation }
@@ -230,6 +238,7 @@ class WeatherViewModel @Inject constructor(
             )
             cityDataStore.addCity(city)
             _savedCities.value = cityDataStore.getCities()
+            syncCitiesToWidget()
             loadWeatherForCity(city)
         }
     }
@@ -238,6 +247,7 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             cityDataStore.removeCity(cityId)
             _savedCities.value = cityDataStore.getCities()
+            syncCitiesToWidget()
             val currentMap = _cityWeatherMap.value.toMutableMap()
             currentMap.remove(cityId)
             _cityWeatherMap.value = currentMap
@@ -261,6 +271,7 @@ class WeatherViewModel @Inject constructor(
                 cities.add(0, currentLocationCity)
                 cityDataStore.saveCities(cities)
                 _savedCities.value = cities
+            syncCitiesToWidget()
             }
         }
     }
@@ -273,6 +284,7 @@ class WeatherViewModel @Inject constructor(
                 cities[index] = cities[index].copy(name = name)
                 cityDataStore.saveCities(cities)
                 _savedCities.value = cities
+            syncCitiesToWidget()
             }
         }
     }
@@ -285,6 +297,7 @@ class WeatherViewModel @Inject constructor(
                 cities[index] = cities[index].copy(longitude = lon, latitude = lat)
                 cityDataStore.saveCities(cities)
                 _savedCities.value = cities
+            syncCitiesToWidget()
             }
         }
     }
@@ -298,6 +311,7 @@ class WeatherViewModel @Inject constructor(
             onSuccess = { response ->
                 updatedMap[city.id] = CityWeatherData(weather = response)
                 weatherDataStore.save(city.id, response)
+                weatherCache.save(city.id, response)
             },
             onFailure = { e ->
                 updatedMap[city.id] = CityWeatherData(error = mapError(e))
@@ -318,6 +332,7 @@ class WeatherViewModel @Inject constructor(
                         locationName = city.name
                     )
                     weatherDataStore.save(city.id, response)
+                    weatherCache.save(city.id, response)
                 },
                 onFailure = { e ->
                     _uiState.value = WeatherUiState.Error(mapError(e))
@@ -326,6 +341,11 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
+    private fun syncCitiesToWidget() {
+        try {
+            cityManager.saveCities(_savedCities.value)
+        } catch (_: Exception) {}
+    }
     // ============ GPS-based Weather ============
 
     @Suppress("MissingPermission")
@@ -448,6 +468,7 @@ class WeatherViewModel @Inject constructor(
                 val currentCity = _savedCities.value.find { it.isCurrentLocation }
                 if (currentCity != null) {
                     weatherDataStore.save(currentCity.id, response)
+                    weatherCache.save(currentCity.id, response)
                     _cityWeatherMap.value = _cityWeatherMap.value.toMutableMap().apply {
                         put(currentCity.id, CityWeatherData(weather = response))
                     }
