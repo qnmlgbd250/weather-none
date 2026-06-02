@@ -21,7 +21,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
             Log.d("Widget", "cities count: ${cities.size}")
             cities.forEach { Log.d("Widget", "city: id=${it.id} name=${it.name} isCurrent=${it.isCurrentLocation}") }
 
-            val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
+            val city = cities.firstOrNull { it.isCurrentLocation }
             Log.d("Widget", "selected city: ${city?.name}")
 
             val weather = city?.let {
@@ -49,6 +49,20 @@ class WeatherWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+
+        fun refresh(context: Context) {
+            try {
+                val manager = AppWidgetManager.getInstance(context)
+                val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
+                if (ids.isNotEmpty()) {
+                    val moshi = com.squareup.moshi.Moshi.Builder().build()
+                    val cities = com.skypulse.weather.data.CityManager(context, moshi).getCities()
+                    val city = cities.firstOrNull { it.isCurrentLocation }
+                    val weather = city?.let { com.skypulse.weather.data.WeatherCache(context).load(it.id) }
+                    WeatherWidgetUpdater.updateAll(context, weather, city?.name)
+                }
+            } catch (_: Exception) {}
+        }
         private const val WORK_NAME = "weather_widget_periodic"
 
         fun enqueueWorker(context: Context) {

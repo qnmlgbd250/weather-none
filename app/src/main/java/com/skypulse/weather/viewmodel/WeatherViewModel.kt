@@ -469,6 +469,7 @@ class WeatherViewModel @Inject constructor(
                 if (currentCity != null) {
                     weatherDataStore.save(currentCity.id, response)
                     weatherCache.save(currentCity.id, response)
+                    com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext)
                     _cityWeatherMap.value = _cityWeatherMap.value.toMutableMap().apply {
                         put(currentCity.id, CityWeatherData(weather = response))
                     }

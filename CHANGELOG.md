@@ -329,3 +329,7 @@ Color.kt 閻?WeatherTheme.kt 閻?Theme.kt 閻?GlassCard.kt 閻?MinutelyPrecipita
 ## [1.9.18] - 2026-06-02
 
 - 修复小组件：底部温度和天气图标显示
+
+## [1.9.19] - 2026-06-02
+
+- 小组件只显示当前定位城市天气，GPS更新后自动刷新小组件
