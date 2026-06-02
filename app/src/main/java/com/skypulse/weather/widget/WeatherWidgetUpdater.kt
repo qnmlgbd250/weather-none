@@ -17,6 +17,8 @@ import com.skypulse.weather.util.WeatherUtils
 
 object WeatherWidgetUpdater {
 
+    private val iconCache = android.util.LruCache<String, Bitmap>(14)
+
     fun updateAll(context: Context, weather: WeatherResponse?, cityName: String?) {
         try {
             val manager = AppWidgetManager.getInstance(context)
@@ -88,6 +90,7 @@ object WeatherWidgetUpdater {
     }
 
     private fun renderIcon(context: Context, icon: String): Bitmap? {
+        iconCache.get(icon)?.let { return it }
         return try {
             val composition = LottieCompositionFactory.fromAssetSync(context, "meteocons/fill/${icon}.json").value
                 ?: return null
@@ -99,6 +102,7 @@ object WeatherWidgetUpdater {
             val canvas = Canvas(bitmap)
             drawable.setBounds(0, 0, size, size)
             drawable.draw(canvas)
+            iconCache.put(icon, bitmap)
             bitmap
         } catch (_: Exception) {
             null

@@ -43,6 +43,12 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var showDonateDialog by remember { mutableStateOf(false) }
+    val prefs = context.getSharedPreferences("notification_prefs", android.content.Context.MODE_PRIVATE)
+    var rainAlert by remember { mutableStateOf(prefs.getBoolean("rain_alert", true)) }
+    var warningAlert by remember { mutableStateOf(prefs.getBoolean("warning_alert", true)) }
+    var tempChangeAlert by remember { mutableStateOf(prefs.getBoolean("temp_change_alert", false)) }
+    var windAlert by remember { mutableStateOf(prefs.getBoolean("wind_alert", false)) }
+    var typhoonAlert by remember { mutableStateOf(prefs.getBoolean("typhoon_alert", true)) }
 
     val isChecking = updateState is UpdateCheckResult.Checking
     val infiniteTransition = rememberInfiniteTransition(label = "refresh")
@@ -85,7 +91,7 @@ fun SettingsScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { Text("关于", color = TextPrimary) },
+                title = { Text("\u8bbe\u7f6e", color = TextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(

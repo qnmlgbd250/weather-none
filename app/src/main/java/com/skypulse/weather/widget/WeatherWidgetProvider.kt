@@ -4,7 +4,6 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
-import android.util.Log
 import androidx.work.*
 import com.skypulse.weather.data.CityManager
 import com.skypulse.weather.data.WeatherCache
@@ -18,21 +17,19 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         try {
             val moshi = Moshi.Builder().build()
             val cities = CityManager(context, moshi).getCities()
-            Log.d("Widget", "cities count: ${cities.size}")
-            cities.forEach { Log.d("Widget", "city: id=${it.id} name=${it.name} isCurrent=${it.isCurrentLocation}") }
+
 
             val city = cities.firstOrNull { it.isCurrentLocation }
-            Log.d("Widget", "selected city: ${city?.name}")
 
             val weather = city?.let {
                 val w = WeatherCache(context).load(it.id)
-                Log.d("Widget", "weather cache: ${w != null}")
+
                 w
             }
-            Log.d("Widget", "updating widget with weather=${weather != null}, city=${city?.name}")
+
             WeatherWidgetUpdater.updateAll(context, weather, city?.name)
         } catch (e: Exception) {
-            Log.e("Widget", "onUpdate error", e)
+
             WeatherWidgetUpdater.updateAll(context, null, null)
         }
         try { enqueueWorker(context) } catch (_: Exception) {}
