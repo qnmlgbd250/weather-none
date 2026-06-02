@@ -278,7 +278,7 @@ private fun ToggleItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
@@ -290,6 +290,7 @@ private fun ToggleItem(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            modifier = Modifier.height(32.dp),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = TextPrimary,
                 checkedTrackColor = TextSecondary.copy(alpha = 0.3f),
