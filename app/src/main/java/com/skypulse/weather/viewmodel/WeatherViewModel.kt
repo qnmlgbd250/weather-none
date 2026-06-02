@@ -1,4 +1,4 @@
-package com.skypulse.weather.viewmodel
+﻿package com.skypulse.weather.viewmodel
 
 import android.Manifest
 import android.content.Context
@@ -333,11 +333,11 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             _isLocating.value = true
             try {
-                val location = locationManager.requestLocation()
-                if (location != null) {
-                    val lon = location.longitude
-                    val lat = location.latitude
-                    val locationName = locationManager.reverseGeocode(lat, lon)
+                val amapLocation = locationManager.requestAmapLocation()
+                if (amapLocation != null) {
+                    val lon = amapLocation.longitude
+                    val lat = amapLocation.latitude
+                    val locationName = locationManager.resolveLocationName(amapLocation)
                     updateCurrentLocationCityCoords(lon, lat)
                     updateCurrentLocationCityName(locationName)
                     fetchWeatherForLocation(lon, lat, locationName)
@@ -409,12 +409,12 @@ class WeatherViewModel @Inject constructor(
 
     private suspend fun doFetchWeather(silent: Boolean = false) {
         try {
-            val location = locationManager.requestLocation()
+            val amapLocation = locationManager.requestAmapLocation()
 
-            if (location != null) {
-                val lon = location.longitude
-                val lat = location.latitude
-                val locationName = locationManager.reverseGeocode(lat, lon)
+            if (amapLocation != null) {
+                val lon = amapLocation.longitude
+                val lat = amapLocation.latitude
+                val locationName = locationManager.resolveLocationName(amapLocation)
                 updateCurrentLocationCityCoords(lon, lat)
                 updateCurrentLocationCityName(locationName)
                 fetchWeatherForLocation(lon, lat, locationName, silent)
@@ -445,13 +445,20 @@ class WeatherViewModel @Inject constructor(
         result.fold(
             onSuccess = { response ->
                 _lastFetchTime.value = System.currentTimeMillis()
-                _uiState.value = WeatherUiState.Success(
-                    weather = response,
-                    locationName = locationName
-                )
                 val currentCity = _savedCities.value.find { it.isCurrentLocation }
                 if (currentCity != null) {
                     weatherDataStore.save(currentCity.id, response)
+                    _cityWeatherMap.value = _cityWeatherMap.value.toMutableMap().apply {
+                        put(currentCity.id, CityWeatherData(weather = response))
+                    }
+                }
+                val viewingCityId = _selectedCityId.value
+                val isViewingGpsCity = viewingCityId == null || viewingCityId == currentCity?.id
+                if (isViewingGpsCity) {
+                    _uiState.value = WeatherUiState.Success(
+                        weather = response,
+                        locationName = locationName
+                    )
                 }
             },
             onFailure = { e ->
@@ -461,7 +468,6 @@ class WeatherViewModel @Inject constructor(
             }
         )
     }
-
     private suspend fun fetchWithRetry(
         lon: Double,
         lat: Double,

@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.screen
+﻿package com.skypulse.weather.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -33,12 +33,12 @@ internal fun AlertDetailScreen(
             .background(Brush.verticalGradient(colors = NightFallbackGradient))
     ) {
         TopAppBar(
-            title = { Text("预警详情", color = TextPrimary) },
+            title = { Text("\u9884\u8b66\u8be6\u60c5", color = TextPrimary) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "返回",
+                        contentDescription = "\u8fd4\u56de",
                         tint = TextSecondary
                     )
                 }
@@ -53,7 +53,7 @@ internal fun AlertDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "暂无预警信息", color = TextSecondary)
+                Text(text = "\u6682\u65e0\u9884\u8b66\u4fe1\u606f", color = TextSecondary)
             }
         } else {
             val safeInitialIndex = remember(alerts, initialSelectedIndex) {
@@ -68,7 +68,7 @@ internal fun AlertDetailScreen(
                 itemsIndexed(alerts) { _, alert ->
                     val title = alert.title
                         ?.replace(Regex("\\[.*?\\]"), "")
-                        ?.replace(Regex("^.*发布"), "")
+                        ?.replace(Regex("^.*\u53d1\u5e03"), "")
                         ?.trim()
                         ?.ifBlank { null }
                     val levelColor = alertColor(alert.level)
@@ -88,35 +88,7 @@ internal fun AlertDetailScreen(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            val metaParts = listOfNotNull(
-                                alert.level?.let { "级别：$it" },
-                                alert.type?.let { "类型：$it" },
-                                alert.status?.let { "状态：$it" }
-                            )
-                            if (metaParts.isNotEmpty()) {
-                                Text(
-                                    text = metaParts.joinToString(separator = "  |  "),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                            }
-
-                            val regionParts = listOfNotNull(
-                                alert.province?.takeIf { it.isNotBlank() },
-                                alert.city?.takeIf { it.isNotBlank() },
-                                alert.county?.takeIf { it.isNotBlank() }
-                            )
-                            if (regionParts.isNotEmpty()) {
-                                Text(
-                                    text = regionParts.joinToString(separator = " "),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                            }
+                            Spacer(modifier = Modifier.height(16.dp))
 
                             if (!alert.description.isNullOrBlank()) {
                                 Text(

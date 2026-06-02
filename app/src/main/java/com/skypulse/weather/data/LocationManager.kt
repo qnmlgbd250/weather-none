@@ -1,4 +1,4 @@
-package com.skypulse.weather.data
+﻿package com.skypulse.weather.data
 
 import android.content.Context
 import android.location.Geocoder
@@ -82,8 +82,12 @@ class LocationManager @Inject constructor(
      * Get a human-readable location name from an AMap location result.
      */
     fun buildLocationName(location: AMapLocation): String = buildString {
-        location.city?.takeIf { it.isNotBlank() }?.let { append(it) }
-        location.district?.takeIf { it.isNotBlank() && it != location.city }?.let { append(it) }
+        val city = location.city?.takeIf { it.isNotBlank() }
+        val district = location.district?.takeIf { it.isNotBlank() && it != city }
+        when {
+            district != null -> append(district)
+            city != null -> append(city)
+        }
         val poi = location.poiName?.takeIf { it.isNotBlank() }
         val street = location.street?.takeIf { it.isNotBlank() }
         val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
@@ -100,6 +104,70 @@ class LocationManager @Inject constructor(
     }
 
     /**
+     * Request location and return the full AMapLocation result (includes poiName, city, district, etc.)
+     */
+    suspend fun requestAmapLocation(): AMapLocation? {
+        return try {
+            val client = AMapLocationClient(context)
+            val option = AMapLocationClientOption().apply {
+                isOnceLocation = true
+                isNeedAddress = true
+                locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
+                httpTimeOut = 15_000L
+            }
+            client.setLocationOption(option)
+
+            suspendCancellableCoroutine { cont ->
+                client.setLocationListener { location ->
+                    if (cont.isActive) {
+                        if (location != null && location.errorCode == 0) {
+                            cont.resume(location)
+                        } else {
+                            cont.resume(null)
+                        }
+                    }
+                    client.stopLocation()
+                    client.onDestroy()
+                }
+                client.startLocation()
+                cont.invokeOnCancellation {
+                    client.stopLocation()
+                    client.onDestroy()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "AMap location failed", e)
+            null
+        }
+    }
+
+    /**
+     * Build location name from a full AMapLocation result, prioritizing POI name.
+     */
+    fun resolveLocationName(location: AMapLocation): String {
+        val city = location.city?.takeIf { it.isNotBlank() }
+        val district = location.district?.takeIf { it.isNotBlank() && it != city }
+        val poi = location.poiName?.takeIf { it.isNotBlank() }
+        val street = location.street?.takeIf { it.isNotBlank() }
+        val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
+        return buildString {
+            when {
+                district != null -> append(district)
+                city != null -> append(city)
+            }
+            when {
+                poi != null -> append(" $poi")
+                street != null -> {
+                    append(street)
+                    streetNum?.let { append(it) }
+                }
+            }
+            if (isEmpty()) {
+                location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
+            }
+        }.ifEmpty { "未知位置" }
+    }
+    /**
      * Reverse geocode via AMap SDK. Falls back to Android Geocoder on failure.
      */
     suspend fun reverseGeocode(lat: Double, lon: Double): String {
@@ -111,7 +179,7 @@ class LocationManager @Inject constructor(
             val search = GeocodeSearch(context)
             val query = RegeocodeQuery(
                 LatLonPoint(lat, lon),
-                200f,
+                1000f,
                 GeocodeSearch.AMAP
             )
             withTimeoutOrNull(5_000L) {
@@ -125,10 +193,16 @@ class LocationManager @Inject constructor(
                                 if (rCode == 1000 && result?.regeocodeAddress != null) {
                                     val addr = result.regeocodeAddress
                                     val name = buildString {
-                                        addr.city?.takeIf { it.isNotBlank() }?.let { append(it) }
-                                        addr.district?.takeIf { it.isNotBlank() && it != addr.city }?.let { append(it) }
-                                        val pois = addr.pois
-                                        val poi = pois?.firstOrNull { !it.title.isNullOrBlank() }
+                                        val rCity = addr.city?.takeIf { it.isNotBlank() }
+                                        val rDistrict = addr.district?.takeIf { it.isNotBlank() && it != rCity }
+                                        when {
+                                            rDistrict != null -> append(rDistrict)
+                                            rCity != null -> append(rCity)
+                                        }
+                                        val pois = addr.pois?.filter { !it.title.isNullOrBlank() }
+                                        val buildingKeys = listOf("大厦","广场","中心","大楼","写字楼","产业园","科技园","软件园","工业园","创意园")
+                                        val poi = pois?.firstOrNull { p -> buildingKeys.any { k -> p.title.contains(k) } }
+                                            ?: pois?.firstOrNull()
                                         val street = addr.streetNumber?.street?.takeIf { it.isNotBlank() }
                                         val streetNum = addr.streetNumber?.number?.takeIf { it.isNotBlank() }
                                         when {
