@@ -29,26 +29,19 @@ fun DonateDialog(
         "\u82b3\u534e" to "66",
         "\u6211\u6709\u70b9\u67ff" to "20",
         "\u4e09\u5341\u4e5d\u306e\u5ea6" to "18",
-        "\u9e21\u795e" to "8.8"
+        "\u9e21\u795e" to "8.8",
+        "\u533f\u540d\u7528\u6237(\u6536\u6b3e\u5c3e\u53f7566)" to "8.8"
     )
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1E1E2E),
         shape = RoundedCornerShape(22.dp),
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "\u6350\u8d60\u652f\u6301",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = TextPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-            }
+            Text(
+                text = "\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
+                style = MaterialTheme.typography.headlineSmall,
+                color = TextPrimary
+            )
         },
         text = {
             Column(
@@ -71,7 +64,6 @@ fun DonateDialog(
                     color = TextSecondary
                 )
 
-                // Leaderboard container
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -100,7 +92,6 @@ fun DonateDialog(
                                         .padding(vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Rank number
                                     Text(
                                         text = "${index + 1}",
                                         style = MaterialTheme.typography.bodySmall,
@@ -113,14 +104,12 @@ fun DonateDialog(
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.width(24.dp)
                                     )
-                                    // Name
                                     Text(
                                         text = name,
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                                         color = TextPrimary,
                                         modifier = Modifier.weight(1f)
                                     )
-                                    // Amount
                                     Text(
                                         text = "\u00a5$amount",
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
