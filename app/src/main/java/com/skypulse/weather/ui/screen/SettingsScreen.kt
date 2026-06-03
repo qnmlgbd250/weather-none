@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.ui.components.DonateDialog
@@ -116,91 +115,111 @@ fun SettingsScreen(
 
                 SectionHeader(title = "\u5929\u6c14\u63d0\u9192")
 
-                ToggleItem(
-                    title = "\u77ed\u4e34\u96e8\u6c34\u63d0\u9192",
-                    checked = rainAlert,
-                    onCheckedChange = {
-                        rainAlert = it
-                        prefs.edit().putBoolean("rain_alert", it).apply()
-                    }
-                )
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = TextSecondary.copy(alpha = 0.1f)
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    ToggleItem(
+                        title = "\u77ed\u4e34\u96e8\u6c34\u63d0\u9192",
+                        checked = rainAlert,
+                        onCheckedChange = {
+                            rainAlert = it
+                            prefs.edit().putBoolean("rain_alert", it).apply()
+                        }
+                    )
 
-                ToggleItem(
-                    title = "\u9884\u8b66\u4fe1\u606f\u63d0\u9192",
-                    checked = warningAlert,
-                    onCheckedChange = {
-                        warningAlert = it
-                        prefs.edit().putBoolean("warning_alert", it).apply()
-                    }
-                )
+                    ToggleItem(
+                        title = "\u9884\u8b66\u4fe1\u606f\u63d0\u9192",
+                        checked = warningAlert,
+                        onCheckedChange = {
+                            warningAlert = it
+                            prefs.edit().putBoolean("warning_alert", it).apply()
+                        }
+                    )
 
-                ToggleItem(
-                    title = "\u53d8\u6e29\u63d0\u9192",
-                    checked = tempChangeAlert,
-                    onCheckedChange = {
-                        tempChangeAlert = it
-                        prefs.edit().putBoolean("temp_change_alert", it).apply()
-                    }
-                )
+                    ToggleItem(
+                        title = "\u53d8\u6e29\u63d0\u9192",
+                        checked = tempChangeAlert,
+                        onCheckedChange = {
+                            tempChangeAlert = it
+                            prefs.edit().putBoolean("temp_change_alert", it).apply()
+                        }
+                    )
 
-                ToggleItem(
-                    title = "\u5927\u98ce\u63d0\u9192",
-                    checked = windAlert,
-                    onCheckedChange = {
-                        windAlert = it
-                        prefs.edit().putBoolean("wind_alert", it).apply()
-                    }
-                )
+                    ToggleItem(
+                        title = "\u5927\u98ce\u63d0\u9192",
+                        checked = windAlert,
+                        onCheckedChange = {
+                            windAlert = it
+                            prefs.edit().putBoolean("wind_alert", it).apply()
+                        }
+                    )
 
-                ToggleItem(
-                    title = "\u53f0\u98ce\u4fe1\u606f\u63d0\u9192",
-                    checked = typhoonAlert,
-                    onCheckedChange = {
-                        typhoonAlert = it
-                        prefs.edit().putBoolean("typhoon_alert", it).apply()
-                    }
-                )
+                    ToggleItem(
+                        title = "\u53f0\u98ce\u4fe1\u606f\u63d0\u9192",
+                        checked = typhoonAlert,
+                        onCheckedChange = {
+                            typhoonAlert = it
+                            prefs.edit().putBoolean("typhoon_alert", it).apply()
+                        }
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 SectionHeader(title = "\u5173\u4e8e")
 
-                SimpleItem(
-                    title = "\u5f00\u6e90\u4ee3\u7801",
-                    onClick = {
-                        val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
-                        context.startActivity(intent)
-                    }
-                )
-
-                SimpleItem(
-                    title = "\u6350\u8d60\u652f\u6301",
-                    onClick = { showDonateDialog = true }
-                )
-
-                Row(
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            if (!isChecking) onCheckUpdate()
-                        }
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = TextSecondary.copy(alpha = 0.1f)
+                    ),
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text(
-                        text = "\u68c0\u67e5\u66f4\u65b0",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = TextPrimary,
-                        modifier = Modifier.weight(1f)
+                    SimpleItem(
+                        title = "\u5f00\u6e90\u4ee3\u7801",
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
+                            context.startActivity(intent)
+                        }
                     )
-                    Icon(
-                        imageVector = Icons.Outlined.Autorenew,
-                        contentDescription = "\u68c0\u67e5\u66f4\u65b0",
-                        tint = TextSecondary,
+
+                    SimpleItem(
+                        title = "\u6350\u8d60\u652f\u6301",
+                        onClick = { showDonateDialog = true }
+                    )
+
+                    Row(
                         modifier = Modifier
-                            .size(20.dp)
-                            .rotate(rotation)
-                    )
+                            .fillMaxWidth()
+                            .clickable {
+                                if (!isChecking) onCheckUpdate()
+                            }
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "\u68c0\u67e5\u66f4\u65b0",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Outlined.Autorenew,
+                            contentDescription = "\u68c0\u67e5\u66f4\u65b0",
+                            tint = TextSecondary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .rotate(rotation)
+                        )
+                    }
                 }
 
                 if (updateState is UpdateCheckResult.UpdateAvailable) {
@@ -212,7 +231,7 @@ fun SettingsScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = TextSecondary.copy(alpha = 0.15f),
                             contentColor = TextPrimary
