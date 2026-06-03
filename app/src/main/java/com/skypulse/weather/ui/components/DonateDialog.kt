@@ -22,8 +22,10 @@ fun DonateDialog(
     onDismiss: () -> Unit
 ) {
     val donors = listOf(
-        "芳华" to "66",
-        "鸡祖" to "8.8"
+        "\u82b3\u534e" to "66",
+        "\u6211\u6709\u70b9\u67ff" to "20",
+        "\u4e09\u5341\u4e5d\u306e\u5ea6" to "18",
+        "\u9e21\u795e" to "8.8"
     )
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -31,7 +33,7 @@ fun DonateDialog(
         shape = RoundedCornerShape(22.dp),
         title = {
             Text(
-                text = "捐赠支持",
+                text = "\u6350\u8d60\u652f\u6301",
                 style = MaterialTheme.typography.headlineSmall,
                 color = TextPrimary
             )
@@ -40,47 +42,47 @@ fun DonateDialog(
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "如果这个应用对你有帮助，可以请作者喝杯咖啡",
+                    text = "\u5982\u679c\u8fd9\u4e2a\u5e94\u7528\u5bf9\u4f60\u6709\u5e2e\u52a9\uff0c\u53ef\u4ee5\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary
                 )
 
                 Image(
                     painter = painterResource(id = R.drawable.qr_wechat),
-                    contentDescription = "微信收款码",
+                    contentDescription = "\u5fae\u4fe1\u6536\u6b3e\u7801",
                     modifier = Modifier
-                        .size(200.dp)
+                        .size(180.dp)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit
                 )
 
                 Text(
-                    text = "微信扫一扫",
+                    text = "\u5fae\u4fe1\u626b\u4e00\u626b",
                     style = MaterialTheme.typography.labelMedium,
                     color = TextSecondary
                 )
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "打赏鸣谢",
+                        text = "\u6253\u8d4f\u9e23\u8c22",
                         style = MaterialTheme.typography.titleSmall,
                         color = TextPrimary
                     )
 
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        donors.take(10).forEach { (name, amount) ->
+                        donors.forEach { (name, amount) ->
                             SuggestionChip(
                                 onClick = {},
-                                label = { Text(text = "$name：￥$amount") }
+                                label = { Text(text = "$name\uff1a\u00a5$amount") }
                             )
                         }
                     }
@@ -89,7 +91,7 @@ fun DonateDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭", color = TextSecondary)
+                Text("\u5173\u95ed", color = TextSecondary)
             }
         }
     )
