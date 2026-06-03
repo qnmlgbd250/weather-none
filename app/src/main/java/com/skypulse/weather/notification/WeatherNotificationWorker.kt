@@ -61,10 +61,11 @@ class WeatherNotificationWorker(
 
             // Weather warning alert - skip blue level
             if (prefs.getBoolean("warning_alert", true)) {
-                alerts?.forEach { alert ->
+                val filteredAlerts = alerts?.filter { alert ->
                     val level = alert.level ?: ""
-                    if (level.contains("\u84dd")) return@forEach
-                    
+                    !level.contains("\u84dd") && !level.contains("\u84dd\u8272")
+                }
+                filteredAlerts?.forEach { alert ->
                     val title = alert.title
                         ?.replace(Regex("\\[.*?\\]"), "")
                         ?.replace(Regex("^.*\u53d1\u5e03"), "")
