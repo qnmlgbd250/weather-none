@@ -63,7 +63,7 @@ class WeatherNotificationWorker(
             if (prefs.getBoolean("warning_alert", true)) {
                 alerts?.forEach { alert ->
                     val level = alert.level ?: ""
-                    if (level == "\u84dd") return@forEach
+                    if (level.contains("\u84dd")) return@forEach
                     
                     val title = alert.title
                         ?.replace(Regex("\\[.*?\\]"), "")
