@@ -39,7 +39,7 @@ fun DonateDialog(
         title = {
             Text(
                 text = "\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleSmall,
                 color = TextPrimary
             )
         },
