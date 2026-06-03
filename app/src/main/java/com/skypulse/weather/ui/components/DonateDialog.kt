@@ -30,11 +30,11 @@ fun DonateDialog(
         "\u6211\u6709\u70b9\u67ff" to "20",
         "\u4e09\u5341\u4e5d\u306e\u5ea6" to "18",
         "\u9e21\u795e" to "8.8",
-        "\u533f\u540d\u7528\u6237(\u6536\u6b3e\u5c3e\u53f7566)" to "8.8"
+        "BIN0678" to "8.8"
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.fillMaxWidth(1.02f),
+        modifier = Modifier.fillMaxWidth(1.04f),
         containerColor = Color(0xFF1E1E2E),
         shape = RoundedCornerShape(22.dp),
         title = {
