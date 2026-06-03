@@ -122,7 +122,7 @@ object WeatherUtils {
         val isDay = hour in 6..18
         return when (skycon) {
             "CLEAR_DAY" -> WeatherInfo("晴", "clear-day", true)
-            "CLEAR_NIGHT" -> WeatherInfo("晴", "partly-cloudy-night", false)
+            "CLEAR_NIGHT" -> WeatherInfo("晴", "clear-night", false)
             "PARTLY_CLOUDY_DAY" -> WeatherInfo("多云", "partly-cloudy-day", true)
             "PARTLY_CLOUDY_NIGHT" -> WeatherInfo("多云", "partly-cloudy-night", false)
             "CLOUDY" -> WeatherInfo("阴", "overcast", isDay)
