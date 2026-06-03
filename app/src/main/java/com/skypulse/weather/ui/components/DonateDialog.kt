@@ -34,6 +34,7 @@ fun DonateDialog(
     )
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.fillMaxWidth(1.02f),
         containerColor = Color(0xFF1E1E2E),
         shape = RoundedCornerShape(22.dp),
         title = {
