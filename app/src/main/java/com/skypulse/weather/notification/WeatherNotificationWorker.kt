@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -20,6 +21,12 @@ class WeatherNotificationWorker(
     appContext: Context,
     params: WorkerParameters
 ) : CoroutineWorker(appContext, params) {
+
+    companion object {
+        private const val TAG = "NotificationWorker"
+        const val CHANNEL_ID = "weather_alerts"
+        const val WORK_NAME = "weather_notification_periodic"
+    }
 
     override suspend fun doWork(): Result {
         return try {
@@ -41,7 +48,6 @@ class WeatherNotificationWorker(
             val daily = weather.result?.daily
             val alerts = weather.result?.alert?.content
 
-            // Build weather summary
             val skycon = realtime?.skycon ?: "UNKNOWN"
             val temp = realtime?.temperature?.toInt() ?: 0
             val humidity = realtime?.humidity?.let { (it * 100).toInt() } ?: 0
@@ -61,18 +67,30 @@ class WeatherNotificationWorker(
 
             // Weather warning alert - skip blue level
             if (prefs.getBoolean("warning_alert", true)) {
-                val filteredAlerts = alerts?.filter { alert ->
+                alerts?.forEach { alert ->
                     val level = alert.level ?: ""
-                    !level.contains("\u84dd") && !level.contains("\u84dd\u8272")
-                }
-                filteredAlerts?.forEach { alert ->
-                    val title = alert.title
+                    val title = alert.title ?: ""
+                    
+                    Log.d(TAG, "Alert: title=$title, level=$level")
+                    
+                    // Skip blue level alerts - check both level field and title
+                    val isBlueLevel = level.contains("\u84dd") || 
+                                     level.contains("\u84dd\u8272") ||
+                                     title.contains("\u84dd\u8272") ||
+                                     title.contains("\u84dd\u7ea7")
+                    
+                    if (isBlueLevel) {
+                        Log.d(TAG, "Skipping blue alert: $title")
+                        return@forEach
+                    }
+                    
+                    val cleanTitle = title
                         ?.replace(Regex("\\[.*?\\]"), "")
                         ?.replace(Regex("^.*\u53d1\u5e03"), "")
                         ?.trim()
-                    if (!title.isNullOrBlank()) {
+                    if (!cleanTitle.isNullOrBlank()) {
                         val body = "${city.name} $weatherDesc ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0"
-                        sendNotification(nm, 2, title, body)
+                        sendNotification(nm, 2, cleanTitle, body)
                     }
                 }
             }
@@ -111,6 +129,7 @@ class WeatherNotificationWorker(
 
             Result.success()
         } catch (e: Exception) {
+            Log.e(TAG, "Error in doWork", e)
             Result.retry()
         }
     }
@@ -166,10 +185,5 @@ class WeatherNotificationWorker(
             .addConverterFactory(retrofit2.converter.moshi.MoshiConverterFactory.create(moshi))
             .build()
         return retrofit.create(CaiyunApi::class.java)
-    }
-
-    companion object {
-        const val CHANNEL_ID = "weather_alerts"
-        const val WORK_NAME = "weather_notification_periodic"
     }
 }
