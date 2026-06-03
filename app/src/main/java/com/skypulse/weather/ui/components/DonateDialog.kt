@@ -2,7 +2,9 @@ package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -11,7 +13,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.skypulse.weather.R
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
@@ -32,11 +36,19 @@ fun DonateDialog(
         containerColor = Color(0xFF1E1E2E),
         shape = RoundedCornerShape(22.dp),
         title = {
-            Text(
-                text = "\u6350\u8d60\u652f\u6301",
-                style = MaterialTheme.typography.headlineSmall,
-                color = TextPrimary
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "\u6350\u8d60\u652f\u6301",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
         },
         text = {
             Column(
@@ -44,17 +56,11 @@ fun DonateDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "\u5982\u679c\u8fd9\u4e2a\u5e94\u7528\u5bf9\u4f60\u6709\u5e2e\u52a9\uff0c\u53ef\u4ee5\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-
                 Image(
                     painter = painterResource(id = R.drawable.qr_wechat),
                     contentDescription = "\u5fae\u4fe1\u6536\u6b3e\u7801",
                     modifier = Modifier
-                        .size(180.dp)
+                        .size(160.dp)
                         .clip(RoundedCornerShape(8.dp)),
                     contentScale = ContentScale.Fit
                 )
@@ -65,25 +71,63 @@ fun DonateDialog(
                     color = TextSecondary
                 )
 
-                Column(
+                // Leaderboard container
+                Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White.copy(alpha = 0.05f)
                 ) {
-                    Text(
-                        text = "\u6253\u8d4f\u9e23\u8c22",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TextPrimary
-                    )
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Column(
+                        modifier = Modifier.padding(12.dp)
                     ) {
-                        donors.forEach { (name, amount) ->
-                            SuggestionChip(
-                                onClick = {},
-                                label = { Text(text = "$name\uff1a\u00a5$amount") }
-                            )
+                        Text(
+                            text = "\u6253\u8d4f\u9e23\u8c22",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TextPrimary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            donors.forEachIndexed { index, (name, amount) ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Rank number
+                                    Text(
+                                        text = "${index + 1}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = when (index) {
+                                            0 -> Color(0xFFFFD700)
+                                            1 -> Color(0xFFC0C0C0)
+                                            2 -> Color(0xFFCD7F32)
+                                            else -> TextSecondary
+                                        },
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.width(24.dp)
+                                    )
+                                    // Name
+                                    Text(
+                                        text = name,
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                        color = TextPrimary,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    // Amount
+                                    Text(
+                                        text = "\u00a5$amount",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                        color = Color(0xFFFFD700)
+                                    )
+                                }
+                            }
                         }
                     }
                 }

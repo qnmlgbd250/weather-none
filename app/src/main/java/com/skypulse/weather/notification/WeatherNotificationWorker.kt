@@ -22,7 +22,7 @@ class WeatherNotificationWorker(
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
-                const val CHANNEL_ID = "weather_alerts"
+        const val CHANNEL_ID = "weather_alerts"
         const val WORK_NAME = "weather_notification_periodic"
     }
 
@@ -69,8 +69,6 @@ class WeatherNotificationWorker(
                     val level = alert.level ?: ""
                     val title = alert.title ?: ""
                     
-                    Log.d(TAG, "Alert: title=$title, level=$level")
-                    
                     // Skip blue level alerts - check both level field and title
                     val isBlueLevel = level.contains("\u84dd") || 
                                      level.contains("\u84dd\u8272") ||
@@ -78,7 +76,6 @@ class WeatherNotificationWorker(
                                      title.contains("\u84dd\u7ea7")
                     
                     if (isBlueLevel) {
-                        Log.d(TAG, "Skipping blue alert: $title")
                         return@forEach
                     }
                     
