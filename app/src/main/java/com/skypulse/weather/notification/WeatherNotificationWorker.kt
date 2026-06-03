@@ -53,8 +53,7 @@ class WeatherNotificationWorker(
             
             val summary = "${city.name} $weatherDesc ${temp}°C | ${minTemp}°/${maxTemp}° | 湿度${humidity}% | 风速${windSpeed}m/s"
 
-            // Always send test notification
-            sendNotification(nm, 99, "SkyPulse 天气提醒测试", summary)
+            // Test notification removed - using real data only
 
             // Rain alert
             if (prefs.getBoolean("rain_alert", true)) {
