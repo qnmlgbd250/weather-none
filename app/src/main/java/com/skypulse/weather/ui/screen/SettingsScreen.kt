@@ -24,8 +24,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
+
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.ui.components.DonateDialog
@@ -159,15 +158,6 @@ fun SettingsScreen(
                     onCheckedChange = {
                         typhoonAlert = it
                         prefs.edit().putBoolean("typhoon_alert", it).apply()
-                    }
-                )
-
-                SimpleItem(
-                    title = "\u7acb\u5373\u68c0\u67e5\u5929\u6c14\u63d0\u9192",
-                    onClick = {
-                        val request = OneTimeWorkRequestBuilder<com.skypulse.weather.notification.WeatherNotificationWorker>().build()
-                        WorkManager.getInstance(context).enqueue(request)
-                        android.widget.Toast.makeText(context, "\u5df2\u89e6\u53d1\u68c0\u67e5\uff0c\u8bf7\u7a0d\u5019...", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 )
 
