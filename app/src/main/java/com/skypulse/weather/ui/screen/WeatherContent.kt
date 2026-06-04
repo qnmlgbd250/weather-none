@@ -125,6 +125,16 @@ internal fun WeatherContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
+
+            Text(
+                text = "\u6570\u636e\u6765\u6e90\uff1a\u5f69\u4e91\u5929\u6c14 | \u5b9a\u4f4d\u670d\u52a1\uff1a\u9ad8\u5fb7\u5730\u56fe",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary.copy(alpha = 0.4f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 22.dp, bottom = 22.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
