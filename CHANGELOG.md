@@ -373,3 +373,7 @@ Color.kt 閻?WeatherTheme.kt 閻?Theme.kt 閻?GlassCard.kt 閻?MinutelyPrecipita
 ## [1.9.64] - 2026-06-04
 
 - 圆角12dp→16dp，实况与概况间距22dp
+
+## [1.9.65] - 2026-06-04
+
+- 小组件独立刷新：onUpdate时立即触发Worker拉取最新数据

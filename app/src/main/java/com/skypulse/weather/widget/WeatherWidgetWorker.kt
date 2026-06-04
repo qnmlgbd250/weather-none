@@ -1,6 +1,7 @@
 ﻿package com.skypulse.weather.widget
 
 import android.content.Context
+import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.skypulse.weather.api.CaiyunApi
@@ -25,23 +26,29 @@ class WeatherWidgetWorker(
 
             if (city != null) {
                 val cache = WeatherCache(context)
-                // Try to fetch fresh data from API
+                // 先用缓存立即刷新 UI
+                val cached = cache.load(city.id)
+                WeatherWidgetUpdater.updateAll(context, cached, city.name)
+
+                // 再从 API 拉取最新数据
                 try {
                     val api = createCaiyunApi(moshi)
                     val repo = WeatherRepository(api)
                     val result = repo.getWeather(city.longitude, city.latitude)
-                    result.getOrNull()?.let { cache.save(city.id, it) }
-                } catch (_: Exception) {
-                    // API failed, use cached data
+                    result.getOrNull()?.let { fresh ->
+                        cache.save(city.id, fresh)
+                        // 用最新数据再次刷新 UI
+                        WeatherWidgetUpdater.updateAll(context, fresh, city.name)
+                    }
+                } catch (e: Exception) {
+                    Log.w("WidgetWorker", "API fetch failed, using cache", e)
                 }
-                val weather = cache.load(city.id)
-                WeatherWidgetUpdater.updateAll(context, weather, city.name)
             } else {
                 WeatherWidgetUpdater.updateAll(context, null, null)
             }
             Result.success()
         } catch (_: Exception) {
-            WeatherWidgetUpdater.updateAll(applicationContext, null, null)
+            try { WeatherWidgetUpdater.updateAll(applicationContext, null, null) } catch (_: Exception) {}
             Result.success()
         }
     }
