@@ -1,4 +1,4 @@
-package com.skypulse.weather.util
+﻿package com.skypulse.weather.util
 
 import androidx.compose.ui.graphics.Color
 import com.skypulse.weather.ui.theme.*
@@ -238,7 +238,7 @@ object WeatherUtils {
 
     fun formatPressure(pressure: Double?): String {
         if (pressure == null) return "--"
-        return "${pressure.toInt()} hPa"
+        return "${(pressure / 100).toInt()} 百帕"
     }
 
     fun formatVisibility(visibility: Double?): String {

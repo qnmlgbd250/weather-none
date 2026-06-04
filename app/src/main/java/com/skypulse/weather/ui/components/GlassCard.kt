@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.components
+﻿package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -25,7 +25,7 @@ fun GlassCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(theme.cardTintColor)
             .background(
                 brush = Brush.verticalGradient(
@@ -37,7 +37,7 @@ fun GlassCard(
             )
             .border(
                 BorderStroke(1.dp, theme.cardBorderColor),
-                RoundedCornerShape(22.dp)
+                RoundedCornerShape(16.dp)
             ),
         content = content
     )

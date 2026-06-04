@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.components
+﻿package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.animation.AnimatedVisibility
@@ -231,10 +231,6 @@ fun CurrentWeather(
 
     LaunchedEffect(Unit) { visible = true }
 
-    val feelsLike = WeatherUtils.formatTemperature(realtime?.apparent_temperature)
-    val windSpeed = WeatherUtils.formatWindSpeed(realtime?.wind?.speed)
-    val windDir = WeatherUtils.formatWindDirection(realtime?.wind?.direction)
-    val humidity = WeatherUtils.formatHumidity(realtime?.humidity)
     val aqiDesc = realtime?.air_quality?.description?.chn ?: realtime?.air_quality?.aqi?.chn?.toInt()?.let {
         when {
             it <= 50 -> "优"
@@ -245,7 +241,6 @@ fun CurrentWeather(
             else -> "严重"
         }
     } ?: "--"
-    val uvDesc = realtime?.life_index?.ultraviolet?.desc ?: "--"
 
     Column(
         modifier = modifier
@@ -326,43 +321,9 @@ fun CurrentWeather(
             }
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            InfoBlock(label = "体感", value = feelsLike)
-            InfoBlock(label = "风向", value = "$windDir$windSpeed")
-            InfoBlock(label = "湿度", value = humidity)
-            InfoBlock(label = "紫外线", value = uvDesc)
-        }
     }
 }
 
-@Composable
-private fun InfoBlock(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            color = TextPrimary
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary
-        )
-    }
-}
 
 private fun Modifier.fadingEdge(): Modifier =
     this.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }

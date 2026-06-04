@@ -75,7 +75,7 @@ internal fun WeatherContent(
                 onRefresh = onRefresh
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(22.dp))
 
             result?.forecastKeypoint?.let { keypoint ->
                 GlassCard(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -86,7 +86,7 @@ internal fun WeatherContent(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             val minutelyData = result?.minutely?.precipitation_2h
@@ -99,7 +99,7 @@ internal fun WeatherContent(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             HourlyForecastCard(
@@ -109,7 +109,7 @@ internal fun WeatherContent(
                     .padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             DailyForecastCard(
                 daily = result?.daily,
@@ -118,7 +118,14 @@ internal fun WeatherContent(
                     .padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            WeatherDetailCards(
+                realtime = realtime,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
