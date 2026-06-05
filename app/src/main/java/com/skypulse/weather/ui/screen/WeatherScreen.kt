@@ -45,19 +45,10 @@ fun WeatherScreen(
     val updateState by viewModel.updateState.collectAsState()
     val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
 
-    // Notification permission (Android 13+)
+    // Permissions
     val notificationPermission = if (android.os.Build.VERSION.SDK_INT >= 33) {
         rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
     } else null
-    var notificationRequested by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        if (notificationPermission != null && !notificationPermission.status.isGranted && !notificationRequested) {
-            notificationPermission.launchPermissionRequest()
-            notificationRequested = true
-        }
-    }
-
     val locationPermissions = rememberMultiplePermissionsState(
         permissions = listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -67,12 +58,17 @@ fun WeatherScreen(
     val hasLocationPermission = locationPermissions.permissions.any { it.status.isGranted }
     var useDefaultLocation by rememberSaveable { mutableStateOf(false) }
 
-    var locationRequested by rememberSaveable { mutableStateOf(false) }
-
+    // Request all permissions on first launch
+    var permissionsRequested by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        if (!hasLocationPermission && !locationRequested) {
-            locationPermissions.launchMultiplePermissionRequest()
-            locationRequested = true
+        if (!permissionsRequested) {
+            if (notificationPermission != null && !notificationPermission.status.isGranted) {
+                notificationPermission.launchPermissionRequest()
+            }
+            if (!hasLocationPermission) {
+                locationPermissions.launchMultiplePermissionRequest()
+            }
+            permissionsRequested = true
         }
     }
 
@@ -96,13 +92,15 @@ fun WeatherScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(hasLocationPermission) {
+    LaunchedEffect(hasLocationPermission, permissionsRequested) {
         if (hasLocationPermission) {
             useDefaultLocation = false
             viewModel.ensureCurrentLocationCity()
             viewModel.fetchWeather()
-        } else {
+        } else if (permissionsRequested) {
+            useDefaultLocation = true
             viewModel.ensureCurrentLocationCity()
+            viewModel.fetchDefaultWeather()
         }
     }
 
