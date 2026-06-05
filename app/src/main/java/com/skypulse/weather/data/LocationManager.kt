@@ -29,6 +29,21 @@ class LocationManager @Inject constructor(
         private const val DEFAULT_LOCATION_NAME = "北京市"
         const val DEFAULT_LONGITUDE = 116.4074
         const val DEFAULT_LATITUDE = 39.9042
+
+    // 缓存已确认的位置名称，避免同一坐标下 POI 随机跳变
+    private var cachedLat: Double? = null
+    private var cachedLon: Double? = null
+    private var cachedLocationName: String? = null
+
+    /**
+     * 计算两个坐标之间的距离（米）
+     */
+    private fun distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
+        return results[0]
+    }
+
     }
 
     /**
@@ -143,14 +158,28 @@ class LocationManager @Inject constructor(
 
     /**
      * Build location name from a full AMapLocation result, prioritizing POI name.
+     * Uses coordinate-based caching to prevent POI name flickering at the same location.
      */
     fun resolveLocationName(location: AMapLocation): String {
+        val lat = location.latitude
+        val lon = location.longitude
+
+        // 如果距离上次定位点 < 200米，直接返回缓存的名称
+        val cLat = cachedLat
+        val cLon = cachedLon
+        val cName = cachedLocationName
+        if (cLat != null && cLon != null && cName != null) {
+            if (distanceBetween(lat, lon, cLat, cLon) < 200f) {
+                return cName
+            }
+        }
+
         val city = location.city?.takeIf { it.isNotBlank() }
         val district = location.district?.takeIf { it.isNotBlank() && it != city }
         val poi = location.poiName?.takeIf { it.isNotBlank() }
         val street = location.street?.takeIf { it.isNotBlank() }
         val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
-        return buildString {
+        val name = buildString {
             when {
                 district != null -> append(district)
                 city != null -> append(city)
@@ -166,6 +195,12 @@ class LocationManager @Inject constructor(
                 location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
             }
         }.ifEmpty { "未知位置" }
+
+        // 更新缓存
+        cachedLat = lat
+        cachedLon = lon
+        cachedLocationName = name
+        return name
     }
     /**
      * Reverse geocode via AMap SDK. Falls back to Android Geocoder on failure.
@@ -200,8 +235,7 @@ class LocationManager @Inject constructor(
                                             rCity != null -> append(rCity)
                                         }
                                         val pois = addr.pois?.filter { !it.title.isNullOrBlank() }
-                                        val buildingKeys = listOf("大厦","广场","中心","大楼","写字楼","产业园","科技园","软件园","工业园","创意园")
-                                        val poi = pois?.firstOrNull { p -> buildingKeys.any { k -> p.title.contains(k) } }
+                                        val poi = pois?.firstOrNull()
                                             ?: pois?.firstOrNull()
                                         val street = addr.streetNumber?.street?.takeIf { it.isNotBlank() }
                                         val streetNum = addr.streetNumber?.number?.takeIf { it.isNotBlank() }
