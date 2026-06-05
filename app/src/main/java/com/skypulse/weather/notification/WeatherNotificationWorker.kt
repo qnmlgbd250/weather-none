@@ -42,6 +42,10 @@ class WeatherNotificationWorker(
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             createChannel(nm)
 
+            // Initialize deduplicator and clean up expired records
+            val dedup = NotificationDeduplicator(context)
+            dedup.cleanup()
+
             val realtime = weather.result?.realtime
             val daily = weather.result?.daily
             val alerts = weather.result?.alert?.content
@@ -55,15 +59,17 @@ class WeatherNotificationWorker(
             val minTemp = daily?.temperature?.firstOrNull()?.min?.toInt() ?: 0
             val maxTemp = daily?.temperature?.firstOrNull()?.max?.toInt() ?: 0
             
-            // Rain alert
+            // Rain alert ¡ª only if not sent recently
             if (prefs.getBoolean("rain_alert", true)) {
                 if (skycon.contains("RAIN") || skycon.contains("STORM")) {
-                    val body = "${city.name} $weatherDesc ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0 | \u6e7f\u5ea6${humidity}% | \u98ce\u901f${windSpeed}m/s"
-                    sendNotification(nm, 1, "\u77ed\u4e34\u96e8\u6c34\u63d0\u9192", body)
+                    if (dedup.shouldNotifyRain()) {
+                        val body = "${city.name} $weatherDesc ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0 | \u6e7f\u5ea6${humidity}% | \u98ce\u901f${windSpeed}m/s"
+                        sendNotification(nm, 1, "\u77ed\u4e34\u96e8\u6c34\u63d0\u9192", body)
+                    }
                 }
             }
 
-            // Weather warning alert - skip blue level
+            // Weather warning alert ¡ª skip blue level, dedup by title
             if (prefs.getBoolean("warning_alert", true)) {
                 alerts?.forEach { alert ->
                     val level = alert.level ?: ""
@@ -84,8 +90,10 @@ class WeatherNotificationWorker(
                         ?.replace(Regex("^.*\u53d1\u5e03"), "")
                         ?.trim()
                     if (!cleanTitle.isNullOrBlank()) {
-                        val body = "${city.name} $weatherDesc ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0"
-                        sendNotification(nm, 2, cleanTitle, body)
+                        if (dedup.shouldNotifyWarning(cleanTitle)) {
+                            val body = "${city.name} $weatherDesc ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0"
+                            sendNotification(nm, 2, cleanTitle, body)
+                        }
                     }
                 }
             }
@@ -99,8 +107,10 @@ class WeatherNotificationWorker(
                     if (today != null && yesterday != null) {
                         val diff = kotlin.math.abs(today - yesterday)
                         if (diff >= 8) {
-                            val body = "${city.name} $weatherDesc ${temp}\u00b0C | \u4eca\u65e5\u6700\u9ad8\u6e29: ${today}\u00b0C"
-                            sendNotification(nm, 3, "\u53d8\u6e29\u63d0\u9192", body)
+                            if (dedup.shouldNotifyTempChange()) {
+                                val body = "${city.name} $weatherDesc ${temp}\u00b0C | \u4eca\u65e5\u6700\u9ad8\u6e29: ${today}\u00b0C"
+                                sendNotification(nm, 3, "\u53d8\u6e29\u63d0\u9192", body)
+                            }
                         }
                     }
                 }
@@ -109,16 +119,20 @@ class WeatherNotificationWorker(
             // Wind alert
             if (prefs.getBoolean("wind_alert", false)) {
                 if (windSpeed >= 10.8) {
-                    val body = "${city.name} $weatherDesc ${temp}\u00b0C | \u5f53\u524d\u98ce\u901f: ${windSpeed}m/s"
-                    sendNotification(nm, 4, "\u5927\u98ce\u63d0\u9192", body)
+                    if (dedup.shouldNotifyWind()) {
+                        val body = "${city.name} $weatherDesc ${temp}\u00b0C | \u5f53\u524d\u98ce\u901f: ${windSpeed}m/s"
+                        sendNotification(nm, 4, "\u5927\u98ce\u63d0\u9192", body)
+                    }
                 }
             }
 
             // Extreme weather alert
             if (prefs.getBoolean("typhoon_alert", true)) {
                 if (skycon == "STORM_RAIN") {
-                    val body = "${city.name} \u66b4\u96e8 ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0 | \u8bf7\u5c3d\u91cf\u907f\u514d\u5916\u51fa"
-                    sendNotification(nm, 5, "\u6781\u7aef\u5929\u6c14\u63d0\u9192", body)
+                    if (dedup.shouldNotifyExtreme()) {
+                        val body = "${city.name} \u66b4\u96e8 ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0 | \u8bf7\u5c3d\u91cf\u907f\u514d\u5916\u51fa"
+                        sendNotification(nm, 5, "\u6781\u7aef\u5929\u6c14\u63d0\u9192", body)
+                    }
                 }
             }
 
