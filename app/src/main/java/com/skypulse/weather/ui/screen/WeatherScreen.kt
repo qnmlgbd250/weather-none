@@ -16,7 +16,6 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.shouldShowRationale
 import com.google.accompanist.permissions.rememberPermissionState
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
@@ -67,6 +66,15 @@ fun WeatherScreen(
     )
     val hasLocationPermission = locationPermissions.permissions.any { it.status.isGranted }
     var useDefaultLocation by rememberSaveable { mutableStateOf(false) }
+
+    var locationRequested by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (!hasLocationPermission && !locationRequested) {
+            locationPermissions.launchMultiplePermissionRequest()
+            locationRequested = true
+        }
+    }
 
     // Auto-refresh on resume
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
@@ -166,16 +174,6 @@ fun WeatherScreen(
                             }
                         }
 
-                        if (!hasLocationPermission && !useDefaultLocation) {
-                            PermissionRequestContent(
-                                shouldShowRationale = locationPermissions.permissions.any { it.status.shouldShowRationale },
-                                onRequestPermission = { locationPermissions.launchMultiplePermissionRequest() },
-                                onUseDefault = {
-                                    useDefaultLocation = true
-                                    viewModel.fetchDefaultWeather()
-                                }
-                            )
-                        }
                     }
                 }
             }
@@ -245,53 +243,4 @@ private fun ErrorContent(
     }
 }
 
-@Composable
-private fun PermissionRequestContent(
-    shouldShowRationale: Boolean,
-    onRequestPermission: () -> Unit,
-    onUseDefault: () -> Unit
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        GlassCard(modifier = Modifier.padding(32.dp)) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = null,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(48.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "需要定位权限",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = TextPrimary
-                )
-                Text(
-                    text = if (shouldShowRationale) {
-                        "为了获取您当前位置的天气信息，需要授予定位权限。"
-                    } else {
-                        "点击下方按钮授权定位，获取精准天气。"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary
-                )
-                Button(
-                    onClick = onRequestPermission,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("授权定位") }
-                TextButton(
-                    onClick = onUseDefault,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("使用默认位置", color = TextSecondary) }
-            }
-        }
-    }
-}
+
