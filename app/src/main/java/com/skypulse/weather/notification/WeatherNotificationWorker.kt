@@ -91,7 +91,13 @@ class WeatherNotificationWorker(
                         ?.trim()
                     if (!cleanTitle.isNullOrBlank()) {
                         if (dedup.shouldNotifyWarning(cleanTitle)) {
-                            val body = "${city.name} $weatherDesc ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0"
+                            // Use alert description as body, truncate to 2 lines
+                            val description = alert.description ?: ""
+                            val body = if (!description.isNullOrBlank()) {
+                                truncateToTwoLines(description)
+                            } else {
+                                cleanTitle
+                            }
                             sendNotification(nm, 2, cleanTitle, body)
                         }
                     }
@@ -159,6 +165,77 @@ class WeatherNotificationWorker(
             .setAutoCancel(true)
             .build()
         nm.notify(id, notification)
+    }
+
+    /**
+     * Truncate text to at most 2 lines, adding ellipsis if truncated.
+     * Approximates ~50 chars per line for Chinese text.
+     */
+    private fun truncateToTwoLines(text: String, maxCharsPerLine: Int = 50): String {
+        val maxTotal = maxCharsPerLine * 2
+        val cleanText = text.replace("\r\n", "\n").replace("\r", "\n").trim()
+        
+        // Split by existing newlines
+        val lines = cleanText.split("\n")
+        
+        val result = StringBuilder()
+        var lineCount = 0
+        var charCount = 0
+        
+        for (line in lines) {
+            if (lineCount >= 2) break
+            
+            if (line.isEmpty()) {
+                if (lineCount < 2) {
+                    result.append("\n")
+                    lineCount++
+                }
+                continue
+            }
+            
+            // If this single line exceeds max chars per line, need to wrap
+            if (line.length > maxCharsPerLine) {
+                val firstPart = line.take(maxCharsPerLine)
+                val secondPart = line.drop(maxCharsPerLine)
+                
+                if (lineCount == 0) {
+                    result.append(firstPart)
+                    result.append("\n")
+                    lineCount++
+                    
+                    if (secondPart.length > maxCharsPerLine) {
+                        // Need ellipsis on second line
+                        result.append(secondPart.take(maxCharsPerLine - 1)).append("\u2026")
+                        lineCount++
+                        break
+                    } else {
+                        result.append(secondPart)
+                        lineCount++
+                    }
+                } else if (lineCount == 1) {
+                    result.append(firstPart.take(maxCharsPerLine - 1)).append("\u2026")
+                    lineCount++
+                    break
+                }
+            } else {
+                if (lineCount > 0) {
+                    result.append("\n")
+                }
+                result.append(line)
+                lineCount++
+            }
+            
+            charCount += line.length
+            if (charCount >= maxTotal) break
+        }
+        
+        // If we exceeded the limit, add ellipsis
+        val resultText = result.toString().trimEnd()
+        return if (resultText.length > maxTotal) {
+            resultText.take(maxTotal - 1) + "\u2026"
+        } else {
+            resultText
+        }
     }
 
     private fun getWeatherDesc(skycon: String?): String {
