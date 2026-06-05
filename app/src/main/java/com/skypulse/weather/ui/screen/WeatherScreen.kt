@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.screen
+﻿package com.skypulse.weather.ui.screen
 
 import android.Manifest
 import androidx.activity.compose.BackHandler
@@ -17,6 +17,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.shouldShowRationale
+import com.google.accompanist.permissions.rememberPermissionState
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
 import androidx.compose.material.icons.Icons
@@ -44,6 +45,19 @@ fun WeatherScreen(
     val isSearching by searchViewModel.isSearching.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
+
+    // Notification permission (Android 13+)
+    val notificationPermission = if (android.os.Build.VERSION.SDK_INT >= 33) {
+        rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
+    } else null
+    var notificationRequested by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        if (notificationPermission != null && !notificationPermission.status.isGranted && !notificationRequested) {
+            notificationPermission.launchPermissionRequest()
+            notificationRequested = true
+        }
+    }
 
     val locationPermissions = rememberMultiplePermissionsState(
         permissions = listOf(
