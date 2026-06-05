@@ -437,3 +437,7 @@ Color.kt 閻?WeatherTheme.kt 閻?Theme.kt 閻?GlassCard.kt 閻?MinutelyPrecipita
 ## [1.9.81] - 2026-06-05
 
 - 彻底清除逆地理编码中的大厦/广场关键词优先匹配
+
+## [1.9.82] - 2026-06-05
+
+- 小组件独立定位刷新：Worker后台更新当前位置坐标和名称
