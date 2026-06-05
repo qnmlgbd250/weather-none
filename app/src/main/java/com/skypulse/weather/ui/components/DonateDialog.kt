@@ -30,7 +30,8 @@ fun DonateDialog(
         "\u6211\u6709\u70b9\u67ff" to "20",
         "\u4e09\u5341\u4e5d\u306e\u5ea6" to "18",
         "\u9e21\u795e" to "8.8",
-        "BIN0678" to "8.8"
+        "BIN0678" to "8.8",
+        "*风" to "3"
     )
     AlertDialog(
         onDismissRequest = onDismiss,
