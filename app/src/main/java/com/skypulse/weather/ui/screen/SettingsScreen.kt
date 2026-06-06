@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
+import com.skypulse.weather.notification.WeatherNotificationScheduler
 import com.skypulse.weather.ui.components.DonateDialog
 import com.skypulse.weather.ui.theme.NightFallbackGradient
 import com.skypulse.weather.ui.theme.TextPrimary
@@ -44,12 +45,16 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var showDonateDialog by remember { mutableStateOf(false) }
-    val prefs = context.getSharedPreferences("notification_prefs", android.content.Context.MODE_PRIVATE)
+    val prefs = context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, android.content.Context.MODE_PRIVATE)
     var rainAlert by remember { mutableStateOf(prefs.getBoolean("rain_alert", true)) }
     var warningAlert by remember { mutableStateOf(prefs.getBoolean("warning_alert", true)) }
     var tempChangeAlert by remember { mutableStateOf(prefs.getBoolean("temp_change_alert", false)) }
     var windAlert by remember { mutableStateOf(prefs.getBoolean("wind_alert", false)) }
     var typhoonAlert by remember { mutableStateOf(prefs.getBoolean("typhoon_alert", true)) }
+    fun updateAlertPreference(key: String, enabled: Boolean) {
+        prefs.edit().putBoolean(key, enabled).apply()
+        WeatherNotificationScheduler.scheduleIfNeeded(context.applicationContext)
+    }
 
     val isChecking = updateState is UpdateCheckResult.Checking
     val infiniteTransition = rememberInfiniteTransition(label = "refresh")
@@ -129,7 +134,7 @@ fun SettingsScreen(
                         checked = rainAlert,
                         onCheckedChange = {
                             rainAlert = it
-                            prefs.edit().putBoolean("rain_alert", it).apply()
+                            updateAlertPreference("rain_alert", it)
                         }
                     )
 
@@ -138,7 +143,7 @@ fun SettingsScreen(
                         checked = warningAlert,
                         onCheckedChange = {
                             warningAlert = it
-                            prefs.edit().putBoolean("warning_alert", it).apply()
+                            updateAlertPreference("warning_alert", it)
                         }
                     )
 
@@ -147,7 +152,7 @@ fun SettingsScreen(
                         checked = tempChangeAlert,
                         onCheckedChange = {
                             tempChangeAlert = it
-                            prefs.edit().putBoolean("temp_change_alert", it).apply()
+                            updateAlertPreference("temp_change_alert", it)
                         }
                     )
 
@@ -156,7 +161,7 @@ fun SettingsScreen(
                         checked = windAlert,
                         onCheckedChange = {
                             windAlert = it
-                            prefs.edit().putBoolean("wind_alert", it).apply()
+                            updateAlertPreference("wind_alert", it)
                         }
                     )
 
@@ -165,7 +170,7 @@ fun SettingsScreen(
                         checked = typhoonAlert,
                         onCheckedChange = {
                             typhoonAlert = it
-                            prefs.edit().putBoolean("typhoon_alert", it).apply()
+                            updateAlertPreference("typhoon_alert", it)
                         }
                     )
                 }

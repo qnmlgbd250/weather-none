@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -20,6 +21,10 @@ import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.WeatherRepository
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class WeatherNotificationWorker(
@@ -31,103 +36,40 @@ class WeatherNotificationWorker(
         const val CHANNEL_ID = "weather_alerts"
         const val WORK_NAME = "weather_notification_periodic"
         private const val TAG = "WeatherNotifWorker"
+        private const val KEY_TEMP_BASELINE_DATE = "temp_baseline_date"
+        private const val KEY_TEMP_BASELINE_MAX = "temp_baseline_max"
     }
 
     override suspend fun doWork(): Result {
         return try {
             val context = applicationContext
-            val prefs = context.getSharedPreferences("notification_prefs", Context.MODE_PRIVATE)
+            if (!WeatherNotificationScheduler.hasAnyAlertEnabled(context)) {
+                WeatherNotificationScheduler.cancel(context)
+                return Result.success()
+            }
+            if (!WeatherNotificationScheduler.canPostNotifications(context)) {
+                Log.w(TAG, "Notification permission disabled, skipping weather alerts")
+                return Result.success()
+            }
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            createChannel(nm)
+            if (!isAlertChannelEnabled(nm)) {
+                Log.w(TAG, "Weather alert channel disabled, skipping weather alerts")
+                return Result.success()
+            }
+
+            val prefs = context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, Context.MODE_PRIVATE)
             val moshi = Moshi.Builder().build()
             val cityManager = CityManager(context, moshi)
             val cityDataStore = CityDataStore(context, moshi)
-            val cities = cityManager.getCities()
-            val currentCity = cities.firstOrNull { it.isCurrentLocation }
-
-            // Try GPS location first (like Widget Worker)
-            val locationManager = LocationManager(context)
-            val amapLocation = try {
-                locationManager.requestAmapLocation()
-            } catch (e: Exception) {
-                Log.w(TAG, "Location fetch failed, using saved city", e)
-                null
-            }
-
-            val city = if (amapLocation != null) {
-                val lon = amapLocation.longitude
-                val lat = amapLocation.latitude
-                val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
-                val distance = currentCity?.let {
-                    val results = FloatArray(1)
-                    android.location.Location.distanceBetween(lat, lon, it.latitude, it.longitude, results)
-                    results[0]
-                }
-                val locationName = if (savedName != null && distance != null && distance < 500f) {
-                    savedName
-                } else {
-                    locationManager.resolveLocationName(amapLocation)
-                }
-                val updatedCity = (currentCity ?: City(
-                    id = "current_location",
-                    name = locationName,
-                    longitude = lon,
-                    latitude = lat,
-                    isCurrentLocation = true
-                )).copy(
-                    name = locationName,
-                    longitude = lon,
-                    latitude = lat,
-                    isCurrentLocation = true
-                )
-                val updatedCities = if (currentCity != null) {
-                    cities.map { if (it.isCurrentLocation) updatedCity else it }
-                } else {
-                    listOf(updatedCity) + cities
-                }
-                cityDataStore.saveCities(updatedCities)
-                cityManager.saveCities(updatedCities)
-                updatedCity
-            } else {
-                // GPS failed — check if LocationManager has a recent cached location
-                val cachePrefs = context.getSharedPreferences("location_cache", Context.MODE_PRIVATE)
-                val cachedLat = cachePrefs.getFloat("cached_lat", 0f).toDouble()
-                val cachedLon = cachePrefs.getFloat("cached_lon", 0f).toDouble()
-                val cachedName = cachePrefs.getString("cached_name", null)
-
-                if (cachedLat != 0.0 && cachedLon != 0.0 && cachedName != null) {
-                    // Use cached location (more recent than stored city)
-                    (currentCity ?: City(
-                        id = "current_location",
-                        name = cachedName,
-                        longitude = cachedLon,
-                        latitude = cachedLat,
-                        isCurrentLocation = true
-                    )).copy(
-                        name = cachedName,
-                        longitude = cachedLon,
-                        latitude = cachedLat,
-                        isCurrentLocation = true
-                    )
-                } else if (currentCity != null) {
-                    // Check if stored city is the default Beijing — if so, skip notification
-                    // to avoid false alerts from wrong location
-                    if (currentCity.longitude == LocationManager.DEFAULT_LONGITUDE &&
-                        currentCity.latitude == LocationManager.DEFAULT_LATITUDE) {
-                        Log.w(TAG, "GPS failed and city is default Beijing, skipping notifications")
-                        return Result.success()
-                    }
-                    currentCity
-                } else {
-                    cities.firstOrNull() ?: return Result.success()
-                }
-            }
+            val cities = cityDataStore.getCities().ifEmpty { cityManager.getCities() }
+            val city = resolveNotificationCity(context, cities, cityDataStore, cityManager)
+                ?: return Result.success()
 
             val api = createCaiyunApi(moshi)
             val repo = WeatherRepository(api)
             val weather = repo.getWeather(city.longitude, city.latitude).getOrNull() ?: return Result.success()
             WeatherCache(context).save(city.id, weather)
-
-            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            createChannel(nm)
 
             // Initialize deduplicator and clean up expired records
             val dedup = NotificationDeduplicator(context)
@@ -138,12 +80,9 @@ class WeatherNotificationWorker(
             val alerts = weather.result?.alert?.content
 
             val skycon = realtime?.skycon ?: "UNKNOWN"
-            val temp = realtime?.temperature?.toInt() ?: 0
-            val humidity = realtime?.humidity?.let { (it * 100).toInt() } ?: 0
             val windSpeed = realtime?.wind?.speed ?: 0.0
             val weatherDesc = getWeatherDesc(skycon)
             
-            val minTemp = daily?.temperature?.firstOrNull()?.min?.toInt() ?: 0
             val maxTemp = daily?.temperature?.firstOrNull()?.max?.toInt() ?: 0
 
             val minutely = weather.result?.minutely
@@ -203,10 +142,10 @@ class WeatherNotificationWorker(
                     }
                     
                     val cleanTitle = title
-                        ?.replace(Regex("\\[.*?\\]"), "")
-                        ?.replace(Regex("^.*\u53d1\u5e03"), "")
-                        ?.trim()
-                    if (!cleanTitle.isNullOrBlank()) {
+                        .replace(Regex("\\[.*?\\]"), "")
+                        .replace(Regex("^.*\u53d1\u5e03"), "")
+                        .trim()
+                    if (cleanTitle.isNotBlank()) {
                         if (dedup.shouldNotifyWarning(cleanTitle)) {
                             // Use alert description as body, truncate to 2 lines
                             val description = alert.description ?: ""
@@ -223,23 +162,14 @@ class WeatherNotificationWorker(
 
             // Temperature change alert
             if (prefs.getBoolean("temp_change_alert", false)) {
-                val temps = daily?.temperature
-                if (temps != null && temps.size >= 2) {
-                    val today = temps[0].max
-                    val yesterday = temps[1].max
-                    if (today != null && yesterday != null) {
-                        val diff = today - yesterday
-                        val absDiff = kotlin.math.abs(diff)
-                        if (absDiff >= 8) {
-                            if (dedup.shouldNotifyTempChange()) {
-                                val direction = if (diff > 0) "\u5347\u6e29" else "\u964d\u6e29"
-                                val title = "\u53d8\u6e29\u63d0\u9192\u2014\u2014\u5267\u70c8$direction"
-                                val body = "\u4eca\u65e5\u6700\u9ad8\u6e29 ${today}\u00b0C\uff0c\u6bd4\u6628\u65e5${direction}${absDiff}\u00b0C\uff0c\u8bf7\u6ce8\u610f\u589e\u51cf\u8863\u7269"
-                                sendNotification(nm, 3, title, body)
-                            }
-                        }
-                    }
-                }
+                val todayTemp = daily?.temperature?.firstOrNull()
+                maybeNotifyTemperatureChange(
+                    prefs = prefs,
+                    dedup = dedup,
+                    nm = nm,
+                    todayMax = todayTemp?.max,
+                    todayDate = todayTemp?.date
+                )
             }
             // Wind alert
             if (prefs.getBoolean("wind_alert", false)) {
@@ -276,6 +206,156 @@ class WeatherNotificationWorker(
         }
     }
 
+    private suspend fun resolveNotificationCity(
+        context: Context,
+        cities: List<City>,
+        cityDataStore: CityDataStore,
+        cityManager: CityManager
+    ): City? {
+        val currentCity = cities.firstOrNull { it.isCurrentLocation }
+        val locationManager = LocationManager(context)
+        val amapLocation = if (locationManager.hasBackgroundLocationPermission()) {
+            try {
+                locationManager.requestAmapLocation()
+            } catch (e: Exception) {
+                Log.w(TAG, "Location fetch failed, using saved city", e)
+                null
+            }
+        } else {
+            Log.w(TAG, "Background location permission not granted, using cache")
+            null
+        }
+
+        if (amapLocation != null) {
+            val lon = amapLocation.longitude
+            val lat = amapLocation.latitude
+            val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
+            val distance = currentCity?.let { distanceBetween(lat, lon, it.latitude, it.longitude) }
+            val locationName = if (savedName != null && distance != null && distance < 500f) {
+                savedName
+            } else {
+                locationManager.resolveLocationName(amapLocation)
+            }
+            return saveCurrentLocationCity(
+                cities = cities,
+                currentCity = currentCity,
+                cityDataStore = cityDataStore,
+                cityManager = cityManager,
+                name = locationName,
+                longitude = lon,
+                latitude = lat
+            )
+        }
+
+        locationManager.getCachedLocation()?.let { cached ->
+            return saveCurrentLocationCity(
+                cities = cities,
+                currentCity = currentCity,
+                cityDataStore = cityDataStore,
+                cityManager = cityManager,
+                name = cached.name,
+                longitude = cached.longitude,
+                latitude = cached.latitude
+            )
+        }
+
+        if (currentCity != null) {
+            if (currentCity.longitude == LocationManager.DEFAULT_LONGITUDE &&
+                currentCity.latitude == LocationManager.DEFAULT_LATITUDE) {
+                Log.w(TAG, "No trusted location and city is default Beijing, skipping notifications")
+                return null
+            }
+            return currentCity
+        }
+
+        return cities.firstOrNull()
+    }
+
+    private suspend fun saveCurrentLocationCity(
+        cities: List<City>,
+        currentCity: City?,
+        cityDataStore: CityDataStore,
+        cityManager: CityManager,
+        name: String,
+        longitude: Double,
+        latitude: Double
+    ): City {
+        val updatedCity = (currentCity ?: City(
+            id = "current_location",
+            name = name,
+            longitude = longitude,
+            latitude = latitude,
+            isCurrentLocation = true
+        )).copy(
+            name = name,
+            longitude = longitude,
+            latitude = latitude,
+            isCurrentLocation = true
+        )
+        val updatedCities = if (currentCity != null) {
+            cities.map { if (it.isCurrentLocation) updatedCity else it }
+        } else {
+            listOf(updatedCity) + cities
+        }
+        cityDataStore.saveCities(updatedCities)
+        cityManager.saveCities(updatedCities)
+        return updatedCity
+    }
+
+    private fun distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
+        return results[0]
+    }
+
+    private fun maybeNotifyTemperatureChange(
+        prefs: SharedPreferences,
+        dedup: NotificationDeduplicator,
+        nm: NotificationManager,
+        todayMax: Double?,
+        todayDate: String?
+    ) {
+        if (todayMax == null) return
+
+        val date = normalizeDate(todayDate)
+        val baselineDate = prefs.getString(KEY_TEMP_BASELINE_DATE, null)
+        val baselineMax = prefs.getString(KEY_TEMP_BASELINE_MAX, null)?.toDoubleOrNull()
+
+        if (baselineDate != null && baselineMax != null && isPreviousDay(baselineDate, date)) {
+            val diff = todayMax - baselineMax
+            val absDiff = kotlin.math.abs(diff)
+            if (absDiff >= 8 && dedup.shouldNotifyTempChange()) {
+                val direction = if (diff > 0) "\u5347\u6e29" else "\u964d\u6e29"
+                val title = "\u53d8\u6e29\u63d0\u9192\u2014\u2014\u5267\u70c8$direction"
+                val body = "\u4eca\u65e5\u6700\u9ad8\u6e29 ${kotlin.math.round(todayMax).toInt()}\u00b0C\uff0c\u6bd4\u6628\u65e5${direction}${kotlin.math.round(absDiff).toInt()}\u00b0C\uff0c\u8bf7\u6ce8\u610f\u589e\u51cf\u8863\u7269"
+                sendNotification(nm, 3, title, body)
+            }
+        }
+
+        prefs.edit()
+            .putString(KEY_TEMP_BASELINE_DATE, date)
+            .putString(KEY_TEMP_BASELINE_MAX, todayMax.toString())
+            .apply()
+    }
+
+    private fun normalizeDate(date: String?): String {
+        return date?.take(10)?.takeIf { it.length == 10 }
+            ?: SimpleDateFormat("yyyy-MM-dd", Locale.CHINA).format(Date())
+    }
+
+    private fun isPreviousDay(previous: String, current: String): Boolean {
+        return try {
+            val format = SimpleDateFormat("yyyy-MM-dd", Locale.CHINA)
+            val currentDate = format.parse(current) ?: return false
+            val calendar = Calendar.getInstance(Locale.CHINA)
+            calendar.time = currentDate
+            calendar.add(Calendar.DAY_OF_YEAR, -1)
+            format.format(calendar.time) == previous
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun createChannel(nm: NotificationManager) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(CHANNEL_ID, "\u5929\u6c14\u63d0\u9192", NotificationManager.IMPORTANCE_DEFAULT)
@@ -283,7 +363,15 @@ class WeatherNotificationWorker(
         }
     }
 
+    private fun isAlertChannelEnabled(nm: NotificationManager): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+            nm.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    @Suppress("MissingPermission")
     private fun sendNotification(nm: NotificationManager, id: Int, title: String, body: String) {
+        if (!WeatherNotificationScheduler.canPostNotifications(applicationContext)) return
+
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)

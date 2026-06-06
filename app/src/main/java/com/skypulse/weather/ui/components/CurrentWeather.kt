@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -14,8 +15,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.Menu
-import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.*
 import com.skypulse.weather.viewmodel.RefreshPhase
 import androidx.compose.runtime.*
@@ -27,7 +26,11 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -173,9 +176,7 @@ fun LocationHeader(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Menu,
-                            contentDescription = "\u57ce\u5e02\u5217\u8868",
+                        SpacedListIcon(
                             tint = TextSecondary,
                             modifier = Modifier.size(22.dp)
                         )
@@ -193,9 +194,7 @@ fun LocationHeader(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Outlined.MoreVert,
-                            contentDescription = "设置",
+                        SpacedMoreVertIcon(
                             tint = TextSecondary,
                             modifier = Modifier.size(22.dp)
                         )
@@ -204,6 +203,53 @@ fun LocationHeader(
             }
         }
 
+    }
+}
+
+@Composable
+private fun SpacedListIcon(
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier.semantics { contentDescription = "\u57ce\u5e02\u5217\u8868" }
+    ) {
+        val strokeWidth = 1.75.dp.toPx()
+        val halfWidth = 8.dp.toPx()
+        val spacing = 5.3.dp.toPx()
+        val centerX = size.width / 2f
+        val centerY = size.height / 2f
+        listOf(centerY - spacing, centerY, centerY + spacing).forEach { y ->
+            drawLine(
+                color = tint,
+                start = Offset(centerX - halfWidth, y),
+                end = Offset(centerX + halfWidth, y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+@Composable
+private fun SpacedMoreVertIcon(
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier.semantics { contentDescription = "\u8bbe\u7f6e" }
+    ) {
+        val radius = 1.75.dp.toPx()
+        val spacing = 5.2.dp.toPx()
+        val centerX = size.width / 2f
+        val centerY = size.height / 2f
+        listOf(centerY - spacing, centerY, centerY + spacing).forEach { y ->
+            drawCircle(
+                color = tint,
+                radius = radius,
+                center = Offset(centerX, y)
+            )
+        }
     }
 }
 

@@ -1,9 +1,13 @@
 package com.skypulse.weather.data
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.location.Location
+import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
@@ -24,6 +28,11 @@ class LocationManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
+    data class CachedLocation(
+        val latitude: Double,
+        val longitude: Double,
+        val name: String
+    )
 
     companion object {
         private const val TAG = "LocationManager"
@@ -39,6 +48,35 @@ class LocationManager @Inject constructor(
 
     private val cachePrefs by lazy {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    fun hasBackgroundLocationPermission(): Boolean {
+        val hasForeground = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) ||
+            hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+        if (!hasForeground) return false
+
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+    }
+
+    fun getCachedLocation(): CachedLocation? {
+        val lat = cachePrefs.getFloat(KEY_CACHED_LAT, 0f).toDouble()
+        val lon = cachePrefs.getFloat(KEY_CACHED_LON, 0f).toDouble()
+        val name = cachePrefs.getString(KEY_CACHED_NAME, null)?.takeIf { it.isNotBlank() }
+        if (lat == 0.0 || lon == 0.0 || name == null) return null
+        return CachedLocation(latitude = lat, longitude = lon, name = name)
+    }
+
+    private fun saveCachedLocation(lat: Double, lon: Double, name: String) {
+        cachePrefs.edit()
+            .putFloat(KEY_CACHED_LAT, lat.toFloat())
+            .putFloat(KEY_CACHED_LON, lon.toFloat())
+            .putString(KEY_CACHED_NAME, name)
+            .apply()
+    }
+
+    private fun hasPermission(permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
     }
 
     /**
@@ -204,11 +242,7 @@ class LocationManager @Inject constructor(
         }.ifEmpty { "\u672a\u77e5\u4f4d\u7f6e" }
 
         // \u66f4\u65b0\u7f13\u5b58
-        cachePrefs.edit()
-            .putFloat(KEY_CACHED_LAT, lat.toFloat())
-            .putFloat(KEY_CACHED_LON, lon.toFloat())
-            .putString(KEY_CACHED_NAME, name)
-            .apply()
+        saveCachedLocation(lat, lon, name)
         return name
     }
     /**

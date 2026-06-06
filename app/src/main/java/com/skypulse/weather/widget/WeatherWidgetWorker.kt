@@ -69,14 +69,30 @@ class WeatherWidgetWorker(
     ): City? {
         val currentCity = cities.firstOrNull { it.isCurrentLocation }
         val locationManager = LocationManager(context)
-        val amapLocation = try {
-            locationManager.requestAmapLocation()
-        } catch (e: Exception) {
-            Log.w("WidgetWorker", "Location fetch failed, using saved city", e)
+        val amapLocation = if (locationManager.hasBackgroundLocationPermission()) {
+            try {
+                locationManager.requestAmapLocation()
+            } catch (e: Exception) {
+                Log.w("WidgetWorker", "Location fetch failed, using saved city", e)
+                null
+            }
+        } else {
+            Log.w("WidgetWorker", "Background location permission not granted, using cache")
             null
         }
 
         if (amapLocation == null) {
+            locationManager.getCachedLocation()?.let { cached ->
+                return saveCurrentLocationCity(
+                    cities = cities,
+                    currentCity = currentCity,
+                    cityDataStore = cityDataStore,
+                    cityManager = cityManager,
+                    name = cached.name,
+                    longitude = cached.longitude,
+                    latitude = cached.latitude
+                )
+            }
             return currentCity ?: cities.firstOrNull()
         }
 
@@ -90,16 +106,36 @@ class WeatherWidgetWorker(
             locationManager.resolveLocationName(amapLocation)
         }
 
+        return saveCurrentLocationCity(
+            cities = cities,
+            currentCity = currentCity,
+            cityDataStore = cityDataStore,
+            cityManager = cityManager,
+            name = locationName,
+            longitude = lon,
+            latitude = lat
+        )
+    }
+
+    private suspend fun saveCurrentLocationCity(
+        cities: List<City>,
+        currentCity: City?,
+        cityDataStore: CityDataStore,
+        cityManager: CityManager,
+        name: String,
+        longitude: Double,
+        latitude: Double
+    ): City {
         val updatedCity = (currentCity ?: City(
             id = "current_location",
-            name = locationName,
-            longitude = lon,
-            latitude = lat,
+            name = name,
+            longitude = longitude,
+            latitude = latitude,
             isCurrentLocation = true
         )).copy(
-            name = locationName,
-            longitude = lon,
-            latitude = lat,
+            name = name,
+            longitude = longitude,
+            latitude = latitude,
             isCurrentLocation = true
         )
         val updatedCities = if (currentCity != null) {
