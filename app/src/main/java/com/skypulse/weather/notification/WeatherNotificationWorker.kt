@@ -2,7 +2,9 @@ package com.skypulse.weather.notification
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
@@ -58,18 +60,33 @@ class WeatherNotificationWorker(
             
             val minTemp = daily?.temperature?.firstOrNull()?.min?.toInt() ?: 0
             val maxTemp = daily?.temperature?.firstOrNull()?.max?.toInt() ?: 0
-            
-            // Rain alert ¡ª only if not sent recently
+
+            val minutely = weather.result?.minutely
+            val minutelyDesc = minutely?.description ?: ""
+            val precipIntensity = realtime?.precipitation?.local?.intensity ?: 0.0
+            val precipIntensityDesc = when {
+                precipIntensity >= 0.15 -> "\u5f3a\u96e8"
+                precipIntensity >= 0.08 -> "\u4e2d\u96e8"
+                precipIntensity >= 0.03 -> "\u5c0f\u96e8"
+                precipIntensity > 0 -> "\u6bdb\u6bdb\u96e8"
+                else -> weatherDesc
+            }
+            // Rain alert â€” precipitation focused
             if (prefs.getBoolean("rain_alert", true)) {
                 if (skycon.contains("RAIN") || skycon.contains("STORM")) {
                     if (dedup.shouldNotifyRain()) {
-                        val body = "${city.name} $weatherDesc ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0 | \u6e7f\u5ea6${humidity}% | \u98ce\u901f${windSpeed}m/s"
-                        sendNotification(nm, 1, "\u77ed\u4e34\u96e8\u6c34\u63d0\u9192", body)
+                        val title = "\u77ed\u4e34\u964d\u6c34\u63d0\u9192\u2014\u2014$precipIntensityDesc"
+                        val body = if (minutelyDesc.isNotBlank()) {
+                            minutelyDesc
+                        } else {
+                            "\u5f53\u524d\u964d\u6c34\u5f3a\u5ea6: $precipIntensityDesc\uff0c\u8bf7\u6ce8\u610f\u51fa\u884c\u5e26\u4f1e"
+                        }
+                        sendNotification(nm, 1, title, body)
                     }
                 }
             }
 
-            // Weather warning alert ¡ª skip blue level, dedup by title
+            // Weather warning alert â€” skip blue level, dedup by title
             if (prefs.getBoolean("warning_alert", true)) {
                 alerts?.forEach { alert ->
                     val level = alert.level ?: ""
@@ -111,33 +128,44 @@ class WeatherNotificationWorker(
                     val today = temps[0].max
                     val yesterday = temps[1].max
                     if (today != null && yesterday != null) {
-                        val diff = kotlin.math.abs(today - yesterday)
-                        if (diff >= 8) {
+                        val diff = today - yesterday
+                        val absDiff = kotlin.math.abs(diff)
+                        if (absDiff >= 8) {
                             if (dedup.shouldNotifyTempChange()) {
-                                val body = "${city.name} $weatherDesc ${temp}\u00b0C | \u4eca\u65e5\u6700\u9ad8\u6e29: ${today}\u00b0C"
-                                sendNotification(nm, 3, "\u53d8\u6e29\u63d0\u9192", body)
+                                val direction = if (diff > 0) "\u5347\u6e29" else "\u964d\u6e29"
+                                val title = "\u53d8\u6e29\u63d0\u9192\u2014\u2014\u5267\u70c8$direction"
+                                val body = "\u4eca\u65e5\u6700\u9ad8\u6e29 ${today}\u00b0C\uff0c\u6bd4\u6628\u65e5${direction}${absDiff}\u00b0C\uff0c\u8bf7\u6ce8\u610f\u589e\u51cf\u8863\u7269"
+                                sendNotification(nm, 3, title, body)
                             }
                         }
                     }
                 }
             }
-
             // Wind alert
             if (prefs.getBoolean("wind_alert", false)) {
                 if (windSpeed >= 10.8) {
                     if (dedup.shouldNotifyWind()) {
-                        val body = "${city.name} $weatherDesc ${temp}\u00b0C | \u5f53\u524d\u98ce\u901f: ${windSpeed}m/s"
-                        sendNotification(nm, 4, "\u5927\u98ce\u63d0\u9192", body)
+                        val windLevel = when {
+                            windSpeed >= 24.5 -> "9\u7ea7"
+                            windSpeed >= 20.8 -> "8\u7ea7"
+                            windSpeed >= 17.2 -> "7\u7ea7"
+                            windSpeed >= 13.9 -> "6\u7ea7"
+                            windSpeed >= 10.8 -> "5\u7ea7"
+                            else -> ""
+                        }
+                        val title = "\u5927\u98ce\u63d0\u9192\u2014\u2014$windLevel\u5927\u98ce"
+                        val body = "\u5f53\u524d\u98ce\u901f ${windSpeed}m/s\uff0c\u8bf7\u6ce8\u610f\u9632\u98ce\uff0c\u907f\u514d\u9ad8\u7a7a\u4f5c\u4e1a"
+                        sendNotification(nm, 4, title, body)
                     }
                 }
             }
-
             // Extreme weather alert
             if (prefs.getBoolean("typhoon_alert", true)) {
                 if (skycon == "STORM_RAIN") {
                     if (dedup.shouldNotifyExtreme()) {
-                        val body = "${city.name} \u66b4\u96e8 ${temp}\u00b0C | ${minTemp}\u00b0/${maxTemp}\u00b0 | \u8bf7\u5c3d\u91cf\u907f\u514d\u5916\u51fa"
-                        sendNotification(nm, 5, "\u6781\u7aef\u5929\u6c14\u63d0\u9192", body)
+                        val title = "\u6781\u7aef\u5929\u6c14\u63d0\u9192\u2014\u2014\u66b4\u96e8"
+                        val body = "\u5f53\u524d\u5df2\u51fa\u73b0\u66b4\u96e8\u5929\u6c14\uff0c\u6700\u9ad8\u6e29 ${maxTemp}\u00b0C\uff0c\u8bf7\u5c3d\u91cf\u907f\u514d\u5916\u51fa\uff0c\u6ce8\u610f\u5b89\u5168"
+                        sendNotification(nm, 5, title, body)
                     }
                 }
             }
@@ -161,10 +189,21 @@ class WeatherNotificationWorker(
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentIntent(createMainActivityIntent())
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()
         nm.notify(id, notification)
+    }
+
+    private fun createMainActivityIntent(): PendingIntent {
+        val intent = Intent(applicationContext, com.skypulse.weather.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        return PendingIntent.getActivity(
+            applicationContext, 0, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     /**

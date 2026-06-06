@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast

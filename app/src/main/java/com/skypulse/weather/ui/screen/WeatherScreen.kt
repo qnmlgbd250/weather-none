@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import android.Manifest
 import androidx.activity.compose.BackHandler

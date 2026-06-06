@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -66,7 +66,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
 
     Surface(
         onClick = { onClick(if (alerts.size == 1) 0 else currentAlertIndex) },
-        modifier = Modifier.padding(start = 20.dp),
+        modifier = Modifier.padding(start = 20.dp).offset(y = (-4).dp),
         shape = RoundedCornerShape(6.dp),
         color = Color.White.copy(alpha = 0.08f)
     ) {

@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.components
+package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.RealtimeWeather
 import com.skypulse.weather.ui.theme.LocalWeatherTheme
 import com.skypulse.weather.ui.theme.TextPrimary
@@ -25,6 +26,7 @@ import com.skypulse.weather.util.WeatherUtils
 private data class DetailItem(
     val label: String,
     val value: String,
+    val unit: String,
     val icon: ImageVector
 )
 
@@ -34,21 +36,32 @@ fun WeatherDetailCards(
     modifier: Modifier = Modifier
 ) {
     val feelsLike = WeatherUtils.formatTemperature(realtime?.apparent_temperature)
-    val windSpeed = WeatherUtils.formatWindSpeed(realtime?.wind?.speed)
+    val windSpeedLevel = WeatherUtils.formatWindSpeed(realtime?.wind?.speed)
     val windDir = WeatherUtils.formatWindDirection(realtime?.wind?.direction)
-    val wind = "$windDir$windSpeed"
     val humidity = WeatherUtils.formatHumidity(realtime?.humidity)
-    val uvDesc = realtime?.life_index?.ultraviolet?.desc ?: "--"
-    val pressure = WeatherUtils.formatPressure(realtime?.pressure)
-    val visibility = WeatherUtils.formatVisibility(realtime?.visibility)
+
+    val uvIndex = realtime?.life_index?.ultraviolet?.index ?: "--"
+    val uvDesc = realtime?.life_index?.ultraviolet?.desc ?: ""
+
+    val pressureRaw = realtime?.pressure
+    val pressureValue = if (pressureRaw != null) "${(pressureRaw / 100).toInt()}" else "--"
+    val pressureUnit = "\u767e\u5e15"
+
+    val visRaw = realtime?.visibility
+    val visValue = if (visRaw != null) {
+        if (visRaw >= 1000) "${"%.1f".format(visRaw / 1000)}" else "${visRaw.toInt()}"
+    } else "--"
+    val visUnit = "\u5343\u7c73"
+
+    val windLevelNum = windSpeedLevel.replace("\u7ea7", "")
 
     val items = listOf(
-        DetailItem("紫外线", uvDesc, Icons.Outlined.WbSunny),
-        DetailItem("体感温度", feelsLike, Icons.Outlined.Thermostat),
-        DetailItem("湿度", humidity, Icons.Outlined.WaterDrop),
-        DetailItem("风力", wind, Icons.Outlined.Air),
-        DetailItem("气压", pressure, Icons.Outlined.Speed),
-        DetailItem("能见度", visibility, Icons.Outlined.Visibility)
+        DetailItem("\u7d2b\u5916\u7ebf", uvIndex, uvDesc, Icons.Outlined.WbSunny),
+        DetailItem("\u4f53\u611f\u6e29\u5ea6", feelsLike, "", Icons.Outlined.Thermostat),
+        DetailItem("\u6e7f\u5ea6", humidity, "", Icons.Outlined.WaterDrop),
+        DetailItem(windDir, windLevelNum, "\u7ea7", Icons.Outlined.Air),
+        DetailItem("\u6c14\u538b", pressureValue, pressureUnit, Icons.Outlined.Speed),
+        DetailItem("\u80fd\u89c1\u5ea6", visValue, visUnit, Icons.Outlined.Visibility)
     )
 
     Column(
@@ -65,6 +78,7 @@ fun WeatherDetailCards(
                     icon = item.icon,
                     label = item.label,
                     value = item.value,
+                    unit = item.unit,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -79,6 +93,7 @@ fun WeatherDetailCards(
                     icon = item.icon,
                     label = item.label,
                     value = item.value,
+                    unit = item.unit,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -91,6 +106,7 @@ private fun DetailSquareCard(
     icon: ImageVector,
     label: String,
     value: String,
+    unit: String = "",
     modifier: Modifier = Modifier
 ) {
     val theme = LocalWeatherTheme.current
@@ -132,13 +148,37 @@ private fun DetailSquareCard(
                 color = TextSecondary
             )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = TextPrimary
-            )
+            if (unit.isNotBlank()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = TextPrimary,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = unit,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontSize = 12.sp
+                        ),
+                        color = TextSecondary,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                }
+            } else {
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = TextPrimary
+                )
+            }
         }
     }
 }

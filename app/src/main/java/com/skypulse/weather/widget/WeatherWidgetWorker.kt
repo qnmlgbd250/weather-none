@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.widget
+package com.skypulse.weather.widget
 
 import android.content.Context
 import android.location.Location
@@ -84,7 +84,7 @@ class WeatherWidgetWorker(
         val lat = amapLocation.latitude
         val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
         val distance = currentCity?.let { distanceBetween(lat, lon, it.latitude, it.longitude) }
-        val locationName = if (savedName != null && distance != null && distance < 200f) {
+        val locationName = if (savedName != null && distance != null && distance < 500f) {
             savedName
         } else {
             locationManager.resolveLocationName(amapLocation)

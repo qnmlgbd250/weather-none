@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.util
+package com.skypulse.weather.util
 
 import androidx.compose.ui.graphics.Color
 import com.skypulse.weather.ui.theme.*

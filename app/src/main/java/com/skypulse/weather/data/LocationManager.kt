@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.data
+package com.skypulse.weather.data
 
 import android.content.Context
 import android.location.Geocoder
@@ -24,28 +24,31 @@ class LocationManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
+
     companion object {
         private const val TAG = "LocationManager"
-        private const val DEFAULT_LOCATION_NAME = "北京市"
+        private const val DEFAULT_LOCATION_NAME = "\u5317\u4eac\u5e02"
         const val DEFAULT_LONGITUDE = 116.4074
         const val DEFAULT_LATITUDE = 39.9042
+        private const val CACHE_RADIUS_METERS = 500f
+        private const val PREFS_NAME = "location_cache"
+        private const val KEY_CACHED_LAT = "cached_lat"
+        private const val KEY_CACHED_LON = "cached_lon"
+        private const val KEY_CACHED_NAME = "cached_name"
+    }
 
-    // 缓存已确认的位置名称，避免同一坐标下 POI 随机跳变
-    private var cachedLat: Double? = null
-    private var cachedLon: Double? = null
-    private var cachedLocationName: String? = null
+    private val cachePrefs by lazy {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
 
     /**
-     * 计算两个坐标之间的距离（米）
+     * \u8ba1\u7b97\u4e24\u4e2a\u5750\u6807\u4e4b\u95f4\u7684\u8ddd\u79bb\uff08\u7c73\uff09
      */
     private fun distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
         val results = FloatArray(1)
         android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
         return results[0]
     }
-
-    }
-
     /**
      * Request current GPS location via AMap SDK.
      * Returns null if location fails.
@@ -160,16 +163,20 @@ class LocationManager @Inject constructor(
      * Build location name from a full AMapLocation result, prioritizing POI name.
      * Uses coordinate-based caching to prevent POI name flickering at the same location.
      */
+    /**
+     * Build location name from a full AMapLocation result, prioritizing POI name.
+     * Uses SharedPreferences-based coordinate caching to prevent POI name flickering.
+     */
     fun resolveLocationName(location: AMapLocation): String {
         val lat = location.latitude
         val lon = location.longitude
 
-        // 如果距离上次定位点 < 200米，直接返回缓存的名称
-        val cLat = cachedLat
-        val cLon = cachedLon
-        val cName = cachedLocationName
-        if (cLat != null && cLon != null && cName != null) {
-            if (distanceBetween(lat, lon, cLat, cLon) < 200f) {
+        // \u5982\u679c\u8ddd\u79bb\u4e0a\u6b21\u5b9a\u4f4d\u70b9 < 500\u7c73\uff0c\u76f4\u63a5\u8fd4\u56de\u7f13\u5b58\u7684\u540d\u79f0
+        val cLat = cachePrefs.getFloat(KEY_CACHED_LAT, 0f).toDouble()
+        val cLon = cachePrefs.getFloat(KEY_CACHED_LON, 0f).toDouble()
+        val cName = cachePrefs.getString(KEY_CACHED_NAME, null)
+        if (cName != null && cLat != 0.0 && cLon != 0.0) {
+            if (distanceBetween(lat, lon, cLat, cLon) < CACHE_RADIUS_METERS) {
                 return cName
             }
         }
@@ -194,12 +201,14 @@ class LocationManager @Inject constructor(
             if (isEmpty()) {
                 location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
             }
-        }.ifEmpty { "未知位置" }
+        }.ifEmpty { "\u672a\u77e5\u4f4d\u7f6e" }
 
-        // 更新缓存
-        cachedLat = lat
-        cachedLon = lon
-        cachedLocationName = name
+        // \u66f4\u65b0\u7f13\u5b58
+        cachePrefs.edit()
+            .putFloat(KEY_CACHED_LAT, lat.toFloat())
+            .putFloat(KEY_CACHED_LON, lon.toFloat())
+            .putString(KEY_CACHED_NAME, name)
+            .apply()
         return name
     }
     /**

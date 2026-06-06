@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather
+package com.skypulse.weather
 
 import android.app.Application
 import androidx.work.*

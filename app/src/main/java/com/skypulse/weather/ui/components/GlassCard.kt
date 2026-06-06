@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.components
+package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background

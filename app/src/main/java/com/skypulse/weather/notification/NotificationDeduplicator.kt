@@ -102,12 +102,12 @@ class NotificationDeduplicator(context: Context) {
         val lastSent = records[key]
 
         return if (lastSent == null || now - lastSent > windowMs) {
-            // Not sent before or expired ¡ª allow sending
+            // Not sent before or expired â€” allow sending
             records[key] = now
             saveRecords(records)
             true
         } else {
-            // Still within dedup window ¡ª skip
+            // Still within dedup window â€” skip
             false
         }
     }

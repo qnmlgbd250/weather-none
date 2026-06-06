@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.widget
+package com.skypulse.weather.widget
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider

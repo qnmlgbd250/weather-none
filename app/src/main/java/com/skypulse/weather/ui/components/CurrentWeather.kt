@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.components
+package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.animation.AnimatedVisibility
@@ -76,7 +76,7 @@ fun LocationHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f, fill = false)
             ) {
-                Box(modifier = Modifier.size(20.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = isLocating,
                         enter = fadeIn(),
@@ -97,7 +97,7 @@ fun LocationHeader(
                             imageVector = Icons.Outlined.LocationOn,
                             contentDescription = "校正位置",
                             tint = TextSecondary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -175,7 +175,7 @@ fun LocationHeader(
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Menu,
-                            contentDescription = "城市列表",
+                            contentDescription = "\u57ce\u5e02\u5217\u8868",
                             tint = TextSecondary,
                             modifier = Modifier.size(22.dp)
                         )
