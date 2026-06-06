@@ -150,6 +150,7 @@ private fun DetailSquareCard(
             Spacer(modifier = Modifier.height(4.dp))
             if (unit.isNotBlank()) {
                 Row(
+                    verticalAlignment = Alignment.Bottom,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -158,7 +159,6 @@ private fun DetailSquareCard(
                             fontWeight = FontWeight.Medium
                         ),
                         color = TextPrimary,
-                        modifier = Modifier.alignByBaseline()
                     )
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(
@@ -167,7 +167,7 @@ private fun DetailSquareCard(
                             fontSize = 12.sp
                         ),
                         color = TextSecondary,
-                        modifier = Modifier.alignByBaseline()
+                        modifier = Modifier.padding(bottom = 2.dp)
                     )
                 }
             } else {
