@@ -20,7 +20,7 @@
 
 ## 版本管理
 - **版本号位置**: `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`
-- **当前版本**: 1.9.107 (code 287)
+- **当前版本**: 1.9.110 (code 290)
 
 ## 发版规则
 - **默认发版**: 只执行 `scripts\release.ps1` 发布到云剪贴板

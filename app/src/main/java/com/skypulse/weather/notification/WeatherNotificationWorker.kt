@@ -6,13 +6,17 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.skypulse.weather.R
 import com.skypulse.weather.api.CaiyunApi
+import com.skypulse.weather.data.CityDataStore
 import com.skypulse.weather.data.CityManager
+import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.data.WeatherCache
+import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.WeatherRepository
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
@@ -26,6 +30,7 @@ class WeatherNotificationWorker(
     companion object {
         const val CHANNEL_ID = "weather_alerts"
         const val WORK_NAME = "weather_notification_periodic"
+        private const val TAG = "WeatherNotifWorker"
     }
 
     override suspend fun doWork(): Result {
@@ -33,8 +38,88 @@ class WeatherNotificationWorker(
             val context = applicationContext
             val prefs = context.getSharedPreferences("notification_prefs", Context.MODE_PRIVATE)
             val moshi = Moshi.Builder().build()
-            val cities = CityManager(context, moshi).getCities()
-            val city = cities.firstOrNull { it.isCurrentLocation } ?: return Result.success()
+            val cityManager = CityManager(context, moshi)
+            val cityDataStore = CityDataStore(context, moshi)
+            val cities = cityManager.getCities()
+            val currentCity = cities.firstOrNull { it.isCurrentLocation }
+
+            // Try GPS location first (like Widget Worker)
+            val locationManager = LocationManager(context)
+            val amapLocation = try {
+                locationManager.requestAmapLocation()
+            } catch (e: Exception) {
+                Log.w(TAG, "Location fetch failed, using saved city", e)
+                null
+            }
+
+            val city = if (amapLocation != null) {
+                val lon = amapLocation.longitude
+                val lat = amapLocation.latitude
+                val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
+                val distance = currentCity?.let {
+                    val results = FloatArray(1)
+                    android.location.Location.distanceBetween(lat, lon, it.latitude, it.longitude, results)
+                    results[0]
+                }
+                val locationName = if (savedName != null && distance != null && distance < 500f) {
+                    savedName
+                } else {
+                    locationManager.resolveLocationName(amapLocation)
+                }
+                val updatedCity = (currentCity ?: City(
+                    id = "current_location",
+                    name = locationName,
+                    longitude = lon,
+                    latitude = lat,
+                    isCurrentLocation = true
+                )).copy(
+                    name = locationName,
+                    longitude = lon,
+                    latitude = lat,
+                    isCurrentLocation = true
+                )
+                val updatedCities = if (currentCity != null) {
+                    cities.map { if (it.isCurrentLocation) updatedCity else it }
+                } else {
+                    listOf(updatedCity) + cities
+                }
+                cityDataStore.saveCities(updatedCities)
+                cityManager.saveCities(updatedCities)
+                updatedCity
+            } else {
+                // GPS failed — check if LocationManager has a recent cached location
+                val cachePrefs = context.getSharedPreferences("location_cache", Context.MODE_PRIVATE)
+                val cachedLat = cachePrefs.getFloat("cached_lat", 0f).toDouble()
+                val cachedLon = cachePrefs.getFloat("cached_lon", 0f).toDouble()
+                val cachedName = cachePrefs.getString("cached_name", null)
+
+                if (cachedLat != 0.0 && cachedLon != 0.0 && cachedName != null) {
+                    // Use cached location (more recent than stored city)
+                    (currentCity ?: City(
+                        id = "current_location",
+                        name = cachedName,
+                        longitude = cachedLon,
+                        latitude = cachedLat,
+                        isCurrentLocation = true
+                    )).copy(
+                        name = cachedName,
+                        longitude = cachedLon,
+                        latitude = cachedLat,
+                        isCurrentLocation = true
+                    )
+                } else if (currentCity != null) {
+                    // Check if stored city is the default Beijing — if so, skip notification
+                    // to avoid false alerts from wrong location
+                    if (currentCity.longitude == LocationManager.DEFAULT_LONGITUDE &&
+                        currentCity.latitude == LocationManager.DEFAULT_LATITUDE) {
+                        Log.w(TAG, "GPS failed and city is default Beijing, skipping notifications")
+                        return Result.success()
+                    }
+                    currentCity
+                } else {
+                    cities.firstOrNull() ?: return Result.success()
+                }
+            }
 
             val api = createCaiyunApi(moshi)
             val repo = WeatherRepository(api)
@@ -64,7 +149,17 @@ class WeatherNotificationWorker(
             val minutely = weather.result?.minutely
             val minutelyDesc = minutely?.description ?: ""
             val precip2h = minutely?.precipitation_2h
-            val hasMinutelyRain = !precip2h.isNullOrEmpty() && precip2h.any { it > 0.0 }
+            val minutelyOk = minutely?.status == "ok"
+            // Filter radar noise: require >= 0.01 intensity AND at least 3 consecutive minutes
+            val hasMinutelyRain = minutelyOk && !precip2h.isNullOrEmpty() && run {
+                var maxConsecutive = 0
+                var current = 0
+                for (v in precip2h) {
+                    if (v >= 0.01) { current++; if (current > maxConsecutive) maxConsecutive = current }
+                    else { current = 0 }
+                }
+                maxConsecutive >= 3
+            }
             // Use minutely max intensity for display, fallback to realtime
             val maxMinutelyPrecip = precip2h?.maxOrNull() ?: 0.0
             val realtimePrecip = realtime?.precipitation?.local?.intensity ?: 0.0
