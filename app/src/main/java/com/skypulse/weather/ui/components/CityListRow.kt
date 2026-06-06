@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
+import com.skypulse.weather.ui.theme.SecondaryPanelBorder
+import com.skypulse.weather.ui.theme.SecondaryPanelStrong
 import com.skypulse.weather.ui.theme.SecondaryScreenGradient
 import com.skypulse.weather.ui.theme.SecondaryTextPrimary
 import com.skypulse.weather.ui.theme.SecondaryTextSecondary
@@ -88,8 +90,7 @@ fun SwipeableCityListRow(
             }
         }
 
-        // Layer 2: Opaque dark base — moves WITH the card, only covers the card area
-        // This blocks the red from showing through the transparent card
+        // Layer 2: Opaque dark base — moves WITH the card, blocks red from showing through
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
@@ -99,7 +100,7 @@ fun SwipeableCityListRow(
                 .background(SecondaryScreenGradient.first())
         )
 
-        // Layer 3: City card — on top, slides left to reveal red delete button
+        // Layer 3: City card — frosted glass style, slides left to reveal red delete
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
@@ -146,8 +147,6 @@ fun CityListRow(
 ) {
     val realtime = weather?.result?.realtime
     val skycon = realtime?.skycon
-    val isDay = WeatherUtils.isCurrentlyDay()
-    val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
     val temperature = WeatherUtils.formatTemperature(realtime?.temperature).replace("°", "")
     val aqiValue = realtime?.air_quality?.aqi?.chn?.toInt()
@@ -167,23 +166,18 @@ fun CityListRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
+            .background(SecondaryPanelStrong)
             .background(
-                Brush.horizontalGradient(
+                brush = Brush.verticalGradient(
                     colors = listOf(
-                        gradientColors.first().copy(alpha = 0.7f),
-                        gradientColors.last().copy(alpha = 0.5f)
+                        Color.White.copy(alpha = 0.18f),
+                        Color.White.copy(alpha = 0.06f)
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.4f),
-                        Color.White.copy(alpha = 0.1f),
-                        Color.White.copy(alpha = 0.25f)
-                    )
-                ),
+                color = SecondaryPanelBorder,
                 shape = RoundedCornerShape(20.dp)
             )
             .clickable(

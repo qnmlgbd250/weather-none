@@ -1,6 +1,7 @@
 package com.skypulse.weather.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,10 +23,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.City
-import com.skypulse.weather.ui.components.CityListRow
 import com.skypulse.weather.ui.components.CitySearchResultRow
 import com.skypulse.weather.ui.components.SwipeableCityListRow
 import com.skypulse.weather.ui.theme.SecondaryPanel
+import com.skypulse.weather.ui.theme.SecondaryPanelBorder
 import com.skypulse.weather.ui.theme.SecondaryPanelStrong
 import com.skypulse.weather.ui.theme.SecondaryScreenGradient
 import com.skypulse.weather.ui.theme.SecondaryTextPrimary
@@ -62,7 +63,7 @@ fun CityListScreen(
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search bar — iOS-style pill capsule
+            // Search bar — glass pill capsule
             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 TextField(
                     value = searchQuery,
@@ -77,11 +78,16 @@ fun CityListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
-                        .clip(RoundedCornerShape(50)),
+                        .clip(RoundedCornerShape(50))
+                        .border(
+                            width = 1.dp,
+                            color = SecondaryPanelBorder,
+                            shape = RoundedCornerShape(50)
+                        ),
                     placeholder = {
                         Text(
                             text = "搜索并添加城市",
-                            color = SecondaryTextSecondary.copy(alpha = 0.72f),
+                            color = SecondaryTextSecondary.copy(alpha = 0.6f),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
@@ -182,7 +188,7 @@ fun CityListScreen(
                             if (result != searchResults.last()) {
                                 HorizontalDivider(
                                     modifier = Modifier.padding(horizontal = 20.dp),
-                                    color = Color.White.copy(alpha = 0.1f)
+                                    color = Color.White.copy(alpha = 0.08f)
                                 )
                             }
                         }

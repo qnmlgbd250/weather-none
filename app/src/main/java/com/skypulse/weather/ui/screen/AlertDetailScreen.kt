@@ -2,10 +2,12 @@ package com.skypulse.weather.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -13,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -36,12 +39,12 @@ internal fun AlertDetailScreen(
             .background(Brush.verticalGradient(colors = SecondaryScreenGradient))
     ) {
         TopAppBar(
-            title = { Text("\u9884\u8b66\u8be6\u60c5", color = SecondaryTextPrimary) },
+            title = { Text("预警详情", color = SecondaryTextPrimary) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "\u8fd4\u56de",
+                        contentDescription = "返回",
                         tint = SecondaryTextSecondary
                     )
                 }
@@ -56,7 +59,7 @@ internal fun AlertDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "\u6682\u65e0\u9884\u8b66\u4fe1\u606f", color = SecondaryTextSecondary)
+                Text(text = "暂无预警信息", color = SecondaryTextSecondary)
             }
         } else {
             val safeInitialIndex = remember(alerts, initialSelectedIndex) {
@@ -71,17 +74,30 @@ internal fun AlertDetailScreen(
                 itemsIndexed(alerts) { _, alert ->
                     val title = alert.title
                         ?.replace(Regex("\\[.*?\\]"), "")
-                        ?.replace(Regex("^.*\u53d1\u5e03"), "")
+                        ?.replace(Regex("^.*发布"), "")
                         ?.trim()
                         ?.ifBlank { null }
                     val levelColor = detailAlertColor(alert.level)
 
-                    Card(
+                    // Glass-style card matching main page GlassCard
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = SecondaryPanelStrong),
-                        border = BorderStroke(1.dp, SecondaryPanelBorder)
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(SecondaryPanelStrong)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.15f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    )
+                                )
+                            )
+                            .border(
+                                BorderStroke(1.dp, SecondaryPanelBorder),
+                                RoundedCornerShape(16.dp)
+                            )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             if (!title.isNullOrBlank()) {
@@ -111,10 +127,10 @@ internal fun AlertDetailScreen(
 
 private fun detailAlertColor(level: String?): Color {
     return when {
-        level?.contains("红") == true -> Color(0xFFC73E3A)
-        level?.contains("橙") == true -> Color(0xFFB75C00)
-        level?.contains("黄") == true -> Color(0xFF8A6B00)
-        level?.contains("蓝") == true -> Color(0xFF2D68B8)
-        else -> Color(0xFFA66E3F)
+        level?.contains("红") == true -> Color(0xFFEF5350)
+        level?.contains("橙") == true -> Color(0xFFFF9800)
+        level?.contains("黄") == true -> Color(0xFFFFCA28)
+        level?.contains("蓝") == true -> Color(0xFF42A5F5)
+        else -> Color(0xFFD4A574)
     }
 }

@@ -9,9 +9,11 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -20,6 +22,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -79,7 +82,7 @@ fun SettingsScreen(
     LaunchedEffect(updateState) {
         when (updateState) {
             is UpdateCheckResult.UpToDate -> {
-                Toast.makeText(context, "\u5df2\u662f\u6700\u65b0\u7248\u672c", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "已是最新版本", Toast.LENGTH_SHORT).show()
                 onClearUpdateState()
             }
             is UpdateCheckResult.Error -> {
@@ -100,20 +103,20 @@ fun SettingsScreen(
             .background(Brush.verticalGradient(colors = SecondaryScreenGradient))
             .navigationBarsPadding()
     ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { Text("\u8bbe\u7f6e", color = SecondaryTextPrimary) },
+                title = { Text("设置", color = SecondaryTextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "\u8fd4\u56de",
+                            contentDescription = "返回",
                             tint = SecondaryTextSecondary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = androidx.compose.ui.graphics.Color.Transparent
+                    containerColor = Color.Transparent
                 )
             )
 
@@ -122,92 +125,74 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
+                // ====== Notification Settings Section ======
+                GlassSection {
+                    SectionHeader(title = "通知提醒")
 
-                SectionHeader(title = "\u5929\u6c14\u63d0\u9192")
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = SecondaryPanel
-                    ),
-                    border = BorderStroke(1.dp, SecondaryPanelBorder),
-                    shape = MaterialTheme.shapes.medium
-                ) {
                     ToggleItem(
-                        title = "\u77ed\u4e34\u96e8\u6c34\u63d0\u9192",
+                        title = "降雨提醒",
                         checked = rainAlert,
-                        onCheckedChange = {
-                            rainAlert = it
-                            updateAlertPreference("rain_alert", it)
+                        onCheckedChange = { enabled ->
+                            rainAlert = enabled
+                            updateAlertPreference("rain_alert", enabled)
                         }
                     )
-
+                    GlassDivider()
                     ToggleItem(
-                        title = "\u9884\u8b66\u4fe1\u606f\u63d0\u9192",
+                        title = "气象预警",
                         checked = warningAlert,
-                        onCheckedChange = {
-                            warningAlert = it
-                            updateAlertPreference("warning_alert", it)
+                        onCheckedChange = { enabled ->
+                            warningAlert = enabled
+                            updateAlertPreference("warning_alert", enabled)
                         }
                     )
-
+                    GlassDivider()
                     ToggleItem(
-                        title = "\u53d8\u6e29\u63d0\u9192",
+                        title = "气温骤变",
                         checked = tempChangeAlert,
-                        onCheckedChange = {
-                            tempChangeAlert = it
-                            updateAlertPreference("temp_change_alert", it)
+                        onCheckedChange = { enabled ->
+                            tempChangeAlert = enabled
+                            updateAlertPreference("temp_change_alert", enabled)
                         }
                     )
-
+                    GlassDivider()
                     ToggleItem(
-                        title = "\u5927\u98ce\u63d0\u9192",
+                        title = "大风提醒",
                         checked = windAlert,
-                        onCheckedChange = {
-                            windAlert = it
-                            updateAlertPreference("wind_alert", it)
+                        onCheckedChange = { enabled ->
+                            windAlert = enabled
+                            updateAlertPreference("wind_alert", enabled)
                         }
                     )
-
+                    GlassDivider()
                     ToggleItem(
-                        title = "\u53f0\u98ce\u4fe1\u606f\u63d0\u9192",
+                        title = "台风路径",
                         checked = typhoonAlert,
-                        onCheckedChange = {
-                            typhoonAlert = it
-                            updateAlertPreference("typhoon_alert", it)
+                        onCheckedChange = { enabled ->
+                            typhoonAlert = enabled
+                            updateAlertPreference("typhoon_alert", enabled)
                         }
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                SectionHeader(title = "\u5173\u4e8e")
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = SecondaryPanel
-                    ),
-                    border = BorderStroke(1.dp, SecondaryPanelBorder),
-                    shape = MaterialTheme.shapes.medium
-                ) {
+                // ====== About Section ======
+                GlassSection {
+                    SectionHeader(title = "关于")
                     SimpleItem(
-                        title = "\u5f00\u6e90\u4ee3\u7801",
+                        title = "GitHub 开源地址",
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
                             context.startActivity(intent)
                         }
                     )
-
+                    GlassDivider()
                     SimpleItem(
-                        title = "\u6350\u8d60\u652f\u6301",
+                        title = "捐赠支持",
                         onClick = { showDonateDialog = true }
                     )
+                    GlassDivider()
 
                     Row(
                         modifier = Modifier
@@ -219,14 +204,14 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "\u68c0\u67e5\u66f4\u65b0",
+                            text = "检查更新",
                             style = MaterialTheme.typography.bodyLarge,
                             color = SecondaryTextPrimary,
                             modifier = Modifier.weight(1f)
                         )
                         Icon(
                             imageVector = Icons.Outlined.Autorenew,
-                            contentDescription = "\u68c0\u67e5\u66f4\u65b0",
+                            contentDescription = "检查更新",
                             tint = SecondaryTextSecondary,
                             modifier = Modifier
                                 .size(20.dp)
@@ -237,29 +222,48 @@ fun SettingsScreen(
 
                 if (updateState is UpdateCheckResult.UpdateAvailable) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, updateState.url.toUri())
-                            context.startActivity(intent)
-                        },
+                    // Glass-style download button
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SecondaryPanelStrong,
-                            contentColor = SecondaryTextPrimary
-                        )
+                            .padding(horizontal = 16.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SecondaryPanelStrong)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.White.copy(alpha = 0.15f),
+                                        Color.White.copy(alpha = 0.05f)
+                                    )
+                                )
+                            )
+                            .border(
+                                BorderStroke(1.dp, SecondaryPanelBorder),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .clickable {
+                                val intent = Intent(Intent.ACTION_VIEW, updateState.url.toUri())
+                                context.startActivity(intent)
+                            }
                     ) {
-                        Text("\u524d\u5f80\u4e0b\u8f7d v${updateState.version}")
+                        Text(
+                            text = "前往下载 v${updateState.version}",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SecondaryTextPrimary,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 14.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
                 Text(
-                    text = "QQ\u7fa4\uff1a758426293",
+                    text = "QQ群：758426293",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryTextSecondary.copy(alpha = 0.65f),
+                    color = SecondaryTextSecondary.copy(alpha = 0.55f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
@@ -269,7 +273,7 @@ fun SettingsScreen(
                 Text(
                     text = "SkyPulse v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryTextSecondary.copy(alpha = 0.65f),
+                    color = SecondaryTextSecondary.copy(alpha = 0.55f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 22.dp),
@@ -278,6 +282,48 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+/**
+ * Glass-style section container — translucent frost + soft border
+ */
+@Composable
+private fun GlassSection(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(SecondaryPanelStrong)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.15f),
+                        Color.White.copy(alpha = 0.05f)
+                    )
+                )
+            )
+            .border(
+                BorderStroke(1.dp, SecondaryPanelBorder),
+                RoundedCornerShape(16.dp)
+            ),
+        content = content
+    )
+}
+
+/**
+ * Glass-style divider inside sections
+ */
+@Composable
+private fun GlassDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 20.dp),
+        thickness = 0.5.dp,
+        color = Color.White.copy(alpha = 0.08f)
+    )
 }
 
 @Composable
