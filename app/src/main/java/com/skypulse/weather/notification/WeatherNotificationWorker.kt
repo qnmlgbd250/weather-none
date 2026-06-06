@@ -63,17 +63,22 @@ class WeatherNotificationWorker(
 
             val minutely = weather.result?.minutely
             val minutelyDesc = minutely?.description ?: ""
-            val precipIntensity = realtime?.precipitation?.local?.intensity ?: 0.0
+            val precip2h = minutely?.precipitation_2h
+            val hasMinutelyRain = !precip2h.isNullOrEmpty() && precip2h.any { it > 0.0 }
+            // Use minutely max intensity for display, fallback to realtime
+            val maxMinutelyPrecip = precip2h?.maxOrNull() ?: 0.0
+            val realtimePrecip = realtime?.precipitation?.local?.intensity ?: 0.0
+            val effectivePrecip = maxOf(maxMinutelyPrecip, realtimePrecip)
             val precipIntensityDesc = when {
-                precipIntensity >= 0.15 -> "\u5f3a\u96e8"
-                precipIntensity >= 0.08 -> "\u4e2d\u96e8"
-                precipIntensity >= 0.03 -> "\u5c0f\u96e8"
-                precipIntensity > 0 -> "\u6bdb\u6bdb\u96e8"
+                effectivePrecip >= 0.15 -> "\u5f3a\u96e8"
+                effectivePrecip >= 0.08 -> "\u4e2d\u96e8"
+                effectivePrecip >= 0.03 -> "\u5c0f\u96e8"
+                effectivePrecip > 0 -> "\u6bdb\u6bdb\u96e8"
                 else -> weatherDesc
             }
-            // Rain alert — precipitation focused
+            // Rain alert \u2014 based on minutely precipitation data, not skycon
             if (prefs.getBoolean("rain_alert", true)) {
-                if (skycon.contains("RAIN") || skycon.contains("STORM")) {
+                if (hasMinutelyRain) {
                     if (dedup.shouldNotifyRain()) {
                         val title = "\u77ed\u4e34\u964d\u6c34\u63d0\u9192\u2014\u2014$precipIntensityDesc"
                         val body = if (minutelyDesc.isNotBlank()) {

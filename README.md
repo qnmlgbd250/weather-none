@@ -278,5 +278,10 @@ GET /v2.6/{token}/{lon},{lat}/weather?alert=true&dailysteps=15&hourlysteps=48
 
 </div>
 
+---
 
+<div align="center">
+<img src="app/src/main/res/drawable/qr_wechat.png" width="200" alt="WeChat Pay"/>
+<p>如果觉得项目不错，请作者喝杯咖啡吧 ☕</p>
+</div>
 
