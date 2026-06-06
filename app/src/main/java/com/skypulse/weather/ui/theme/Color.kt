@@ -153,6 +153,23 @@ val WindyGradient = listOf(
 // Night Fallback — deep night sky
 val NightFallbackGradient = SunnyNightGradient
 
+// Secondary screens — scheme B: morning mist gray-green.
+val SecondaryScreenGradient = listOf(
+    Color(0xFFDDE8E5),
+    Color(0xFFCBDDD4),
+    Color(0xFFBFCCB7)
+)
+val SecondaryPanel = Color(0xA3FFFFFF)
+val SecondaryPanelStrong = Color(0xC7FFFFFF)
+val SecondaryPanelBorder = Color(0xB8FFFFFF)
+val SecondaryTextPrimary = Color(0xFF1C2523)
+val SecondaryTextSecondary = Color(0xFF5A6761)
+val SecondaryAccent = Color(0xFF4E7D6A)
+val SecondaryAlert = Color(0xFFA66E3F)
+val DialogPanel = Color(0xFFEAF2EE)
+val DialogInnerPanel = Color(0xB8FFFFFF)
+val DialogPanelBorder = Color(0x66879A90)
+
 // ============ Accent Colors ============
 val PrecipitationBlue = Color(0xFF29B6F6)
 val HumidityBlue = Color(0xFF42A5F5)

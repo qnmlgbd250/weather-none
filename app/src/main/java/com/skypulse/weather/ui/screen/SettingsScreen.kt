@@ -2,6 +2,7 @@ package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,9 +30,13 @@ import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.notification.WeatherNotificationScheduler
 import com.skypulse.weather.ui.components.DonateDialog
-import com.skypulse.weather.ui.theme.NightFallbackGradient
-import com.skypulse.weather.ui.theme.TextPrimary
-import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.ui.theme.SecondaryAccent
+import com.skypulse.weather.ui.theme.SecondaryPanel
+import com.skypulse.weather.ui.theme.SecondaryPanelBorder
+import com.skypulse.weather.ui.theme.SecondaryPanelStrong
+import com.skypulse.weather.ui.theme.SecondaryScreenGradient
+import com.skypulse.weather.ui.theme.SecondaryTextPrimary
+import com.skypulse.weather.ui.theme.SecondaryTextSecondary
 import com.skypulse.weather.viewmodel.UpdateCheckResult
 
 private const val GITHUB_URL = "https://github.com/qnmlgbd250/weather-none"
@@ -91,18 +97,18 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colors = NightFallbackGradient))
+            .background(Brush.verticalGradient(colors = SecondaryScreenGradient))
             .navigationBarsPadding()
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { Text("\u8bbe\u7f6e", color = TextPrimary) },
+                title = { Text("\u8bbe\u7f6e", color = SecondaryTextPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "\u8fd4\u56de",
-                            tint = TextSecondary
+                            tint = SecondaryTextSecondary
                         )
                     }
                 },
@@ -125,8 +131,9 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = TextSecondary.copy(alpha = 0.1f)
+                        containerColor = SecondaryPanel
                     ),
+                    border = BorderStroke(1.dp, SecondaryPanelBorder),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     ToggleItem(
@@ -184,8 +191,9 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = TextSecondary.copy(alpha = 0.1f)
+                        containerColor = SecondaryPanel
                     ),
+                    border = BorderStroke(1.dp, SecondaryPanelBorder),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     SimpleItem(
@@ -213,13 +221,13 @@ fun SettingsScreen(
                         Text(
                             text = "\u68c0\u67e5\u66f4\u65b0",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = TextPrimary,
+                            color = SecondaryTextPrimary,
                             modifier = Modifier.weight(1f)
                         )
                         Icon(
                             imageVector = Icons.Outlined.Autorenew,
                             contentDescription = "\u68c0\u67e5\u66f4\u65b0",
-                            tint = TextSecondary,
+                            tint = SecondaryTextSecondary,
                             modifier = Modifier
                                 .size(20.dp)
                                 .rotate(rotation)
@@ -238,8 +246,8 @@ fun SettingsScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = TextSecondary.copy(alpha = 0.15f),
-                            contentColor = TextPrimary
+                            containerColor = SecondaryPanelStrong,
+                            contentColor = SecondaryTextPrimary
                         )
                     ) {
                         Text("\u524d\u5f80\u4e0b\u8f7d v${updateState.version}")
@@ -251,7 +259,7 @@ fun SettingsScreen(
                 Text(
                     text = "QQ\u7fa4\uff1a758426293",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary.copy(alpha = 0.4f),
+                    color = SecondaryTextSecondary.copy(alpha = 0.65f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp),
@@ -261,7 +269,7 @@ fun SettingsScreen(
                 Text(
                     text = "SkyPulse v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary.copy(alpha = 0.4f),
+                    color = SecondaryTextSecondary.copy(alpha = 0.65f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 22.dp),
@@ -277,7 +285,7 @@ private fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        color = TextSecondary,
+        color = SecondaryTextSecondary,
         fontSize = 13.sp,
         modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
     )
@@ -299,7 +307,7 @@ private fun ToggleItem(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary,
+            color = SecondaryTextPrimary,
             modifier = Modifier.weight(1f)
         )
         Switch(
@@ -307,10 +315,10 @@ private fun ToggleItem(
             onCheckedChange = onCheckedChange,
             modifier = Modifier.height(32.dp),
             colors = SwitchDefaults.colors(
-                checkedThumbColor = TextPrimary,
-                checkedTrackColor = TextSecondary.copy(alpha = 0.3f),
-                uncheckedThumbColor = TextSecondary,
-                uncheckedTrackColor = TextSecondary.copy(alpha = 0.1f)
+                checkedThumbColor = Color.White,
+                checkedTrackColor = SecondaryAccent.copy(alpha = 0.9f),
+                uncheckedThumbColor = SecondaryTextSecondary.copy(alpha = 0.7f),
+                uncheckedTrackColor = SecondaryPanelStrong
             )
         )
     }
@@ -324,7 +332,7 @@ private fun SimpleItem(
     Text(
         text = title,
         style = MaterialTheme.typography.bodyLarge,
-        color = TextPrimary,
+        color = SecondaryTextPrimary,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)

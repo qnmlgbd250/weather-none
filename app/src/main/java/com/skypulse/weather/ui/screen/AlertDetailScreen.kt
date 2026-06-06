@@ -1,6 +1,7 @@
 package com.skypulse.weather.ui.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -16,9 +17,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.AlertContent
-import com.skypulse.weather.ui.theme.NightFallbackGradient
-import com.skypulse.weather.ui.theme.TextPrimary
-import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.ui.theme.SecondaryPanelBorder
+import com.skypulse.weather.ui.theme.SecondaryPanelStrong
+import com.skypulse.weather.ui.theme.SecondaryScreenGradient
+import com.skypulse.weather.ui.theme.SecondaryTextPrimary
+import com.skypulse.weather.ui.theme.SecondaryTextSecondary
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,16 +33,16 @@ internal fun AlertDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colors = NightFallbackGradient))
+            .background(Brush.verticalGradient(colors = SecondaryScreenGradient))
     ) {
         TopAppBar(
-            title = { Text("\u9884\u8b66\u8be6\u60c5", color = TextPrimary) },
+            title = { Text("\u9884\u8b66\u8be6\u60c5", color = SecondaryTextPrimary) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "\u8fd4\u56de",
-                        tint = TextSecondary
+                        tint = SecondaryTextSecondary
                     )
                 }
             },
@@ -53,7 +56,7 @@ internal fun AlertDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "\u6682\u65e0\u9884\u8b66\u4fe1\u606f", color = TextSecondary)
+                Text(text = "\u6682\u65e0\u9884\u8b66\u4fe1\u606f", color = SecondaryTextSecondary)
             }
         } else {
             val safeInitialIndex = remember(alerts, initialSelectedIndex) {
@@ -71,13 +74,14 @@ internal fun AlertDetailScreen(
                         ?.replace(Regex("^.*\u53d1\u5e03"), "")
                         ?.trim()
                         ?.ifBlank { null }
-                    val levelColor = alertColor(alert.level)
+                    val levelColor = detailAlertColor(alert.level)
 
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.06f))
+                        colors = CardDefaults.cardColors(containerColor = SecondaryPanelStrong),
+                        border = BorderStroke(1.dp, SecondaryPanelBorder)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             if (!title.isNullOrBlank()) {
@@ -94,7 +98,7 @@ internal fun AlertDetailScreen(
                                 Text(
                                     text = alert.description,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White
+                                    color = SecondaryTextPrimary
                                 )
                             }
                         }
@@ -102,5 +106,15 @@ internal fun AlertDetailScreen(
                 }
             }
         }
+    }
+}
+
+private fun detailAlertColor(level: String?): Color {
+    return when {
+        level?.contains("红") == true -> Color(0xFFC73E3A)
+        level?.contains("橙") == true -> Color(0xFFB75C00)
+        level?.contains("黄") == true -> Color(0xFF8A6B00)
+        level?.contains("蓝") == true -> Color(0xFF2D68B8)
+        else -> Color(0xFFA66E3F)
     }
 }

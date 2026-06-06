@@ -25,9 +25,11 @@ import com.skypulse.weather.model.City
 import com.skypulse.weather.ui.components.CityListRow
 import com.skypulse.weather.ui.components.CitySearchResultRow
 import com.skypulse.weather.ui.components.SwipeableCityListRow
-import com.skypulse.weather.ui.theme.NightFallbackGradient
-import com.skypulse.weather.ui.theme.TextPrimary
-import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.ui.theme.SecondaryPanel
+import com.skypulse.weather.ui.theme.SecondaryPanelStrong
+import com.skypulse.weather.ui.theme.SecondaryScreenGradient
+import com.skypulse.weather.ui.theme.SecondaryTextPrimary
+import com.skypulse.weather.ui.theme.SecondaryTextSecondary
 import com.skypulse.weather.viewmodel.CitySearchResult
 import com.skypulse.weather.viewmodel.CityWeatherData
 
@@ -54,7 +56,7 @@ fun CityListScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = NightFallbackGradient
+                    colors = SecondaryScreenGradient
                 )
             )
             .statusBarsPadding()
@@ -79,7 +81,7 @@ fun CityListScreen(
                     placeholder = {
                         Text(
                             text = "搜索并添加城市",
-                            color = TextSecondary.copy(alpha = 0.6f),
+                            color = SecondaryTextSecondary.copy(alpha = 0.72f),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
@@ -87,7 +89,7 @@ fun CityListScreen(
                         Icon(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = SecondaryTextSecondary,
                             modifier = Modifier.size(22.dp)
                         )
                     },
@@ -104,7 +106,7 @@ fun CityListScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
                                     contentDescription = "清除",
-                                    tint = TextSecondary,
+                                    tint = SecondaryTextSecondary,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -122,11 +124,11 @@ fun CityListScreen(
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyMedium,
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White.copy(alpha = 0.12f),
-                        unfocusedContainerColor = Color.White.copy(alpha = 0.08f),
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = TextPrimary,
+                        focusedContainerColor = SecondaryPanelStrong,
+                        unfocusedContainerColor = SecondaryPanel,
+                        focusedTextColor = SecondaryTextPrimary,
+                        unfocusedTextColor = SecondaryTextPrimary,
+                        cursorColor = SecondaryTextPrimary,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
@@ -150,7 +152,7 @@ fun CityListScreen(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
                                     strokeWidth = 2.dp,
-                                    color = TextSecondary
+                                    color = SecondaryTextSecondary
                                 )
                             }
                         }
@@ -159,7 +161,7 @@ fun CityListScreen(
                             Text(
                                 text = "未找到匹配的城市",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary,
+                                color = SecondaryTextSecondary,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 24.dp),

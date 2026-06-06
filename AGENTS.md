@@ -20,11 +20,12 @@
 
 ## 版本管理
 - **版本号位置**: `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`
-- **当前版本**: 1.9.110 (code 290)
+- **当前版本**: 1.9.114 (code 294)
 
 ## 发版规则
 - **默认发版**: 只执行 `scripts\release.ps1` 发布到云剪贴板
 - **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release
+- **改动后发版**: 每次代码改动完成并验证后，默认自动执行云剪贴板发版；除非用户明确要求暂不发版
 - 发版前必须清理 build.gradle.kts 和 CHANGELOG.md 的 UTF-8 BOM
 
 ## 编码规范

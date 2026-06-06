@@ -1,6 +1,8 @@
 package com.skypulse.weather.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,8 +19,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.R
-import com.skypulse.weather.ui.theme.TextPrimary
-import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.ui.theme.DialogInnerPanel
+import com.skypulse.weather.ui.theme.DialogPanel
+import com.skypulse.weather.ui.theme.DialogPanelBorder
+import com.skypulse.weather.ui.theme.SecondaryAccent
+import com.skypulse.weather.ui.theme.SecondaryTextPrimary
+import com.skypulse.weather.ui.theme.SecondaryTextSecondary
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -35,41 +41,49 @@ fun DonateDialog(
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        
-        containerColor = Color(0xFF1E1E2E),
+        modifier = Modifier.border(1.dp, DialogPanelBorder, RoundedCornerShape(22.dp)),
+        containerColor = DialogPanel,
         shape = RoundedCornerShape(22.dp),
         title = {
             Text(
                 text = "\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
                 style = MaterialTheme.typography.titleSmall,
-                color = TextPrimary
+                color = SecondaryTextPrimary
             )
         },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.qr_wechat),
-                    contentDescription = "\u5fae\u4fe1\u6536\u6b3e\u7801",
-                    modifier = Modifier
-                        .size(160.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Fit
-                )
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White,
+                    shadowElevation = 2.dp
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.qr_wechat),
+                        contentDescription = "\u5fae\u4fe1\u6536\u6b3e\u7801",
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .size(160.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                }
 
                 Text(
                     text = "\u5fae\u4fe1\u626b\u4e00\u626b",
                     style = MaterialTheme.typography.labelMedium,
-                    color = TextSecondary
+                    color = SecondaryTextSecondary
                 )
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = Color.White.copy(alpha = 0.05f)
+                    color = DialogInnerPanel,
+                    border = BorderStroke(1.dp, DialogPanelBorder)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp)
@@ -77,7 +91,7 @@ fun DonateDialog(
                         Text(
                             text = "\u6253\u8d4f\u9e23\u8c22",
                             style = MaterialTheme.typography.titleSmall,
-                            color = TextPrimary,
+                            color = SecondaryTextPrimary,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
@@ -101,7 +115,7 @@ fun DonateDialog(
                                             0 -> Color(0xFFFFD700)
                                             1 -> Color(0xFFC0C0C0)
                                             2 -> Color(0xFFCD7F32)
-                                            else -> TextSecondary
+                                            else -> SecondaryTextSecondary
                                         },
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.width(24.dp)
@@ -109,13 +123,13 @@ fun DonateDialog(
                                     Text(
                                         text = name,
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = TextPrimary,
+                                        color = SecondaryTextPrimary,
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
                                         text = "\u00a5$amount",
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = Color(0xFFFFD700)
+                                        color = SecondaryAccent
                                     )
                                 }
                             }
@@ -126,7 +140,7 @@ fun DonateDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("\u5173\u95ed", color = TextSecondary)
+                Text("\u5173\u95ed", color = SecondaryAccent)
             }
         }
     )

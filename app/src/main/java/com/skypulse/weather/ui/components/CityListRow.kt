@@ -37,12 +37,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
-import com.skypulse.weather.ui.theme.NightFallbackGradient
+import com.skypulse.weather.ui.theme.SecondaryScreenGradient
+import com.skypulse.weather.ui.theme.SecondaryTextPrimary
+import com.skypulse.weather.ui.theme.SecondaryTextSecondary
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.util.WeatherUtils
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import kotlin.math.roundToInt
 
 @Composable
@@ -56,7 +56,6 @@ fun SwipeableCityListRow(
 ) {
     val deleteButtonWidth = 80.dp
     val deleteButtonWidthPx = with(LocalDensity.current) { deleteButtonWidth.toPx() }
-    val haptic = LocalHapticFeedback.current
     var offsetX by remember { mutableFloatStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(
         targetValue = offsetX,
@@ -97,7 +96,7 @@ fun SwipeableCityListRow(
                 .fillMaxWidth()
                 .matchParentSize()
                 .clip(RoundedCornerShape(20.dp))
-                .background(NightFallbackGradient.first())
+                .background(SecondaryScreenGradient.first())
         )
 
         // Layer 3: City card — on top, slides left to reveal red delete button
@@ -312,14 +311,14 @@ fun CitySearchResultRow(
             Text(
                 text = name,
                 style = MaterialTheme.typography.bodyLarge,
-                color = TextPrimary
+                color = SecondaryTextPrimary
             )
             if (district.isNotBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = district,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
+                    color = SecondaryTextSecondary
                 )
             }
         }

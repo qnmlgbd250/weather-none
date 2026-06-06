@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SkyPulse 二级页面配色方案预览</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0e1117;
+      color: #f5f7fb;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(111, 162, 174, 0.18), transparent 28rem),
+        linear-gradient(135deg, #111827 0%, #141a24 45%, #101318 100%);
+    }
+
+    header {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 34px 28px 14px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(26px, 3vw, 40px);
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .intro {
+      max-width: 760px;
+      margin: 0;
+      color: rgba(245, 247, 251, 0.72);
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .grid {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 20px 28px 48px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(260px, 1fr));
+      gap: 18px;
+    }
+
+    .scheme {
+      --bg1: #eef5f7;
+      --bg2: #e6f0ec;
+      --bg3: #f5f1e8;
+      --panel: rgba(255, 255, 255, 0.72);
+      --panel-strong: rgba(255, 255, 255, 0.86);
+      --border: rgba(255, 255, 255, 0.82);
+      --text: #17212b;
+      --muted: #52616b;
+      --accent: #2f8c8c;
+      --alert: #c96a35;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.055);
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .scheme.b {
+      --bg1: #dde8e5;
+      --bg2: #cbddd4;
+      --bg3: #bfccb7;
+      --panel: rgba(255, 255, 255, 0.64);
+      --panel-strong: rgba(255, 255, 255, 0.78);
+      --border: rgba(255, 255, 255, 0.72);
+      --text: #1c2523;
+      --muted: #5a6761;
+      --accent: #4e7d6a;
+      --alert: #a66e3f;
+    }
+
+    .scheme.c {
+      --bg1: #181820;
+      --bg2: #232534;
+      --bg3: #26352f;
+      --panel: rgba(255, 255, 255, 0.11);
+      --panel-strong: rgba(255, 255, 255, 0.16);
+      --border: rgba(255, 255, 255, 0.16);
+      --text: #ffffff;
+      --muted: #d9dfe5;
+      --accent: #9ec8b9;
+      --alert: #ffd166;
+    }
+
+    .scheme.d {
+      --bg1: #f4efe7;
+      --bg2: #e9e2d8;
+      --bg3: #dde8e1;
+      --panel: rgba(255, 255, 255, 0.7);
+      --panel-strong: rgba(255, 255, 255, 0.84);
+      --border: rgba(255, 255, 255, 0.76);
+      --text: #2a2723;
+      --muted: #6d665d;
+      --accent: #b8794a;
+      --alert: #a84937;
+    }
+
+    .scheme-head {
+      padding: 18px 18px 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .scheme-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      color: rgba(245, 247, 251, 0.56);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .note {
+      margin: 0;
+      color: rgba(245, 247, 251, 0.66);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .swatches {
+      display: flex;
+      gap: 7px;
+    }
+
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+    }
+
+    .phone {
+      margin: 0 14px 18px;
+      height: 610px;
+      border-radius: 30px;
+      background: linear-gradient(160deg, var(--bg1), var(--bg2) 48%, var(--bg3));
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 22px 46px rgba(0, 0, 0, 0.24);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .status {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .screen {
+      padding: 12px 16px 18px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 13px;
+    }
+
+    .topbar-title {
+      font-weight: 650;
+      font-size: 18px;
+    }
+
+    .icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      background: color-mix(in srgb, var(--panel) 78%, transparent);
+      border: 1px solid var(--border);
+    }
+
+    .search {
+      height: 42px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      margin-bottom: 12px;
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(18px);
+    }
+
+    .card.strong {
+      background: var(--panel-strong);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--muted) 16%, transparent);
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+    }
+
+    .row-title {
+      font-size: 14px;
+      font-weight: 560;
+    }
+
+    .row-sub {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .toggle {
+      width: 38px;
+      height: 22px;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--accent) 58%, var(--panel-strong));
+      position: relative;
+    }
+
+    .toggle::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+    }
+
+    .city-card {
+      color: white;
+      background: linear-gradient(130deg, #3578a8, #6aabd5);
+      border-color: rgba(255, 255, 255, 0.38);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .city-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .city-name {
+      font-weight: 650;
+      font-size: 19px;
+    }
+
+    .temp {
+      font-size: 34px;
+      font-weight: 250;
+      line-height: 1;
+    }
+
+    .mini {
+      margin-top: 14px;
+      display: flex;
+      justify-content: space-between;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 12px;
+    }
+
+    .alert-title {
+      color: var(--alert);
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .alert-body {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .dialog {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      bottom: 24px;
+      border-radius: 22px;
+      padding: 16px;
+      background: color-mix(in srgb, var(--panel-strong) 76%, #111827 24%);
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.24);
+      color: var(--text);
+    }
+
+    .scheme.c .dialog {
+      background: #121824;
+    }
+
+    .dialog-title {
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .qr-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .qr {
+      width: 82px;
+      height: 82px;
+      border-radius: 14px;
+      background:
+        linear-gradient(90deg, #111 10px, transparent 10px) 0 0 / 20px 20px,
+        linear-gradient(#111 10px, transparent 10px) 0 0 / 20px 20px,
+        #fff;
+      border: 8px solid #fff;
+    }
+
+    .dialog-copy {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .donors {
+      border-radius: 13px;
+      padding: 10px;
+      background: color-mix(in srgb, var(--panel) 72%, transparent);
+      border: 1px solid var(--border);
+      font-size: 12px;
+    }
+
+    .donor-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
+
+    .amount {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    @media (max-width: 1200px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(280px, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      header {
+        padding: 26px 16px 10px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+        padding: 16px 14px 38px;
+      }
+
+      .phone {
+        height: 590px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>二级页面配色方案预览</h1>
+    <p class="intro">每套方案都模拟了设置页、城市管理、预警详情和捐赠弹窗的关键元素。选择时重点看：文字是否清楚、卡片是否有层次、捐赠弹窗是否从背景中分离出来，以及整体是否符合 SkyPulse 的天气感。</p>
+  </header>
+
+  <main class="grid">
+    <section class="scheme a">
+      <div class="scheme-head">
+        <div class="scheme-title">
+          <h2>方案 A 浅雾蓝</h2>
+          <span class="tag">最清晰</span>
+        </div>
+        <p class="note">清爽、接近系统设置页。可读性最强，整体更轻。</p>
+        <div class="swatches">
+          <span class="swatch" style="background:#eef5f7"></span>
+          <span class="swatch" style="background:#e6f0ec"></span>
+          <span class="swatch" style="background:#f5f1e8"></span>
+          <span class="swatch" style="background:#2f8c8c"></span>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>SkyPulse</span></div>
+        <div class="screen">
+          <div class="topbar"><span class="icon">‹</span><span class="topbar-title">设置</span><span></span></div>
+          <div class="card strong">
+            <div class="row"><div><div class="row-title">短临雨水提醒</div><div class="row-sub">当前位置精准提醒</div></div><span class="toggle"></span></div>
+            <div class="row"><div><div class="row-title">预警信息提醒</div><div class="row-sub">跳过蓝色预警</div></div><span class="toggle"></span></div>
+          </div>
+          <div class="search">⌕ 搜索并添加城市</div>
+          <div class="card city-card"><div class="city-main"><div><div class="city-name">杭州市</div><div class="row-sub" style="color:rgba(255,255,255,.82)">多云转晴</div></div><div class="temp">27°</div></div><div class="mini"><span>空气优 42</span><span>多云</span></div></div>
+          <div class="card"><div class="alert-title">暴雨橙色预警</div><div class="alert-body">预计未来两小时局部地区降水增强，请注意出行安全，远离低洼区域。</div></div>
+        </div>
+        <div class="dialog">
+          <div class="dialog-title">请作者喝杯咖啡</div>
+          <div class="qr-row"><div class="qr"></div><div class="dialog-copy">微信扫一扫<br>清晰浅色底托，扫码区域更独立。</div></div>
+          <div class="donors"><div class="donor-line"><span>芳华</span><span class="amount">¥66</span></div><div class="donor-line"><span>我有点柿</span><span class="amount">¥20</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scheme b">
+      <div class="scheme-head">
+        <div class="scheme-title">
+          <h2>方案 B 晨雾灰绿</h2>
+          <span class="tag">推荐</span>
+        </div>
+        <p class="note">柔和、有天气感，不像纯白那么工具化，长期看更舒服。</p>
+        <div class="swatches">
+          <span class="swatch" style="background:#dde8e5"></span>
+          <span class="swatch" style="background:#cbddd4"></span>
+          <span class="swatch" style="background:#bfccb7"></span>
+          <span class="swatch" style="background:#4e7d6a"></span>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>SkyPulse</span></div>
+        <div class="screen">
+          <div class="topbar"><span class="icon">‹</span><span class="topbar-title">设置</span><span></span></div>
+          <div class="card strong">
+            <div class="row"><div><div class="row-title">短临雨水提醒</div><div class="row-sub">当前位置精准提醒</div></div><span class="toggle"></span></div>
+            <div class="row"><div><div class="row-title">预警信息提醒</div><div class="row-sub">跳过蓝色预警</div></div><span class="toggle"></span></div>
+          </div>
+          <div class="search">⌕ 搜索并添加城市</div>
+          <div class="card city-card"><div class="city-main"><div><div class="city-name">杭州市</div><div class="row-sub" style="color:rgba(255,255,255,.82)">多云转晴</div></div><div class="temp">27°</div></div><div class="mini"><span>空气优 42</span><span>多云</span></div></div>
+          <div class="card"><div class="alert-title">暴雨橙色预警</div><div class="alert-body">预计未来两小时局部地区降水增强，请注意出行安全，远离低洼区域。</div></div>
+        </div>
+        <div class="dialog">
+          <div class="dialog-title">请作者喝杯咖啡</div>
+          <div class="qr-row"><div class="qr"></div><div class="dialog-copy">微信扫一扫<br>淡绿灰背景下弹窗更柔和。</div></div>
+          <div class="donors"><div class="donor-line"><span>芳华</span><span class="amount">¥66</span></div><div class="donor-line"><span>我有点柿</span><span class="amount">¥20</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scheme c">
+      <div class="scheme-head">
+        <div class="scheme-title">
+          <h2>方案 C 暮色紫灰</h2>
+          <span class="tag">深色稳妥</span>
+        </div>
+        <p class="note">保留暗色高级感，层次比旧深蓝更松，改动成本最低。</p>
+        <div class="swatches">
+          <span class="swatch" style="background:#181820"></span>
+          <span class="swatch" style="background:#232534"></span>
+          <span class="swatch" style="background:#26352f"></span>
+          <span class="swatch" style="background:#9ec8b9"></span>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>SkyPulse</span></div>
+        <div class="screen">
+          <div class="topbar"><span class="icon">‹</span><span class="topbar-title">设置</span><span></span></div>
+          <div class="card strong">
+            <div class="row"><div><div class="row-title">短临雨水提醒</div><div class="row-sub">当前位置精准提醒</div></div><span class="toggle"></span></div>
+            <div class="row"><div><div class="row-title">预警信息提醒</div><div class="row-sub">跳过蓝色预警</div></div><span class="toggle"></span></div>
+          </div>
+          <div class="search">⌕ 搜索并添加城市</div>
+          <div class="card city-card"><div class="city-main"><div><div class="city-name">杭州市</div><div class="row-sub" style="color:rgba(255,255,255,.82)">多云转晴</div></div><div class="temp">27°</div></div><div class="mini"><span>空气优 42</span><span>多云</span></div></div>
+          <div class="card"><div class="alert-title">暴雨橙色预警</div><div class="alert-body">预计未来两小时局部地区降水增强，请注意出行安全，远离低洼区域。</div></div>
+        </div>
+        <div class="dialog">
+          <div class="dialog-title">请作者喝杯咖啡</div>
+          <div class="qr-row"><div class="qr"></div><div class="dialog-copy">微信扫一扫<br>深色中弹窗边界更明确。</div></div>
+          <div class="donors"><div class="donor-line"><span>芳华</span><span class="amount">¥66</span></div><div class="donor-line"><span>我有点柿</span><span class="amount">¥20</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scheme d">
+      <div class="scheme-head">
+        <div class="scheme-title">
+          <h2>方案 D 暖云米灰</h2>
+          <span class="tag">亲和</span>
+        </div>
+        <p class="note">更生活化，捐赠页氛围友好，但需要控制暖色比例。</p>
+        <div class="swatches">
+          <span class="swatch" style="background:#f4efe7"></span>
+          <span class="swatch" style="background:#e9e2d8"></span>
+          <span class="swatch" style="background:#dde8e1"></span>
+          <span class="swatch" style="background:#b8794a"></span>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>SkyPulse</span></div>
+        <div class="screen">
+          <div class="topbar"><span class="icon">‹</span><span class="topbar-title">设置</span><span></span></div>
+          <div class="card strong">
+            <div class="row"><div><div class="row-title">短临雨水提醒</div><div class="row-sub">当前位置精准提醒</div></div><span class="toggle"></span></div>
+            <div class="row"><div><div class="row-title">预警信息提醒</div><div class="row-sub">跳过蓝色预警</div></div><span class="toggle"></span></div>
+          </div>
+          <div class="search">⌕ 搜索并添加城市</div>
+          <div class="card city-card"><div class="city-main"><div><div class="city-name">杭州市</div><div class="row-sub" style="color:rgba(255,255,255,.82)">多云转晴</div></div><div class="temp">27°</div></div><div class="mini"><span>空气优 42</span><span>多云</span></div></div>
+          <div class="card"><div class="alert-title">暴雨橙色预警</div><div class="alert-body">预计未来两小时局部地区降水增强，请注意出行安全，远离低洼区域。</div></div>
+        </div>
+        <div class="dialog">
+          <div class="dialog-title">请作者喝杯咖啡</div>
+          <div class="qr-row"><div class="qr"></div><div class="dialog-copy">微信扫一扫<br>暖色更亲近，适合支持页。</div></div>
+          <div class="donors"><div class="donor-line"><span>芳华</span><span class="amount">¥66</span></div><div class="donor-line"><span>我有点柿</span><span class="amount">¥20</span></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

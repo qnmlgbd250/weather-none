@@ -75,7 +75,7 @@ internal fun WeatherContent(
                 onRefresh = onRefresh
             )
 
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(30.dp))
 
             result?.forecastKeypoint?.let { keypoint ->
                 GlassCard(modifier = Modifier.padding(horizontal = 16.dp)) {
