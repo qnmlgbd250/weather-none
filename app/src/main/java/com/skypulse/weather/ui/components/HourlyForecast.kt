@@ -11,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.text.*
@@ -107,7 +106,6 @@ private fun HourlyTemperatureChart(
                 .width(totalWidth)
                 .height(chartHeight)
                 .padding(horizontal = sidePad)
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         ) {
             val itemCount = temperatures.size
             val step = size.width / itemCount
@@ -232,21 +230,17 @@ private fun HourlyTemperatureChart(
 
             points.forEachIndexed { index, point ->
                 if (index == 0) {
-                    // "现在" — solid dot with glow
                     drawCircle(Color.White.copy(alpha = 0.25f), 8.dp.toPx(), point)
-                    drawCircle(Color.White, 4.dp.toPx(), point)
+                    drawCircle(Color.White, 4.5.dp.toPx(), point)
                 } else {
-                    // Hollow dot: erase line inside, then draw ring
-                    val holeRadius = 3.5.dp.toPx()
-                    drawCircle(Color.Transparent, holeRadius, point, blendMode = BlendMode.Clear)
-                    drawCircle(Color.White, holeRadius, point, style = Stroke(width = 1.5.dp.toPx()))
+                    drawCircle(Color.White, 3.5.dp.toPx(), point)
                 }
                 val tempText = "${tempValues[index].toInt()}°"
-                val result = textMeasurer.measure(AnnotatedString(tempText), style = TextStyle(fontSize = 12.sp, color = Color.White))
+                val result = textMeasurer.measure(AnnotatedString(tempText), style = TextStyle(fontSize = 13.sp, color = Color.White))
                 drawText(result, topLeft = Offset(point.x - result.size.width / 2, point.y - result.size.height - 6.dp.toPx()))
             }
 
-            val labelStyle = TextStyle(fontSize = 11.sp, color = TextSecondary)
+            val labelStyle = TextStyle(fontSize = 12.sp, color = TextSecondary)
             val labelCenterY = curveAreaBottom + (canvasH - curveAreaBottom) * 0.45f
             for (i in 0 until itemCount) {
                 val skycon = skyconValues[i] ?: continue
