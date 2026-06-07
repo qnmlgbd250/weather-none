@@ -27,22 +27,16 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.skypulse.weather.ui.theme.WarmGold
 import kotlinx.coroutines.delay
-
-internal fun alertColor(level: String?): Color {
-    return when {
-        level?.contains("红") == true -> Color(0xFFFF4444)
-        level?.contains("橙") == true -> Color(0xFFFF8C00)
-        level?.contains("黄") == true -> WarmGold
-        level?.contains("蓝") == true -> Color(0xFF4488FF)
-        else -> WarmGold
-    }
-}
 
 @Composable
 internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
-    val iconTint = alertColor(alerts.firstOrNull()?.level)
+    if (alerts.isEmpty()) return
+
+    var currentAlertIndex by remember { mutableIntStateOf(0) }
+    val safeAlertIndex = currentAlertIndex.coerceIn(alerts.indices)
+    val currentAlert = alerts[safeAlertIndex]
+    val currentAlertColor = alertLevelColor(currentAlert.level, currentAlert.title)
     val itemHeightDp = 20.dp
 
     val rawPainter = rememberVectorPainter(Icons.Outlined.Notifications)
@@ -62,10 +56,12 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
         }
     }
 
-    var currentAlertIndex by remember { mutableIntStateOf(0) }
+    LaunchedEffect(alerts.size) {
+        currentAlertIndex = safeAlertIndex
+    }
 
     Surface(
-        onClick = { onClick(if (alerts.size == 1) 0 else currentAlertIndex) },
+        onClick = { onClick(if (alerts.size == 1) 0 else safeAlertIndex) },
         modifier = Modifier.padding(start = 20.dp).offset(y = (-4).dp),
         shape = RoundedCornerShape(6.dp),
         color = Color.White.copy(alpha = 0.08f)
@@ -78,7 +74,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                 painter = croppedPainter,
                 contentDescription = "预警",
                 modifier = Modifier.size(iconSizeDp).offset(y = (-1).dp),
-                colorFilter = ColorFilter.tint(iconTint)
+                colorFilter = ColorFilter.tint(currentAlertColor)
             )
             Spacer(modifier = Modifier.width(4.dp))
 
@@ -86,7 +82,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                 Text(
                     text = alerts[0].title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = alertColor(alerts[0].level),
+                    color = currentAlertColor,
                     modifier = Modifier.offset(y = (-1).dp).clickable { onClick(0) }
                 )
             } else {
@@ -98,7 +94,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                 }
 
                 AnimatedContent(
-                    targetState = currentAlertIndex,
+                    targetState = safeAlertIndex,
                     transitionSpec = {
                         slideInVertically(
                             animationSpec = tween(400, easing = FastOutSlowInEasing)
@@ -117,7 +113,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                     Text(
                         text = alert.title,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = alertColor(alert.level),
+                        color = alertLevelColor(alert.level, alert.title),
                         modifier = Modifier.offset(y = 1.dp)
                     )
                 }

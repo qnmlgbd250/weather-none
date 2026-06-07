@@ -539,3 +539,7 @@ Color.kt 闂?WeatherTheme.kt 闂?Theme.kt 闂?GlassCard.kt 闂?MinutelyPrecipita
 ## [1.9.140] - 2026-06-07
 
 - 优化通知标题分隔符显示，去除双横线样式
+
+## [1.9.141] - 2026-06-07
+
+- 预警详情和主页预警入口按预警等级适配颜色

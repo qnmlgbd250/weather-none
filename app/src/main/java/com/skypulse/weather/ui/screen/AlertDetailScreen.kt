@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.AlertContent
 import com.skypulse.weather.ui.theme.SecondaryPanelBorder
 import com.skypulse.weather.ui.theme.SecondaryPanelStrong
+import com.skypulse.weather.ui.theme.SecondaryAlert
 import com.skypulse.weather.ui.theme.SecondaryScreenGradient
 import com.skypulse.weather.ui.theme.SecondaryTextPrimary
 import com.skypulse.weather.ui.theme.SecondaryTextSecondary
@@ -77,7 +78,7 @@ internal fun AlertDetailScreen(
                         ?.replace(Regex("^.*发布"), "")
                         ?.trim()
                         ?.ifBlank { null }
-                    val levelColor = detailAlertColor(alert.level)
+                    val levelColor = alertLevelColor(alert.level, title ?: alert.title, SecondaryAlert)
 
                     // Glass-style card matching main page GlassCard
                     Box(
@@ -122,15 +123,5 @@ internal fun AlertDetailScreen(
                 }
             }
         }
-    }
-}
-
-private fun detailAlertColor(level: String?): Color {
-    return when {
-        level?.contains("红") == true -> Color(0xFFEF5350)
-        level?.contains("橙") == true -> Color(0xFFFF9800)
-        level?.contains("黄") == true -> Color(0xFFFFCA28)
-        level?.contains("蓝") == true -> Color(0xFF42A5F5)
-        else -> Color(0xFFD4A574)
     }
 }
