@@ -27,6 +27,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.util.UUID
@@ -120,6 +124,8 @@ class WeatherViewModel @Inject constructor(
     private val _updateState = MutableStateFlow<UpdateCheckResult?>(null)
     val updateState: StateFlow<UpdateCheckResult?> = _updateState.asStateFlow()
 
+    private val weatherMapMutex = Mutex()
+    private val apiSemaphore = Semaphore(3)
     private var citiesLoadJob: Job? = null
 
     init {
@@ -167,7 +173,11 @@ class WeatherViewModel @Inject constructor(
         if (citiesToLoad.isNotEmpty()) {
             viewModelScope.launch {
                 citiesToLoad.map { city ->
-                    async { loadWeatherForCity(city) }
+                    async {
+                        apiSemaphore.withPermit {
+                            loadWeatherForCity(city)
+                        }
+                    }
                 }.awaitAll()
             }
         }
@@ -305,19 +315,38 @@ class WeatherViewModel @Inject constructor(
     // ============ Multi-city Weather Loading ============
 
     private suspend fun loadWeatherForCity(city: City) {
-        val result = repository.getWeather(city.longitude, city.latitude)
-        val updatedMap = _cityWeatherMap.value.toMutableMap()
-        result.fold(
-            onSuccess = { response ->
-                updatedMap[city.id] = CityWeatherData(weather = response)
-                weatherDataStore.save(city.id, response)
-                weatherCache.save(city.id, response)
-            },
-            onFailure = { e ->
-                updatedMap[city.id] = CityWeatherData(error = mapError(e))
-            }
-        )
-        _cityWeatherMap.value = updatedMap
+        var lastException: Throwable? = null
+        var result: Result<WeatherResponse>? = null
+        repeat(3) { attempt ->
+            if (attempt > 0) delay(1000L * attempt)
+            val r = repository.getWeather(city.longitude, city.latitude)
+            r.fold(
+                onSuccess = { response ->
+                    result = r
+                    return@repeat
+                },
+                onFailure = { e ->
+                    lastException = e
+                    if (e is HttpException && e.code() == 429) return@repeat
+                }
+            )
+        }
+        weatherMapMutex.withLock {
+            val updatedMap = _cityWeatherMap.value.toMutableMap()
+            (result ?: Result.failure(lastException ?: Exception("未知错误"))).fold(
+                onSuccess = { response ->
+                    updatedMap[city.id] = CityWeatherData(weather = response)
+                    viewModelScope.launch(Dispatchers.IO) {
+                        weatherDataStore.save(city.id, response)
+                        weatherCache.save(city.id, response)
+                    }
+                },
+                onFailure = { e ->
+                    updatedMap[city.id] = CityWeatherData(error = mapError(e))
+                }
+            )
+            _cityWeatherMap.value = updatedMap
+        }
     }
 
     private fun fetchWeatherForCity(city: City) {
