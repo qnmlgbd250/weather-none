@@ -153,12 +153,12 @@ val WindyGradient = listOf(
 // Night Fallback — deep night sky
 val NightFallbackGradient = SunnyNightGradient
 
-// Secondary screens — deep night-sky blue palette.
-// Cool navy base so translucent frosted panels glow with a sky tone.
+// Secondary screens — midnight rose palette.
+// Deep purple-rose base for a warm, romantic night atmosphere.
 val SecondaryScreenGradient = listOf(
-    Color(0xFF0F1B2D),
-    Color(0xFF162238),
-    Color(0xFF1D2A44)
+    Color(0xFF1A0F24),
+    Color(0xFF231534),
+    Color(0xFF2D1B3D)
 )
 // Frost glass panels — layered like main-page GlassCard
 val SecondaryPanel = Color(0x26FFFFFF)          // ~15% white frost
@@ -166,10 +166,10 @@ val SecondaryPanelStrong = Color(0x3DFFFFFF)     // ~24% white frost
 val SecondaryPanelBorder = Color(0x33FFFFFF)     // 20% white border
 val SecondaryTextPrimary = Color(0xF0FFFFFF)     // near-white for dark bg
 val SecondaryTextSecondary = Color(0xB3FFFFFF)   // 70% white
-val SecondaryAccent = Color(0xFF64B5F6)          // soft sky-blue accent
-val SecondaryAlert = Color(0xFFE0A050)
-val DialogPanel = Color(0xFF1E2D45)              // opaque, slightly lighter than bg
-val DialogInnerPanel = Color(0xFF263752)         // slightly lighter than panel
+val SecondaryAccent = Color(0xFFF472B6)          // rose-pink accent
+val SecondaryAlert = Color(0xFFE8A040)
+val DialogPanel = Color(0xFF261636)              // opaque, slightly lighter than bg
+val DialogInnerPanel = Color(0xFF312044)         // slightly lighter than panel
 val DialogPanelBorder = Color(0x33FFFFFF)        // 20% white border
 val DialogTextPrimary = Color(0xF0FFFFFF)       // near-white for dark dialog
 val DialogTextSecondary = Color(0xB3FFFFFF)     // 70% white
