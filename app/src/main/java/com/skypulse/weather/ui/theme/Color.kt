@@ -153,26 +153,26 @@ val WindyGradient = listOf(
 // Night Fallback — deep night sky
 val NightFallbackGradient = SunnyNightGradient
 
-// Secondary screens — neutral black palette.
-// Pure grayscale, matches any weather background.
+// Secondary screens — clean white palette.
+// Light background with subtle cool-gray tones.
 val SecondaryScreenGradient = listOf(
-    Color(0xFF0A0A0A),
-    Color(0xFF111111),
-    Color(0xFF1A1A1A)
+    Color(0xFFF5F5F7),
+    Color(0xFFECECEF),
+    Color(0xFFE5E5EA)
 )
 // Frost glass panels — layered like main-page GlassCard
-val SecondaryPanel = Color(0x26FFFFFF)          // ~15% white frost
-val SecondaryPanelStrong = Color(0x3DFFFFFF)     // ~24% white frost
-val SecondaryPanelBorder = Color(0x33FFFFFF)     // 20% white border
-val SecondaryTextPrimary = Color(0xF0FFFFFF)     // near-white for dark bg
-val SecondaryTextSecondary = Color(0xB3FFFFFF)   // 70% white
-val SecondaryAccent = Color(0xFFFFFFFF)          // white accent, clean and universal
-val SecondaryAlert = Color(0xFFCCCCCC)
-val DialogPanel = Color(0xFF161616)              // opaque dark gray
-val DialogInnerPanel = Color(0xFF1E1E1E)         // slightly lighter gray
-val DialogPanelBorder = Color(0x33FFFFFF)        // 20% white border
-val DialogTextPrimary = Color(0xF0FFFFFF)       // near-white for dark dialog
-val DialogTextSecondary = Color(0xB3FFFFFF)     // 70% white
+val SecondaryPanel = Color(0x1A000000)          // ~10% black frost
+val SecondaryPanelStrong = Color(0x26000000)     // ~15% black frost
+val SecondaryPanelBorder = Color(0x22000000)     // 13% black border
+val SecondaryTextPrimary = Color(0xE6000000)     // near-black for light bg
+val SecondaryTextSecondary = Color(0x99000000)   // 60% black
+val SecondaryAccent = Color(0xFF4FC3F7)          // sky blue accent for toggles/buttons
+val SecondaryAlert = Color(0xFFE57373)
+val DialogPanel = Color(0xFFFFFFFF)              // pure white
+val DialogInnerPanel = Color(0xFFF0F0F5)         // subtle off-white
+val DialogPanelBorder = Color(0x33000000)        // 20% black border for light bg
+val DialogTextPrimary = Color(0xE6000000)       // near-black for light dialog
+val DialogTextSecondary = Color(0x99000000)     // 60% black
 
 // ============ Accent Colors ============
 val PrecipitationBlue = Color(0xFF29B6F6)

@@ -41,8 +41,7 @@ import com.skypulse.weather.ui.theme.SecondaryPanelBorder
 import com.skypulse.weather.ui.theme.SecondaryScreenGradient
 import com.skypulse.weather.ui.theme.SecondaryTextPrimary
 import com.skypulse.weather.ui.theme.SecondaryTextSecondary
-import com.skypulse.weather.ui.theme.TextPrimary
-import com.skypulse.weather.ui.theme.TextSecondary
+// TextPrimary/TextSecondary intentionally not used — SecondaryText* used for light bg
 import com.skypulse.weather.util.WeatherUtils
 import kotlin.math.roundToInt
 
@@ -225,7 +224,7 @@ fun CityListRow(
                     Icon(
                         imageVector = Icons.Outlined.LocationOn,
                         contentDescription = null,
-                        tint = TextSecondary,
+                        tint = SecondaryTextSecondary,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
@@ -253,7 +252,7 @@ fun CityListRow(
                         Text(
                             text = city.name,
                             style = nameStyle,
-                            color = TextPrimary,
+                            color = SecondaryTextPrimary,
                             maxLines = 1,
                             modifier = Modifier.basicMarquee()
                         )
@@ -272,7 +271,7 @@ fun CityListRow(
                         fontWeight = FontWeight.Thin,
                         fontFeatureSettings = "tnum"
                     ),
-                    color = TextPrimary.copy(alpha = if (weather != null) 1f else 0.4f)
+                    color = SecondaryTextPrimary.copy(alpha = if (weather != null) 1f else 0.4f)
                 )
                 if (weather != null) {
                     Text(
@@ -280,7 +279,7 @@ fun CityListRow(
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Thin
                         ),
-                        color = TextPrimary,
+                        color = SecondaryTextPrimary,
                         modifier = Modifier.offset(x = 10.dp, y = 2.dp)
                     )
                 }
@@ -292,13 +291,13 @@ fun CityListRow(
             Text(
                 text = aqiText ?: "--",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = if (aqiText != null) 1f else 0.4f)
+                color = SecondaryTextSecondary.copy(alpha = if (aqiText != null) 1f else 0.4f)
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = if (weather != null) weatherInfo.description else "--",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = if (weather != null) 1f else 0.4f),
+                color = SecondaryTextSecondary.copy(alpha = if (weather != null) 1f else 0.4f),
                 modifier = Modifier.padding(end = 8.dp)
             )
         }
