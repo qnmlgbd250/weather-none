@@ -25,7 +25,7 @@ import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
 private const val HOUR_WIDTH = 56
-private val SIDE_PADDING = HOUR_WIDTH / 2
+private val SIDE_PADDING = 12
 
 @Composable
 fun HourlyForecastCard(
@@ -218,12 +218,17 @@ private fun HourlyTemperatureChart(
 
             if (points.size >= 2) {
                 val linePath = Path().apply {
-                    moveTo(points.first().x, points.first().y)
+                    val halfStep = step / 2f
+                    // Extend half step to the left
+                    moveTo(points.first().x - halfStep, points.first().y)
+                    lineTo(points.first().x, points.first().y)
                     for (i in 0 until points.size - 1) {
                         val p0 = points[i]; val p1 = points[i + 1]
                         val m0 = tangents[i]; val m1 = tangents[i + 1]; val dx = p1.x - p0.x
                         cubicTo(p0.x + dx / 3f, p0.y + m0 * dx / 3f, p1.x - dx / 3f, p1.y - m1 * dx / 3f, p1.x, p1.y)
                     }
+                    // Extend half step to the right
+                    lineTo(points.last().x + halfStep, points.last().y)
                 }
                 drawPath(path = linePath, color = Color.White, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
