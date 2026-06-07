@@ -128,7 +128,7 @@ private fun DailyColumn(
         Text(
             text = dateLabel,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-            color = TextSecondary
+            color = TextTertiary
         )
 
         Spacer(modifier = Modifier.height(10.dp))
