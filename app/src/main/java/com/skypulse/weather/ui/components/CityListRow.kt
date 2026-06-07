@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.ui.theme.SecondaryPanelBorder
-import com.skypulse.weather.ui.theme.SecondaryPanelStrong
 import com.skypulse.weather.ui.theme.SecondaryScreenGradient
 import com.skypulse.weather.ui.theme.SecondaryTextPrimary
 import com.skypulse.weather.ui.theme.SecondaryTextSecondary
@@ -100,7 +99,7 @@ fun SwipeableCityListRow(
                 .background(SecondaryScreenGradient.first())
         )
 
-        // Layer 3: City card — frosted glass style, slides left to reveal red delete
+        // Layer 3: City card — frosted glass + weather tint, slides left to reveal red delete
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
@@ -147,6 +146,8 @@ fun CityListRow(
 ) {
     val realtime = weather?.result?.realtime
     val skycon = realtime?.skycon
+    val isDay = WeatherUtils.isCurrentlyDay()
+    val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
     val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
     val temperature = WeatherUtils.formatTemperature(realtime?.temperature).replace("°", "")
     val aqiValue = realtime?.air_quality?.aqi?.chn?.toInt()
@@ -166,18 +167,42 @@ fun CityListRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(SecondaryPanelStrong)
+            // Layer A: weather-tinted base color (low alpha so it blends with dark bg)
             .background(
-                brush = Brush.verticalGradient(
+                Brush.horizontalGradient(
                     colors = listOf(
-                        Color.White.copy(alpha = 0.18f),
-                        Color.White.copy(alpha = 0.06f)
+                        gradientColors.first().copy(alpha = 0.45f),
+                        gradientColors.last().copy(alpha = 0.30f)
+                    )
+                )
+            )
+            // Layer B: frost glass overlay on top
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.12f),
+                        Color.White.copy(alpha = 0.04f)
+                    )
+                )
+            )
+            // Layer C: subtle top highlight for glass shine
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.06f),
+                        Color.Transparent
                     )
                 )
             )
             .border(
                 width = 1.dp,
-                color = SecondaryPanelBorder,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.25f),
+                        Color.White.copy(alpha = 0.08f),
+                        Color.White.copy(alpha = 0.15f)
+                    )
+                ),
                 shape = RoundedCornerShape(20.dp)
             )
             .clickable(
@@ -212,7 +237,7 @@ fun CityListRow(
                 ) {
                     val textMeasurer = rememberTextMeasurer()
                     val nameStyle = MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Medium
                     )
                     val containerWidthPx = with(LocalDensity.current) { maxWidth.roundToPx() }

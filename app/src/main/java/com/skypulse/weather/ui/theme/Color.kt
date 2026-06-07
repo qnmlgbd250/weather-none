@@ -168,9 +168,11 @@ val SecondaryTextPrimary = Color(0xF0FFFFFF)     // near-white for dark bg
 val SecondaryTextSecondary = Color(0xB3FFFFFF)   // 70% white
 val SecondaryAccent = Color(0xFF7ECAB0)          // soft teal accent
 val SecondaryAlert = Color(0xFFD4A574)
-val DialogPanel = Color(0x40FFFFFF)              // 25% frost
-val DialogInnerPanel = Color(0x26FFFFFF)         // 15% frost
-val DialogPanelBorder = Color(0x29FFFFFF)        // 16% border
+val DialogPanel = Color(0xFF2F5049)              // opaque, slightly lighter than bg
+val DialogInnerPanel = Color(0xFF3A5E56)         // slightly lighter than panel
+val DialogPanelBorder = Color(0x33FFFFFF)        // 20% white border
+val DialogTextPrimary = Color(0xF0FFFFFF)       // near-white for dark dialog
+val DialogTextSecondary = Color(0xB3FFFFFF)     // 70% white
 
 // ============ Accent Colors ============
 val PrecipitationBlue = Color(0xFF29B6F6)

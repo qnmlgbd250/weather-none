@@ -22,9 +22,9 @@ import com.skypulse.weather.R
 import com.skypulse.weather.ui.theme.DialogInnerPanel
 import com.skypulse.weather.ui.theme.DialogPanel
 import com.skypulse.weather.ui.theme.DialogPanelBorder
+import com.skypulse.weather.ui.theme.DialogTextPrimary
+import com.skypulse.weather.ui.theme.DialogTextSecondary
 import com.skypulse.weather.ui.theme.SecondaryAccent
-import com.skypulse.weather.ui.theme.SecondaryTextPrimary
-import com.skypulse.weather.ui.theme.SecondaryTextSecondary
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -32,10 +32,10 @@ fun DonateDialog(
     onDismiss: () -> Unit
 ) {
     val donors = listOf(
-        "\u82b3\u534e" to "66",
-        "\u6211\u6709\u70b9\u67ff" to "20",
-        "\u4e09\u5341\u4e5d\u306e\u5ea6" to "18",
-        "\u9e21\u795e" to "8.8",
+        "芳华" to "66",
+        "我有点柿" to "20",
+        "三十九の度" to "18",
+        "鸡神" to "8.8",
         "BIN0678" to "8.8",
         "*风" to "3"
     )
@@ -46,9 +46,9 @@ fun DonateDialog(
         shape = RoundedCornerShape(22.dp),
         title = {
             Text(
-                text = "\u8bf7\u4f5c\u8005\u559d\u676f\u5496\u5561",
+                text = "请作者喝杯咖啡",
                 style = MaterialTheme.typography.titleSmall,
-                color = SecondaryTextPrimary
+                color = DialogTextPrimary
             )
         },
         text = {
@@ -64,7 +64,7 @@ fun DonateDialog(
                 ) {
                     Image(
                         painter = painterResource(id = R.drawable.qr_wechat),
-                        contentDescription = "\u5fae\u4fe1\u6536\u6b3e\u7801",
+                        contentDescription = "微信收款码",
                         modifier = Modifier
                             .padding(10.dp)
                             .size(160.dp)
@@ -74,9 +74,9 @@ fun DonateDialog(
                 }
 
                 Text(
-                    text = "\u5fae\u4fe1\u626b\u4e00\u626b",
+                    text = "微信扫一扫",
                     style = MaterialTheme.typography.labelMedium,
-                    color = SecondaryTextSecondary
+                    color = DialogTextSecondary
                 )
 
                 Surface(
@@ -89,9 +89,9 @@ fun DonateDialog(
                         modifier = Modifier.padding(12.dp)
                     ) {
                         Text(
-                            text = "\u6253\u8d4f\u9e23\u8c22",
+                            text = "打赏鸣谢",
                             style = MaterialTheme.typography.titleSmall,
-                            color = SecondaryTextPrimary,
+                            color = DialogTextPrimary,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
@@ -115,7 +115,7 @@ fun DonateDialog(
                                             0 -> Color(0xFFFFD700)
                                             1 -> Color(0xFFC0C0C0)
                                             2 -> Color(0xFFCD7F32)
-                                            else -> SecondaryTextSecondary
+                                            else -> DialogTextSecondary
                                         },
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.width(24.dp)
@@ -123,11 +123,11 @@ fun DonateDialog(
                                     Text(
                                         text = name,
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = SecondaryTextPrimary,
+                                        color = DialogTextPrimary,
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
-                                        text = "\u00a5$amount",
+                                        text = "¥$amount",
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                                         color = SecondaryAccent
                                     )
@@ -140,7 +140,7 @@ fun DonateDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("\u5173\u95ed", color = SecondaryAccent)
+                Text("关闭", color = SecondaryAccent)
             }
         }
     )
