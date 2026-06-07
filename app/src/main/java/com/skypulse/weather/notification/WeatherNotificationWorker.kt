@@ -173,18 +173,18 @@ class WeatherNotificationWorker(
             }
             // Wind alert
             if (prefs.getBoolean("wind_alert", false)) {
-                if (windSpeed >= 10.8) {
+                if (windSpeed >= 38.9) {
                     if (dedup.shouldNotifyWind()) {
                         val windLevel = when {
-                            windSpeed >= 24.5 -> "9\u7ea7"
-                            windSpeed >= 20.8 -> "8\u7ea7"
-                            windSpeed >= 17.2 -> "7\u7ea7"
-                            windSpeed >= 13.9 -> "6\u7ea7"
-                            windSpeed >= 10.8 -> "5\u7ea7"
+                            windSpeed >= 88.2 -> "9级"
+                            windSpeed >= 74.9 -> "8级"
+                            windSpeed >= 61.9 -> "7级"
+                            windSpeed >= 50.0 -> "6级"
+                            windSpeed >= 38.9 -> "5级"
                             else -> ""
                         }
                         val title = "\u5927\u98ce\u63d0\u9192\u2014\u2014$windLevel\u5927\u98ce"
-                        val body = "\u5f53\u524d\u98ce\u901f ${windSpeed}m/s\uff0c\u8bf7\u6ce8\u610f\u9632\u98ce\uff0c\u907f\u514d\u9ad8\u7a7a\u4f5c\u4e1a"
+                        val body = "当前风速 ${windSpeed}km/h，请注意防风，避免高空作业"
                         sendNotification(nm, 4, title, body)
                     }
                 }
