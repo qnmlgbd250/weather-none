@@ -78,6 +78,7 @@ fun DailyForecastCard(
                     DailyColumn(
                         dateStr = temp.date,
                         skycon = skycon,
+                        precipProb = forecast.precipitation?.getOrNull(index)?.probability,
                         maxTemp = temp.max,
                         minTemp = temp.min,
                         globalMin = globalMin,
@@ -97,6 +98,7 @@ fun DailyForecastCard(
 private fun DailyColumn(
     dateStr: String?,
     skycon: String?,
+    precipProb: Double?,
     maxTemp: Double?,
     minTemp: Double?,
     globalMin: Double,
@@ -120,12 +122,12 @@ private fun DailyColumn(
         // --- Date + Weekday ---
         Text(
             text = weekday,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
             color = TextPrimary
         )
         Text(
             text = dateLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
             color = TextSecondary
         )
 
@@ -149,6 +151,17 @@ private fun DailyColumn(
             maxLines = 1,
             textAlign = TextAlign.Center
         )
+
+            // --- Precipitation probability ---
+            if (precipProb != null && precipProb >= 1.0) {
+                Text(
+                    text = "${precipProb.toInt()}%",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    color = TextTertiary,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
+                )
+            }
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -271,6 +284,6 @@ private fun formatShortDate(dateStr: String?): String {
         val date = shortDateFmt.get()!!.parse(dateStr) ?: return ""
         val cal = java.util.Calendar.getInstance()
         cal.time = date
-        "${cal.get(java.util.Calendar.MONTH) + 1}/${cal.get(java.util.Calendar.DAY_OF_MONTH)}"
+        "${cal.get(java.util.Calendar.MONTH) + 1}月${cal.get(java.util.Calendar.DAY_OF_MONTH)}日"
     } catch (_: Exception) { "" }
 }
