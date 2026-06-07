@@ -25,7 +25,7 @@ import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
 private const val HOUR_WIDTH = 56
-private val SIDE_PADDING = 12
+private val SIDE_PADDING = HOUR_WIDTH / 2
 
 @Composable
 fun HourlyForecastCard(
@@ -284,7 +284,7 @@ private fun HourlyTemperatureChart(
                 Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                     Text(
                         text = if (index == 0) "现在" else WeatherUtils.formatHourShort(temp.datetime),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
                         color = TextSecondary,
                         textAlign = TextAlign.Center
                     )
