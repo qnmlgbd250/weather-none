@@ -122,7 +122,7 @@ private fun DailyColumn(
         // --- Date + Weekday ---
         Text(
             text = weekday,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 14.sp),
             color = TextPrimary
         )
         Text(
@@ -152,7 +152,11 @@ private fun DailyColumn(
             textAlign = TextAlign.Center
         )
 
-            // --- Precipitation probability ---
+        // --- Precipitation probability (fixed height) ---
+        Box(
+            modifier = Modifier.height(14.dp),
+            contentAlignment = Alignment.Center
+        ) {
             if (precipProb != null && precipProb >= 1.0) {
                 Text(
                     text = "${precipProb.toInt()}%",
@@ -162,6 +166,7 @@ private fun DailyColumn(
                     textAlign = TextAlign.Center
                 )
             }
+        }
 
         Spacer(modifier = Modifier.height(14.dp))
 
