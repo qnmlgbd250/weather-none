@@ -114,7 +114,7 @@ class WeatherNotificationWorker(
             if (prefs.getBoolean("rain_alert", true)) {
                 if (hasMinutelyRain) {
                     if (dedup.shouldNotifyRain()) {
-                        val title = "\u77ed\u4e34\u964d\u6c34\u63d0\u9192\u2014\u2014$precipIntensityDesc"
+                        val title = buildNotificationTitle("\u77ed\u4e34\u964d\u6c34\u63d0\u9192", precipIntensityDesc)
                         val body = if (minutelyDesc.isNotBlank()) {
                             minutelyDesc
                         } else {
@@ -183,7 +183,7 @@ class WeatherNotificationWorker(
                             windSpeed >= 38.9 -> "5级"
                             else -> ""
                         }
-                        val title = "\u5927\u98ce\u63d0\u9192\u2014\u2014$windLevel\u5927\u98ce"
+                        val title = buildNotificationTitle("\u5927\u98ce\u63d0\u9192", "$windLevel\u5927\u98ce")
                         val body = "当前风速 ${windSpeed}km/h，请注意防风，避免高空作业"
                         sendNotification(nm, 4, title, body)
                     }
@@ -193,7 +193,7 @@ class WeatherNotificationWorker(
             if (prefs.getBoolean("typhoon_alert", true)) {
                 if (skycon == "STORM_RAIN") {
                     if (dedup.shouldNotifyExtreme()) {
-                        val title = "\u6781\u7aef\u5929\u6c14\u63d0\u9192\u2014\u2014\u66b4\u96e8"
+                        val title = buildNotificationTitle("\u6781\u7aef\u5929\u6c14\u63d0\u9192", "\u66b4\u96e8")
                         val body = "\u5f53\u524d\u5df2\u51fa\u73b0\u66b4\u96e8\u5929\u6c14\uff0c\u6700\u9ad8\u6e29 ${maxTemp}\u00b0C\uff0c\u8bf7\u5c3d\u91cf\u907f\u514d\u5916\u51fa\uff0c\u6ce8\u610f\u5b89\u5168"
                         sendNotification(nm, 5, title, body)
                     }
@@ -326,7 +326,7 @@ class WeatherNotificationWorker(
             val absDiff = kotlin.math.abs(diff)
             if (absDiff >= 8 && dedup.shouldNotifyTempChange()) {
                 val direction = if (diff > 0) "\u5347\u6e29" else "\u964d\u6e29"
-                val title = "\u53d8\u6e29\u63d0\u9192\u2014\u2014\u5267\u70c8$direction"
+                val title = buildNotificationTitle("\u53d8\u6e29\u63d0\u9192", "\u5267\u70c8$direction")
                 val body = "\u4eca\u65e5\u6700\u9ad8\u6e29 ${kotlin.math.round(todayMax).toInt()}\u00b0C\uff0c\u6bd4\u6628\u65e5${direction}${kotlin.math.round(absDiff).toInt()}\u00b0C\uff0c\u8bf7\u6ce8\u610f\u589e\u51cf\u8863\u7269"
                 sendNotification(nm, 3, title, body)
             }
@@ -366,6 +366,11 @@ class WeatherNotificationWorker(
     private fun isAlertChannelEnabled(nm: NotificationManager): Boolean {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
             nm.getNotificationChannel(CHANNEL_ID)?.importance != NotificationManager.IMPORTANCE_NONE
+    }
+
+    private fun buildNotificationTitle(prefix: String, detail: String): String {
+        val cleanDetail = detail.trim()
+        return if (cleanDetail.isBlank()) prefix else "$prefix · $cleanDetail"
     }
 
     @Suppress("MissingPermission")

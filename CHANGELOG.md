@@ -535,3 +535,7 @@ Color.kt 闂?WeatherTheme.kt 闂?Theme.kt 闂?GlassCard.kt 闂?MinutelyPrecipita
 ## [1.9.114] - 2026-06-06
 
 - 按方案B落地二级页面浅灰绿配色
+
+## [1.9.140] - 2026-06-07
+
+- 优化通知标题分隔符显示，去除双横线样式

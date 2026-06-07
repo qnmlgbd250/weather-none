@@ -181,7 +181,7 @@ fun SettingsScreen(
                 GlassSection {
                     SectionHeader(title = "关于")
                     SimpleItem(
-                        title = "GitHub 开源地址",
+                        title = "开源地址",
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
                             context.startActivity(intent)
