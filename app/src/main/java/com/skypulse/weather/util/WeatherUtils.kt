@@ -46,22 +46,22 @@ object WeatherUtils {
         }
 
         // --- Card Styling: frost layer alpha (day: standalone; night: on dark base) ---
-        val (topAlpha, bottomAlpha) = if (!isDay) {
-            0.18f to 0.08f
+        val (topAlpha, midAlpha, bottomAlpha) = if (!isDay) {
+            Triple(0.18f, 0.12f, 0.06f)
         } else when {
             skycon == null ||
-            skycon.contains("CLEAR") -> 0.30f to 0.14f
-            skycon.contains("PARTLY_CLOUDY") -> 0.32f to 0.16f
-            skycon.contains("CLOUDY") -> 0.28f to 0.14f
+            skycon.contains("CLEAR") -> Triple(0.30f, 0.22f, 0.14f)
+            skycon.contains("PARTLY_CLOUDY") -> Triple(0.32f, 0.24f, 0.16f)
+            skycon.contains("CLOUDY") -> Triple(0.28f, 0.20f, 0.14f)
             skycon.contains("RAIN") ||
-            skycon.contains("STORM") -> 0.20f to 0.10f
-            skycon.contains("SNOW") -> 0.42f to 0.24f
+            skycon.contains("STORM") -> Triple(0.20f, 0.14f, 0.10f)
+            skycon.contains("SNOW") -> Triple(0.42f, 0.32f, 0.24f)
             skycon.contains("HAZE") ||
             skycon == "FOG" ||
             skycon == "DUST" ||
-            skycon == "SAND" -> 0.38f to 0.20f
-            skycon == "WIND" -> 0.25f to 0.14f
-            else -> 0.30f to 0.14f
+            skycon == "SAND" -> Triple(0.38f, 0.28f, 0.20f)
+            skycon == "WIND" -> Triple(0.25f, 0.18f, 0.14f)
+            else -> Triple(0.30f, 0.22f, 0.14f)
         }
 
         // Border brightness scales with card opacity
@@ -111,6 +111,7 @@ object WeatherUtils {
             cardTintColor = cardTintColor,
             cardFrostColor = cardFrostColor,
             cardTopAlpha = topAlpha,
+            cardMidAlpha = midAlpha,
             cardBottomAlpha = bottomAlpha,
             cardBorderBrush = borderBrush,
             cardBorderColor = borderColor,

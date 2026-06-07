@@ -12,6 +12,7 @@ data class WeatherTheme(
     val cardTintColor: Color,
     val cardFrostColor: Color,
     val cardTopAlpha: Float,
+    val cardMidAlpha: Float,
     val cardBottomAlpha: Float,
     val cardBorderBrush: Brush,
     val cardBorderColor: Color,
@@ -42,7 +43,8 @@ val LocalWeatherTheme = staticCompositionLocalOf {
         cardTintColor = Color(0xFF1A3A5C),
         cardFrostColor = Color.White,
         cardTopAlpha = 0.28f,
-        cardBottomAlpha = 0.12f,
+        cardMidAlpha = 0.18f,
+        cardBottomAlpha = 0.08f,
         cardBorderBrush = Brush.linearGradient(listOf(Color.White, Color.Transparent)),
         cardBorderColor = CardBorderDay,
         chartColors = WeatherChartColors(

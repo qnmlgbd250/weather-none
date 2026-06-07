@@ -120,6 +120,7 @@ private fun DetailSquareCard(
                 brush = Brush.verticalGradient(
                     colors = listOf(
                         theme.cardFrostColor.copy(alpha = theme.cardTopAlpha),
+                        theme.cardFrostColor.copy(alpha = theme.cardMidAlpha),
                         theme.cardFrostColor.copy(alpha = theme.cardBottomAlpha)
                     )
                 )
