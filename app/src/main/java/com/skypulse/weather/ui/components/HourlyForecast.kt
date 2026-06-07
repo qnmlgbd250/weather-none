@@ -229,8 +229,11 @@ private fun HourlyTemperatureChart(
             }
 
             points.forEachIndexed { index, point ->
-                drawCircle(Color.White, 3.dp.toPx(), point)
-                drawCircle(Color.White.copy(alpha = 0.3f), 6.dp.toPx(), point)
+                if (index == 0) {
+                    drawCircle(Color.White, 3.5.dp.toPx(), point)
+                } else {
+                    drawCircle(Color.White, 3.dp.toPx(), point, style = Stroke(width = 1.5.dp.toPx()))
+                }
                 val tempText = "${tempValues[index].toInt()}°"
                 val result = textMeasurer.measure(AnnotatedString(tempText), style = TextStyle(fontSize = 12.sp, color = Color.White))
                 drawText(result, topLeft = Offset(point.x - result.size.width / 2, point.y - result.size.height - 6.dp.toPx()))
