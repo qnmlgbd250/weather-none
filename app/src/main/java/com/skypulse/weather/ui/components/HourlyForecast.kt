@@ -229,9 +229,8 @@ private fun HourlyTemperatureChart(
                     // Extend to right bar boundary
                     lineTo(size.width, points.last().y)
                 }
-                drawPath(path = linePath, color = Color.White, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(path = linePath, color = Color.White, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Butt, join = StrokeJoin.Round))
             }
-
             points.forEachIndexed { index, point ->
                 if (index == 0) {
                     drawCircle(Color.White.copy(alpha = 0.25f), 8.dp.toPx(), point)
