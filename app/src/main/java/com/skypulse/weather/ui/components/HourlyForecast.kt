@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.text.*
@@ -106,6 +107,7 @@ private fun HourlyTemperatureChart(
                 .width(totalWidth)
                 .height(chartHeight)
                 .padding(horizontal = sidePad)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         ) {
             val itemCount = temperatures.size
             val step = size.width / itemCount
@@ -225,14 +227,19 @@ private fun HourlyTemperatureChart(
                         cubicTo(p0.x + dx / 3f, p0.y + m0 * dx / 3f, p1.x - dx / 3f, p1.y - m1 * dx / 3f, p1.x, p1.y)
                     }
                 }
-                drawPath(path = linePath, color = Color.White, style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(path = linePath, color = Color.White, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
 
             points.forEachIndexed { index, point ->
                 if (index == 0) {
-                    drawCircle(Color.White, 3.5.dp.toPx(), point)
+                    // "现在" — solid dot with glow
+                    drawCircle(Color.White.copy(alpha = 0.25f), 8.dp.toPx(), point)
+                    drawCircle(Color.White, 4.dp.toPx(), point)
                 } else {
-                    drawCircle(Color.White, 3.dp.toPx(), point, style = Stroke(width = 1.5.dp.toPx()))
+                    // Hollow dot: erase line inside, then draw ring
+                    val holeRadius = 3.5.dp.toPx()
+                    drawCircle(Color.Transparent, holeRadius, point, blendMode = BlendMode.Clear)
+                    drawCircle(Color.White, holeRadius, point, style = Stroke(width = 1.5.dp.toPx()))
                 }
                 val tempText = "${tempValues[index].toInt()}°"
                 val result = textMeasurer.measure(AnnotatedString(tempText), style = TextStyle(fontSize = 12.sp, color = Color.White))
