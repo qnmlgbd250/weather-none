@@ -35,7 +35,7 @@ object WeatherWidgetUpdater {
             val cityText = shortenLocation(cityName ?: "--")
             val detailText = "${info.description}  $minTemp / $maxTemp"
             val iconBitmap = renderIcon(context, info.icon)
-            val bgBitmap = buildGradientBitmap(skycon)
+            val bgBitmap = buildGradientBitmap(context, skycon)
             ids.forEach { widgetId ->
                 val views = RemoteViews(context.packageName, R.layout.widget_small)
                 views.setTextViewText(R.id.widget_city, cityText)
@@ -59,7 +59,7 @@ object WeatherWidgetUpdater {
             try {
                 val manager = AppWidgetManager.getInstance(context)
                 val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
-                val bgBitmap = buildGradientBitmap(null)
+                val bgBitmap = buildGradientBitmap(context, null)
                 ids.forEach { widgetId ->
                     val views = RemoteViews(context.packageName, R.layout.widget_small)
                     views.setImageViewBitmap(R.id.widget_bg, bgBitmap)
@@ -109,15 +109,21 @@ object WeatherWidgetUpdater {
         }
     }
 
-    private fun buildGradientBitmap(skycon: String?): Bitmap {
-        val width = 2
-        val height = 2
+    private fun buildGradientBitmap(context: Context, skycon: String?): Bitmap {
+        val density = context.resources.displayMetrics.density
+        val width = (180 * density).toInt()
+        val height = (180 * density).toInt()
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val colors = WeatherUtils.getWeatherGradient(skycon).map { it.toArgb() }.toIntArray()
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), colors, null, Shader.TileMode.CLAMP)
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        val radius = 18f * density
+        val path = Path().apply { addRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius, Path.Direction.CW) }
+        canvas.save()
+        canvas.clipPath(path)
+        canvas.drawPath(path, paint)
+        canvas.restore()
         return bitmap
     }
 }
