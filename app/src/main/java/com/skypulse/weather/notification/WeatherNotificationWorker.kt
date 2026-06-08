@@ -229,13 +229,7 @@ class WeatherNotificationWorker(
         if (amapLocation != null) {
             val lon = amapLocation.longitude
             val lat = amapLocation.latitude
-            val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
-            val distance = currentCity?.let { distanceBetween(lat, lon, it.latitude, it.longitude) }
-            val locationName = if (savedName != null && distance != null && distance < 500f) {
-                savedName
-            } else {
-                locationManager.resolveLocationName(amapLocation)
-            }
+            val locationName = locationManager.resolveLocationName(amapLocation)
             return saveCurrentLocationCity(
                 cities = cities,
                 currentCity = currentCity,

@@ -39,7 +39,6 @@ class LocationManager @Inject constructor(
         private const val DEFAULT_LOCATION_NAME = "\u5317\u4eac\u5e02"
         const val DEFAULT_LONGITUDE = 116.4074
         const val DEFAULT_LATITUDE = 39.9042
-        private const val CACHE_RADIUS_METERS = 500f
         private const val PREFS_NAME = "location_cache"
         private const val KEY_CACHED_LAT = "cached_lat"
         private const val KEY_CACHED_LON = "cached_lon"
@@ -67,13 +66,6 @@ class LocationManager @Inject constructor(
         return CachedLocation(latitude = lat, longitude = lon, name = name)
     }
 
-    private fun saveCachedLocation(lat: Double, lon: Double, name: String) {
-        cachePrefs.edit()
-            .putFloat(KEY_CACHED_LAT, lat.toFloat())
-            .putFloat(KEY_CACHED_LON, lon.toFloat())
-            .putString(KEY_CACHED_NAME, name)
-            .apply()
-    }
 
     private fun hasPermission(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
@@ -198,52 +190,37 @@ class LocationManager @Inject constructor(
     }
 
     /**
-     * Build location name from a full AMapLocation result, prioritizing POI name.
-     * Uses coordinate-based caching to prevent POI name flickering at the same location.
-     */
-    /**
-     * Build location name from a full AMapLocation result, prioritizing POI name.
-     * Uses SharedPreferences-based coordinate caching to prevent POI name flickering.
+     * Build location name from AMapLocation result.
+     * Priority: AOI (building/park-level) > district + street > city > address > "未知位置"
+     * Uses aoiName (polygon-based) instead of poiName (point-based) to avoid flickering.
      */
     fun resolveLocationName(location: AMapLocation): String {
-        val lat = location.latitude
-        val lon = location.longitude
-
-        // \u5982\u679c\u8ddd\u79bb\u4e0a\u6b21\u5b9a\u4f4d\u70b9 < 500\u7c73\uff0c\u76f4\u63a5\u8fd4\u56de\u7f13\u5b58\u7684\u540d\u79f0
-        val cLat = cachePrefs.getFloat(KEY_CACHED_LAT, 0f).toDouble()
-        val cLon = cachePrefs.getFloat(KEY_CACHED_LON, 0f).toDouble()
-        val cName = cachePrefs.getString(KEY_CACHED_NAME, null)
-        if (cName != null && cLat != 0.0 && cLon != 0.0) {
-            if (distanceBetween(lat, lon, cLat, cLon) < CACHE_RADIUS_METERS) {
-                return cName
-            }
-        }
-
         val city = location.city?.takeIf { it.isNotBlank() }
         val district = location.district?.takeIf { it.isNotBlank() && it != city }
-        val poi = location.poiName?.takeIf { it.isNotBlank() }
+        val aoi = location.aoiName?.takeIf { it.isNotBlank() }
         val street = location.street?.takeIf { it.isNotBlank() }
         val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
-        val name = buildString {
+
+        return buildString {
+            // Prefix: district or city
             when {
                 district != null -> append(district)
                 city != null -> append(city)
             }
+            // Detail: prefer AOI (building/park level), fallback to street
             when {
-                poi != null -> append(" $poi")
+                aoi != null -> append(" $aoi")
                 street != null -> {
+                    if (isNotEmpty()) append(" ")
                     append(street)
                     streetNum?.let { append(it) }
                 }
             }
+            // Final fallback
             if (isEmpty()) {
                 location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
             }
         }.ifEmpty { "\u672a\u77e5\u4f4d\u7f6e" }
-
-        // \u66f4\u65b0\u7f13\u5b58
-        saveCachedLocation(lat, lon, name)
-        return name
     }
     /**
      * Reverse geocode via AMap SDK. Falls back to Android Geocoder on failure.
