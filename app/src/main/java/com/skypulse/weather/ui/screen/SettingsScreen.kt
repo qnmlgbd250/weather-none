@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast
@@ -251,14 +251,15 @@ private fun IosCard(
     )
 }
 
+ 
 @Composable
 private fun IosDivider() {
     HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp),
         thickness = 0.5.dp,
         color = IosDividerColor
     )
 }
-
 @Composable
 private fun SectionHeader(title: String) {
     Text(

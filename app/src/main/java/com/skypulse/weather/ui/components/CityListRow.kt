@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.components
+package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -133,7 +133,7 @@ fun SwipeableCityListRow(
                     }
                     Text(
                         text = if (weather != null) "${WeatherUtils.formatTemperature(weather.result?.realtime?.temperature)}" else "--",
-                        fontSize = 24.sp,
+                        fontSize = 26.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
                     )
