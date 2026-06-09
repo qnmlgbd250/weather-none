@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.screen
+﻿package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast
@@ -299,7 +299,8 @@ private fun ToggleItem(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = IosAccentBlue,
                 uncheckedThumbColor = Color.White,
-                uncheckedTrackColor = IosSwitchOff
+                uncheckedTrackColor = IosSwitchOff,
+                uncheckedBorderColor = Color.Transparent
             )
         )
     }
