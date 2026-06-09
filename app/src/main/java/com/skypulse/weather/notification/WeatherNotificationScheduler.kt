@@ -44,11 +44,28 @@ object WeatherNotificationScheduler {
             ExistingPeriodicWorkPolicy.KEEP,
             request
         )
+
+        // High-frequency worker for time-sensitive alerts (rain, warnings)
+        val urgentRequest = PeriodicWorkRequestBuilder<UrgentNotificationWorker>(5, TimeUnit.MINUTES)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(appContext).enqueueUniquePeriodicWork(
+            UrgentNotificationWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            urgentRequest
+        )
     }
 
     fun cancel(context: Context) {
-        WorkManager.getInstance(context.applicationContext)
-            .cancelUniqueWork(WeatherNotificationWorker.WORK_NAME)
+        WorkManager.getInstance(context.applicationContext).apply {
+            cancelUniqueWork(WeatherNotificationWorker.WORK_NAME)
+            cancelUniqueWork(UrgentNotificationWorker.WORK_NAME)
+        }
     }
 
     fun hasAnyAlertEnabled(context: Context): Boolean {
