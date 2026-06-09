@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.components
+﻿package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -139,7 +139,7 @@ fun SwipeableCityListRow(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Row 2: air quality (left) + weather description (right)
                 val aqiValue = weather?.result?.realtime?.air_quality?.aqi?.chn?.toInt()
@@ -159,13 +159,13 @@ fun SwipeableCityListRow(
                 ) {
                     Text(
                         text = if (aqiDesc != null) "$aqiDesc $aqiValue" else "--",
-                        fontSize = 13.sp,
+                        fontSize = 15.sp,
                         color = Color.White.copy(alpha = 0.75f),
                     )
                     val weatherDesc = weather?.result?.realtime?.skycon?.let { WeatherUtils.getWeatherInfo(it).description } ?: "--"
                     Text(
                         text = weatherDesc,
-                        fontSize = 13.sp,
+                        fontSize = 15.sp,
                         color = Color.White.copy(alpha = 0.75f),
                     )
                 }
