@@ -2,6 +2,8 @@
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -16,13 +18,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
@@ -31,6 +41,7 @@ import com.skypulse.weather.ui.theme.IosTextSecondary
 import com.skypulse.weather.util.WeatherUtils
 import kotlin.math.roundToInt
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SwipeableCityListRow(
     city: City,
@@ -80,7 +91,7 @@ fun SwipeableCityListRow(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
                 .fillMaxWidth()
-                .height(100.dp)
+                
                 .pointerInput(isCurrentLocation) {
                     if (isCurrentLocation) return@pointerInput
                     detectHorizontalDragGestures(
@@ -102,35 +113,55 @@ fun SwipeableCityListRow(
                     indication = null,
                     onClick = onClick
                 )
-                .padding(horizontal = 26.dp, vertical = 22.dp)
+                .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             Column(
                 modifier = Modifier.align(Alignment.TopStart)
             ) {
                 // Row 1: city name (left) + temperature (right)
+                val nameStyle = TextStyle(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (isCurrentLocation) {
-                            Icon(
-                                imageVector = Icons.Outlined.LocationOn,
-                                contentDescription = null,
-                                tint = Color.White.copy(alpha = 0.85f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        Text(
-                            text = city.name,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            maxLines = 1
+                    if (isCurrentLocation) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(16.dp)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
                     }
+                    BoxWithConstraints(
+                        modifier = Modifier.fillMaxWidth(0.65f)
+                    ) {
+                        val textMeasurer = rememberTextMeasurer()
+                        val containerWidthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
+                        val overflows = remember(city.name, containerWidthPx) {
+                            textMeasurer.measure(text = city.name, style = nameStyle)
+                                .size.width > containerWidthPx
+                        }
+                        Box(
+                            modifier = Modifier.then(
+                                if (overflows) Modifier.fadingEdge() else Modifier
+                            )
+                        ) {
+                            Text(
+                                text = city.name,
+                                style = nameStyle,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.basicMarquee()
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
                     Text(
                         text = if (weather != null) "${WeatherUtils.formatTemperature(weather.result?.realtime?.temperature)}" else "--",
                         fontSize = 26.sp,
@@ -223,3 +254,18 @@ private fun getCityCardGradient(skycon: String?, isDay: Boolean): List<Color> {
         else -> listOf(Color(0xFF4A90D9), Color(0xFF87CEEB))
     }
 }
+
+private fun Modifier.fadingEdge(): Modifier =
+    this.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    0f to Color.Transparent,
+                    0.08f to Color.Black,
+                    0.92f to Color.Black,
+                    1f to Color.Transparent
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
