@@ -1,14 +1,15 @@
-package com.skypulse.weather.ui.screen
+﻿package com.skypulse.weather.ui.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
@@ -16,21 +17,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.ui.components.CitySearchResultRow
 import com.skypulse.weather.ui.components.SwipeableCityListRow
-import com.skypulse.weather.ui.theme.SecondaryPanel
-import com.skypulse.weather.ui.theme.SecondaryPanelBorder
-import com.skypulse.weather.ui.theme.SecondaryPanelStrong
-import com.skypulse.weather.ui.theme.SecondaryScreenGradient
-import com.skypulse.weather.ui.theme.SecondaryTextPrimary
-import com.skypulse.weather.ui.theme.SecondaryTextSecondary
+import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.CitySearchResult
 import com.skypulse.weather.viewmodel.CityWeatherData
 
@@ -46,6 +42,7 @@ fun CityListScreen(
     onRemoveCity: (String) -> Unit,
     onSearch: (String) -> Unit,
     onClearSearch: () -> Unit,
+    onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -55,39 +52,45 @@ fun CityListScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = SecondaryScreenGradient
-                )
-            )
+            .background(IosSettingsBg)
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search bar — glass pill capsule
+            // Top nav bar
+            if (onBack != null) {
+                TopAppBar(
+                    title = { Text("城市管理", color = IosTextPrimary) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "返回",
+                                tint = IosBackArrow
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = IosSettingsBg
+                    )
+                )
+            }
+
+            // Search bar
             Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 TextField(
                     value = searchQuery,
                     onValueChange = { query ->
                         searchQuery = query
-                        if (query.isNotBlank()) {
-                            onSearch(query)
-                        } else {
-                            onClearSearch()
-                        }
+                        if (query.isNotBlank()) onSearch(query) else onClearSearch()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
-                        .clip(RoundedCornerShape(50))
-                        .border(
-                            width = 1.dp,
-                            color = SecondaryPanelBorder,
-                            shape = RoundedCornerShape(50)
-                        ),
+                        .clip(RoundedCornerShape(50)),
                     placeholder = {
                         Text(
-                            text = "搜索并添加城市",
-                            color = SecondaryTextSecondary.copy(alpha = 0.6f),
+                            text = "搜索城市或景点",
+                            color = IosTextSecondary,
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
@@ -95,8 +98,8 @@ fun CityListScreen(
                         Icon(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = null,
-                            tint = SecondaryTextSecondary,
-                            modifier = Modifier.size(22.dp)
+                            tint = IosTextSecondary,
+                            modifier = Modifier.size(24.dp)
                         )
                     },
                     trailingIcon = {
@@ -112,7 +115,7 @@ fun CityListScreen(
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
                                     contentDescription = "清除",
-                                    tint = SecondaryTextSecondary,
+                                    tint = IosTextSecondary,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -121,27 +124,25 @@ fun CityListScreen(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
                         onSearch = {
-                            if (searchQuery.isNotBlank()) {
-                                onSearch(searchQuery)
-                            }
+                            if (searchQuery.isNotBlank()) onSearch(searchQuery)
                             focusManager.clearFocus()
                         }
                     ),
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyMedium,
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = SecondaryPanelStrong,
-                        unfocusedContainerColor = SecondaryPanel,
-                        focusedTextColor = SecondaryTextPrimary,
-                        unfocusedTextColor = SecondaryTextPrimary,
-                        cursorColor = SecondaryTextPrimary,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedTextColor = IosTextPrimary,
+                        unfocusedTextColor = IosTextPrimary,
+                        cursorColor = IosAccentBlue,
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     )
                 )
             }
 
-            // Content: either search results or city list
+            // Content
             if (isSearchActive) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -150,15 +151,13 @@ fun CityListScreen(
                     if (isSearching) {
                         item {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                                 contentAlignment = Alignment.Center
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
                                     strokeWidth = 2.dp,
-                                    color = SecondaryTextSecondary
+                                    color = IosTextSecondary
                                 )
                             }
                         }
@@ -167,10 +166,8 @@ fun CityListScreen(
                             Text(
                                 text = "未找到匹配的城市",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = SecondaryTextSecondary,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
+                                color = IosTextSecondary,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -187,8 +184,8 @@ fun CityListScreen(
                             )
                             if (result != searchResults.last()) {
                                 HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                    color = Color.White.copy(alpha = 0.08f)
+                                    modifier = Modifier.padding(start = 16.dp),
+                                    color = IosDividerColor
                                 )
                             }
                         }
@@ -197,13 +194,10 @@ fun CityListScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    items(
-                        items = cities,
-                        key = { it.id }
-                    ) { city ->
+                    items(items = cities, key = { it.id }) { city ->
                         val weatherData = cityWeatherMap[city.id]
                         SwipeableCityListRow(
                             city = city,
@@ -213,10 +207,7 @@ fun CityListScreen(
                             onDelete = { onRemoveCity(city.id) }
                         )
                     }
-
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }

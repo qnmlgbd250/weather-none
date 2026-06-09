@@ -19,12 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.R
-import com.skypulse.weather.ui.theme.DialogInnerPanel
-import com.skypulse.weather.ui.theme.DialogPanel
-import com.skypulse.weather.ui.theme.DialogPanelBorder
-import com.skypulse.weather.ui.theme.DialogTextPrimary
-import com.skypulse.weather.ui.theme.DialogTextSecondary
-import com.skypulse.weather.ui.theme.SecondaryAccent
+import com.skypulse.weather.ui.theme.IosCardBg
+import com.skypulse.weather.ui.theme.IosTextPrimary
+import com.skypulse.weather.ui.theme.IosTextSecondary
+import com.skypulse.weather.ui.theme.IosDividerColor
+import com.skypulse.weather.ui.theme.IosAccentBlue
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
@@ -42,14 +41,14 @@ fun DonateDialog(
     )
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.border(1.dp, DialogPanelBorder, RoundedCornerShape(22.dp)),
-        containerColor = DialogPanel,
-        shape = RoundedCornerShape(22.dp),
+        modifier = Modifier,
+        containerColor = IosCardBg,
+        shape = RoundedCornerShape(14.dp),
         title = {
             Text(
                 text = "请作者喝杯咖啡",
                 style = MaterialTheme.typography.titleSmall,
-                color = DialogTextPrimary
+                color = IosTextPrimary
             )
         },
         text = {
@@ -77,14 +76,14 @@ fun DonateDialog(
                 Text(
                     text = "微信扫一扫",
                     style = MaterialTheme.typography.labelMedium,
-                    color = DialogTextSecondary
+                    color = IosTextSecondary
                 )
 
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    color = DialogInnerPanel,
-                    border = BorderStroke(1.dp, DialogPanelBorder)
+                    color = Color(0xFFF2F2F7),
+                    border = BorderStroke(0.5.dp, IosDividerColor)
                 ) {
                     Column(
                         modifier = Modifier.padding(12.dp)
@@ -92,7 +91,7 @@ fun DonateDialog(
                         Text(
                             text = "打赏鸣谢",
                             style = MaterialTheme.typography.titleSmall,
-                            color = DialogTextPrimary,
+                            color = IosTextPrimary,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
 
@@ -116,7 +115,7 @@ fun DonateDialog(
                                             0 -> Color(0xFFFFD700)
                                             1 -> Color(0xFFC0C0C0)
                                             2 -> Color(0xFFCD7F32)
-                                            else -> DialogTextSecondary
+                                            else -> IosTextSecondary
                                         },
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.width(24.dp)
@@ -124,13 +123,13 @@ fun DonateDialog(
                                     Text(
                                         text = name,
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = DialogTextPrimary,
+                                        color = IosTextPrimary,
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
                                         text = "¥$amount",
                                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = SecondaryAccent
+                                        color = IosAccentBlue
                                     )
                                 }
                             }
@@ -141,7 +140,7 @@ fun DonateDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭", color = SecondaryAccent)
+                Text("关闭", color = IosAccentBlue)
             }
         }
     )

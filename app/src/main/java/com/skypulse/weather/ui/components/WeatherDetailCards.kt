@@ -1,8 +1,6 @@
 package com.skypulse.weather.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -12,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -114,21 +111,8 @@ private fun DetailSquareCard(
     Box(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(theme.cardTintColor)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        theme.cardFrostColor.copy(alpha = theme.cardTopAlpha),
-                        theme.cardFrostColor.copy(alpha = theme.cardMidAlpha),
-                        theme.cardFrostColor.copy(alpha = theme.cardBottomAlpha)
-                    )
-                )
-            )
-            .border(
-                BorderStroke(1.dp, theme.cardBorderColor),
-                RoundedCornerShape(16.dp)
-            )
+            .clip(RoundedCornerShape(20.dp))
+            .background(com.skypulse.weather.ui.components.GlassCardBg(theme))
     ) {
         Column(
             modifier = Modifier

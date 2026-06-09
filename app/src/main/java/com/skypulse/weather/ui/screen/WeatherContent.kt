@@ -58,7 +58,7 @@ internal fun WeatherContent(
                 .verticalScroll(rememberScrollState())
         ) {
             if (alerts.isEmpty()) {
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             if (alerts.isNotEmpty()) {
@@ -75,7 +75,7 @@ internal fun WeatherContent(
                 onRefresh = onRefresh
             )
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             result?.forecastKeypoint?.let { keypoint ->
                 GlassCard(modifier = Modifier.padding(horizontal = 16.dp)) {

@@ -1,17 +1,8 @@
-package com.skypulse.weather.ui.components
+﻿package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.background
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,24 +16,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
-import com.skypulse.weather.ui.theme.SecondaryPanelBorder
-import com.skypulse.weather.ui.theme.SecondaryScreenGradient
-import com.skypulse.weather.ui.theme.SecondaryTextPrimary
-import com.skypulse.weather.ui.theme.SecondaryTextSecondary
-import com.skypulse.weather.ui.theme.TextPrimary
-import com.skypulse.weather.ui.theme.TextSecondary
+import com.skypulse.weather.ui.theme.IosTextPrimary
+import com.skypulse.weather.ui.theme.IosTextSecondary
 import com.skypulse.weather.util.WeatherUtils
 import kotlin.math.roundToInt
 
@@ -64,20 +49,21 @@ fun SwipeableCityListRow(
         label = "swipeOffset"
     )
 
+    val skycon = weather?.result?.realtime?.skycon
+    val isDay = WeatherUtils.isCurrentlyDay()
+    val gradientColors = getCityCardGradient(skycon, isDay)
+
     Box(modifier = modifier.fillMaxWidth()) {
-        // Layer 1: Red delete button — bottom layer, full width
+        // Delete button layer
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFFF3B30)),
             contentAlignment = Alignment.CenterEnd
         ) {
             IconButton(
-                onClick = {
-                    onDelete()
-                    offsetX = 0f
-                },
+                onClick = { onDelete(); offsetX = 0f },
                 modifier = Modifier.padding(end = 16.dp)
             ) {
                 Icon(
@@ -89,30 +75,17 @@ fun SwipeableCityListRow(
             }
         }
 
-        // Layer 2: Opaque dark base — moves WITH the card, blocks red from showing through
+        // City card with weather gradient
         Box(
             modifier = Modifier
                 .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
                 .fillMaxWidth()
-                .matchParentSize()
-                .clip(RoundedCornerShape(20.dp))
-                .background(SecondaryScreenGradient.first())
-        )
-
-        // Layer 3: City card — frosted glass + weather tint, slides left to reveal red delete
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
-                .fillMaxWidth()
+                .height(100.dp)
                 .pointerInput(isCurrentLocation) {
                     if (isCurrentLocation) return@pointerInput
                     detectHorizontalDragGestures(
                         onDragEnd = {
-                            if (offsetX < -deleteButtonWidthPx / 2) {
-                                offsetX = -deleteButtonWidthPx
-                            } else {
-                                offsetX = 0f
-                            }
+                            offsetX = if (offsetX < -deleteButtonWidthPx / 2) -deleteButtonWidthPx else 0f
                         },
                         onHorizontalDrag = { _, dragAmount ->
                             val newOffset = offsetX + dragAmount
@@ -120,187 +93,83 @@ fun SwipeableCityListRow(
                         }
                     )
                 }
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    Brush.linearGradient(colors = gradientColors)
+                )
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick
+                )
+                .padding(horizontal = 26.dp, vertical = 22.dp)
         ) {
-            CityListRow(
-                city = city,
-                weather = weather,
-                onClick = {
-                    if (offsetX < 0f) {
-                        offsetX = 0f
-                    } else {
-                        onClick()
-                    }
-                }
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun CityListRow(
-    city: City,
-    weather: WeatherResponse?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val realtime = weather?.result?.realtime
-    val skycon = realtime?.skycon
-    val isDay = WeatherUtils.isCurrentlyDay()
-    val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
-    val weatherInfo = WeatherUtils.getWeatherInfo(skycon)
-    val temperature = WeatherUtils.formatTemperature(realtime?.temperature).replace("°", "")
-    val aqiValue = realtime?.air_quality?.aqi?.chn?.toInt()
-    val aqiDesc = realtime?.air_quality?.description?.chn ?: aqiValue?.let {
-        when {
-            it <= 50 -> "优"
-            it <= 100 -> "良"
-            it <= 150 -> "轻度"
-            it <= 200 -> "中度"
-            it <= 300 -> "重度"
-            else -> "严重"
-        }
-    }
-    val aqiText = if (aqiDesc != null && aqiValue != null) "空气$aqiDesc $aqiValue" else null
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            // Layer A: weather-tinted base color (low alpha so it blends with dark bg)
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        gradientColors.first().copy(alpha = 0.45f),
-                        gradientColors.last().copy(alpha = 0.30f)
-                    )
-                )
-            )
-            // Layer B: frost glass overlay on top
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.12f),
-                        Color.White.copy(alpha = 0.04f)
-                    )
-                )
-            )
-            // Layer C: subtle top highlight for glass shine
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.06f),
-                        Color.Transparent
-                    )
-                )
-            )
-            .border(
-                width = 1.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.25f),
-                        Color.White.copy(alpha = 0.08f),
-                        Color.White.copy(alpha = 0.15f)
-                    )
-                ),
-                shape = RoundedCornerShape(20.dp)
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 20.dp, vertical = 20.dp)
-    ) {
-        // Top: city name + temperature — baseline aligned
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+            Column(
+                modifier = Modifier.align(Alignment.TopStart)
             ) {
-                if (city.isCurrentLocation) {
-                    Icon(
-                        imageVector = Icons.Outlined.LocationOn,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                }
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .alignByBaseline()
-                        .fillMaxWidth(0.85f)
+                // Row 1: city name (left) + temperature (right)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val textMeasurer = rememberTextMeasurer()
-                    val nameStyle = MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    val containerWidthPx = with(LocalDensity.current) { maxWidth.roundToPx() }
-                    val overflows = remember(city.name, containerWidthPx) {
-                        textMeasurer.measure(text = city.name, style = nameStyle)
-                            .size.width > containerWidthPx
-                    }
-                    Box(
-                        modifier = Modifier.then(
-                            if (overflows) Modifier.fadingEdge() else Modifier
-                        )
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isCurrentLocation) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocationOn,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.85f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
                         Text(
                             text = city.name,
-                            style = nameStyle,
-                            color = TextPrimary,
-                            maxLines = 1,
-                            modifier = Modifier.basicMarquee()
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            maxLines = 1
                         )
                     }
-                }
-            }
-
-            Box(
-                contentAlignment = Alignment.TopEnd,
-                modifier = Modifier.alignByBaseline()
-            ) {
-                Text(
-                    text = if (weather != null) temperature else "--",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Thin,
-                        fontFeatureSettings = "tnum"
-                    ),
-                    color = TextPrimary.copy(alpha = if (weather != null) 1f else 0.4f)
-                )
-                if (weather != null) {
                     Text(
-                        text = "°",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Thin
-                        ),
-                        color = TextPrimary,
-                        modifier = Modifier.offset(x = 10.dp, y = 2.dp)
+                        text = if (weather != null) "${WeatherUtils.formatTemperature(weather.result?.realtime?.temperature)}" else "--",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Row 2: air quality (left) + weather description (right)
+                val aqiValue = weather?.result?.realtime?.air_quality?.aqi?.chn?.toInt()
+                val aqiDesc = aqiValue?.let {
+                    when {
+                        it <= 50 -> "空气优"
+                        it <= 100 -> "空气良"
+                        it <= 150 -> "空气轻度污染"
+                        it <= 200 -> "空气中度污染"
+                        else -> "空气重度污染"
+                    }
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (aqiDesc != null) "$aqiDesc $aqiValue" else "--",
+                        fontSize = 13.sp,
+                        color = Color.White.copy(alpha = 0.75f),
+                    )
+                    val weatherDesc = weather?.result?.realtime?.skycon?.let { WeatherUtils.getWeatherInfo(it).description } ?: "--"
+                    Text(
+                        text = weatherDesc,
+                        fontSize = 13.sp,
+                        color = Color.White.copy(alpha = 0.75f),
                     )
                 }
             }
-        }
-
-        // Bottom: air quality + weather description aligned
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = aqiText ?: "--",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = if (aqiText != null) 1f else 0.4f)
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = if (weather != null) weatherInfo.description else "--",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = if (weather != null) 1f else 0.4f),
-                modifier = Modifier.padding(end = 8.dp)
-            )
         }
     }
 }
@@ -323,38 +192,34 @@ fun CitySearchResultRow(
         color = Color.Transparent
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 14.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
             Text(
                 text = name,
                 style = MaterialTheme.typography.bodyLarge,
-                color = SecondaryTextPrimary
+                color = IosTextPrimary
             )
             if (district.isNotBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = district,
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryTextSecondary
+                    color = IosTextSecondary
                 )
             }
         }
     }
 }
 
-private fun Modifier.fadingEdge(): Modifier =
-    this.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithContent {
-            drawContent()
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    0f to Color.Transparent,
-                    0.08f to Color.Black,
-                    0.92f to Color.Black,
-                    1f to Color.Transparent
-                ),
-                blendMode = BlendMode.DstIn
-            )
-        }
+private fun getCityCardGradient(skycon: String?, isDay: Boolean): List<Color> {
+    return when {
+        skycon == null || skycon.contains("CLEAR") -> listOf(Color(0xFF4A90D9), Color(0xFF87CEEB))
+        skycon.contains("PARTLY_CLOUDY") -> listOf(Color(0xFF5B9BD5), Color(0xFF8BB8E0))
+        skycon.contains("CLOUDY") -> if (isDay) listOf(Color(0xFF6B7F8F), Color(0xFF8A9EAF)) else listOf(Color(0xFF8A9EB5), Color(0xFFA8B8C8))
+        skycon.contains("RAIN") || skycon.contains("STORM") -> listOf(Color(0xFF556070), Color(0xFF7A8FA0))
+        skycon.contains("SNOW") -> listOf(Color(0xFF7A94AA), Color(0xFF8EA5B8))
+        skycon.contains("HAZE") || skycon == "FOG" -> listOf(Color(0xFF8A7B6E), Color(0xFFAA9B90))
+        skycon == "WIND" -> listOf(Color(0xFF3E7F77), Color(0xFF4A8F87))
+        else -> listOf(Color(0xFF4A90D9), Color(0xFF87CEEB))
+    }
+}

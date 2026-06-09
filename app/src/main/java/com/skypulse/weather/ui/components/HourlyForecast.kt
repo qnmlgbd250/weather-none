@@ -49,12 +49,12 @@ fun HourlyForecastCard(
     GlassCard(
         modifier = modifier.alpha(alpha)
     ) {
-        Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Column(modifier = Modifier.padding(vertical = 14.dp)) {
             Text(
                 text = "逐小时预报",
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimary,
-                modifier = Modifier.padding(horizontal = 20.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -94,7 +94,7 @@ private fun HourlyTemperatureChart(
     val itemWidthDp = HOUR_WIDTH.dp
     val sidePad = SIDE_PADDING.dp
     val totalWidth = (temperatures.size * HOUR_WIDTH).dp + sidePad * 2
-    val chartHeight = 140.dp
+    val chartHeight = 120.dp
 
     Column(
         modifier = Modifier

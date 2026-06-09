@@ -42,13 +42,13 @@ val CardBorderNight = Color(0x22FFFFFF)  // 13% white — subtle at night
 // ============ iOS Weather-style Background Gradients ============
 // Each gradient uses 5 stops for smooth, natural sky transitions
 
-// Sunny (Day) — deep cobalt to medium sky blue
+// Sunny (Day) — bright sky blue with light halo, top white-blue -> sky blue
 val SunnyGradient = listOf(
-    Color(0xFF1565A0),
-    Color(0xFF2980C0),
-    Color(0xFF4A9BD5),
-    Color(0xFF5AADD8),
-    Color(0xFF6DB5E0)
+    Color(0xFFA0D5F5),
+    Color(0xFF87CEEB),
+    Color(0xFF6DB5E0),
+    Color(0xFF5AA0D9),
+    Color(0xFF4A90D9)
 )
 
 // Sunny (Night) — deep navy to midnight blue
@@ -60,13 +60,13 @@ val SunnyNightGradient = listOf(
     Color(0xFF234A72)
 )
 
-// Partly Cloudy (Day) — medium blue to medium sky
+// Partly Cloudy (Day) — medium blue, slightly desaturated
 val PartialCloudGradient = listOf(
-    Color(0xFF3578A8),
-    Color(0xFF4E92C0),
-    Color(0xFF6AABD5),
-    Color(0xFF6DA8C8),
-    Color(0xFF7AADD0)
+    Color(0xFF8BB8E0),
+    Color(0xFF7AAFE0),
+    Color(0xFF5B9BD5),
+    Color(0xFF4A8FC8),
+    Color(0xFF3A7CC4)
 )
 
 // Partly Cloudy (Night) — indigo to blue-violet
@@ -78,13 +78,13 @@ val PartialCloudNightGradient = listOf(
     Color(0xFF375590)
 )
 
-// Cloudy (Day) — blue-gray atmospheric
+// Cloudy (Day) — blue-gray, heavy cloud, low saturation
 val CloudyGradient = listOf(
-    Color(0xFF5E7D8E),
-    Color(0xFF7A99AA),
-    Color(0xFF8AA5B5),
-    Color(0xFF94ADBA),
-    Color(0xFF9CB3BE)
+    Color(0xFF9BAFB8),
+    Color(0xFF90A5B0),
+    Color(0xFF8A9EAF),
+    Color(0xFF7A8E9F),
+    Color(0xFF6B7F8F)
 )
 
 // Cloudy (Night) — dark blue-gray
@@ -96,13 +96,13 @@ val CloudyNightGradient = listOf(
     Color(0xFF4A6075)
 )
 
-// Rainy (Day) — moody blue-gray
+// Rainy (Day) — deep blue-gray, darkest and heaviest
 val RainyGradient = listOf(
-    Color(0xFF44596B),
-    Color(0xFF566E82),
-    Color(0xFF607888),
-    Color(0xFF6A8290),
-    Color(0xFF748C98)
+    Color(0xFF8A9AA5),
+    Color(0xFF7A8FA0),
+    Color(0xFF6A7E90),
+    Color(0xFF5E6F80),
+    Color(0xFF556070)
 )
 
 // Rainy (Night) — deep blue-black
@@ -152,6 +152,19 @@ val WindyGradient = listOf(
 
 // Night Fallback — deep night sky
 val NightFallbackGradient = SunnyNightGradient
+
+
+// ============ iOS Light Settings Style ============
+val IosSettingsBg = Color(0xFFF2F2F7)
+val IosCardBg = Color(0xFFFFFFFF)
+val IosCardRadius = 14
+val IosDividerColor = Color(0xFFE5E5EA)
+val IosTextPrimary = Color(0xFF1C1C1E)
+val IosTextSecondary = Color(0xFF8E8E93)
+val IosBackArrow = Color(0xFF333333)
+val IosAccentBlue = Color(0xFF007AFF)
+val IosSwitchOff = Color(0xFFE5E5EA)
+val IosToggleTrackOn = Color(0xFF007AFF)
 
 // Secondary screens — deep indigo-violet palette.
 // Rich purple-blue base for an immersive, modern night atmosphere.

@@ -318,16 +318,16 @@ fun CurrentWeather(
                 Text(
                     text = tempValue,
                     style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 88.sp,
+                        fontSize = 100.sp,
                         fontWeight = FontWeight.Thin,
-                        letterSpacing = (-2).sp
+                        letterSpacing = (-3).sp
                     ),
                     color = TextPrimary
                 )
                 Text(
                     text = "°",
                     style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 40.sp,
+                        fontSize = 48.sp,
                         fontWeight = FontWeight.Thin
                     ),
                     color = TextPrimary,

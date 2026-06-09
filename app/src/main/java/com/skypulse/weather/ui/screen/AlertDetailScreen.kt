@@ -1,8 +1,6 @@
 package com.skypulse.weather.ui.screen
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -16,16 +14,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.AlertContent
-import com.skypulse.weather.ui.theme.SecondaryPanelBorder
-import com.skypulse.weather.ui.theme.SecondaryPanelStrong
-import com.skypulse.weather.ui.theme.SecondaryAlert
-import com.skypulse.weather.ui.theme.SecondaryScreenGradient
-import com.skypulse.weather.ui.theme.SecondaryTextPrimary
-import com.skypulse.weather.ui.theme.SecondaryTextSecondary
+import com.skypulse.weather.ui.theme.IosCardBg
+import com.skypulse.weather.ui.theme.IosSettingsBg
+import com.skypulse.weather.ui.theme.IosTextPrimary
+import com.skypulse.weather.ui.theme.IosTextSecondary
+import com.skypulse.weather.ui.theme.IosBackArrow
+import com.skypulse.weather.ui.theme.AlertOrange
+import com.skypulse.weather.ui.theme.IosDividerColor
+
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,16 +36,16 @@ internal fun AlertDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colors = SecondaryScreenGradient))
+            .background(IosSettingsBg)
     ) {
         TopAppBar(
-            title = { Text("预警详情", color = SecondaryTextPrimary) },
+            title = { Text("预警详情", color = IosTextPrimary) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "返回",
-                        tint = SecondaryTextSecondary
+                        tint = IosBackArrow
                     )
                 }
             },
@@ -60,7 +59,7 @@ internal fun AlertDetailScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "暂无预警信息", color = SecondaryTextSecondary)
+                Text(text = "暂无预警信息", color = IosTextSecondary)
             }
         } else {
             val safeInitialIndex = remember(alerts, initialSelectedIndex) {
@@ -78,27 +77,15 @@ internal fun AlertDetailScreen(
                         ?.replace(Regex("^.*发布"), "")
                         ?.trim()
                         ?.ifBlank { null }
-                    val levelColor = alertLevelColor(alert.level, title ?: alert.title, SecondaryAlert)
+                    val levelColor = alertLevelColor(alert.level, title ?: alert.title, AlertOrange)
 
                     // Glass-style card matching main page GlassCard
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(SecondaryPanelStrong)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.15f),
-                                        Color.White.copy(alpha = 0.05f)
-                                    )
-                                )
-                            )
-                            .border(
-                                BorderStroke(1.dp, SecondaryPanelBorder),
-                                RoundedCornerShape(16.dp)
-                            )
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(IosCardBg)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             if (!title.isNullOrBlank()) {
@@ -115,7 +102,7 @@ internal fun AlertDetailScreen(
                                 Text(
                                     text = alert.description,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = SecondaryTextPrimary
+                                    color = IosTextPrimary
                                 )
                             }
                         }

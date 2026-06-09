@@ -1,15 +1,13 @@
-package com.skypulse.weather.ui.screen
+﻿package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -23,23 +21,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.notification.WeatherNotificationScheduler
 import com.skypulse.weather.ui.components.DonateDialog
-import com.skypulse.weather.ui.theme.SecondaryAccent
-import com.skypulse.weather.ui.theme.SecondaryPanel
-import com.skypulse.weather.ui.theme.SecondaryPanelBorder
-import com.skypulse.weather.ui.theme.SecondaryPanelStrong
-import com.skypulse.weather.ui.theme.SecondaryScreenGradient
-import com.skypulse.weather.ui.theme.SecondaryTextPrimary
-import com.skypulse.weather.ui.theme.SecondaryTextSecondary
+import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.UpdateCheckResult
 
 private const val GITHUB_URL = "https://github.com/qnmlgbd250/weather-none"
@@ -100,23 +93,23 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(colors = SecondaryScreenGradient))
+            .background(IosSettingsBg)
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { Text("设置", color = SecondaryTextPrimary) },
+                title = { Text("设置", color = IosTextPrimary, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = "返回",
-                            tint = SecondaryTextSecondary
+                            tint = IosBackArrow
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent
+                    containerColor = IosSettingsBg
                 )
             )
 
@@ -125,136 +118,95 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-                // ====== Notification Settings Section ======
-                GlassSection {
-                    SectionHeader(title = "通知提醒")
+                Spacer(modifier = Modifier.height(8.dp))
 
-                    ToggleItem(
-                        title = "降雨提醒",
-                        checked = rainAlert,
-                        onCheckedChange = { enabled ->
-                            rainAlert = enabled
-                            updateAlertPreference("rain_alert", enabled)
-                        }
-                    )
-                    GlassDivider()
-                    ToggleItem(
-                        title = "气象预警",
-                        checked = warningAlert,
-                        onCheckedChange = { enabled ->
-                            warningAlert = enabled
-                            updateAlertPreference("warning_alert", enabled)
-                        }
-                    )
-                    GlassDivider()
-                    ToggleItem(
-                        title = "气温骤变",
-                        checked = tempChangeAlert,
-                        onCheckedChange = { enabled ->
-                            tempChangeAlert = enabled
-                            updateAlertPreference("temp_change_alert", enabled)
-                        }
-                    )
-                    GlassDivider()
-                    ToggleItem(
-                        title = "大风提醒",
-                        checked = windAlert,
-                        onCheckedChange = { enabled ->
-                            windAlert = enabled
-                            updateAlertPreference("wind_alert", enabled)
-                        }
-                    )
-                    GlassDivider()
-                    ToggleItem(
-                        title = "台风路径",
-                        checked = typhoonAlert,
-                        onCheckedChange = { enabled ->
-                            typhoonAlert = enabled
-                            updateAlertPreference("typhoon_alert", enabled)
-                        }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ====== About Section ======
-                GlassSection {
-                    SectionHeader(title = "关于")
-                    SimpleItem(
-                        title = "开源地址",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
-                            context.startActivity(intent)
-                        }
-                    )
-                    GlassDivider()
-                    SimpleItem(
-                        title = "捐赠支持",
-                        onClick = { showDonateDialog = true }
-                    )
-                    GlassDivider()
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (!isChecking) onCheckUpdate()
-                            }
-                            .padding(horizontal = 20.dp, vertical = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "检查更新",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = SecondaryTextPrimary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = Icons.Outlined.Autorenew,
-                            contentDescription = "检查更新",
-                            tint = SecondaryTextSecondary,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .rotate(rotation)
-                        )
+                // Notification settings
+                SectionHeader("通知设置")
+                IosCard {
+                    ToggleItem("短临降水提醒", rainAlert) {
+                        rainAlert = it; updateAlertPreference("rain_alert", it)
+                    }
+                    IosDivider()
+                    ToggleItem("气象预警", warningAlert) {
+                        warningAlert = it; updateAlertPreference("warning_alert", it)
+                    }
+                    IosDivider()
+                    ToggleItem("变温提醒", tempChangeAlert) {
+                        tempChangeAlert = it; updateAlertPreference("temp_change_alert", it)
+                    }
+                    IosDivider()
+                    ToggleItem("大风提醒", windAlert) {
+                        windAlert = it; updateAlertPreference("wind_alert", it)
+                    }
+                    IosDivider()
+                    ToggleItem("极端天气", typhoonAlert) {
+                        typhoonAlert = it; updateAlertPreference("typhoon_alert", it)
                     }
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // About section
+                SectionHeader("关于")
+                IosCard {
+                    SimpleItem("检查更新") {
+                        if (!isChecking) onCheckUpdate()
+                    }
+                    IosDivider()
+                    SimpleItem("捐赠") { showDonateDialog = true }
+                    IosDivider()
+                    SimpleItem("GitHub") {
+                        val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
+                        context.startActivity(intent)
+                    }
+                }
+
+                // Update result
                 if (updateState is UpdateCheckResult.UpdateAvailable) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    // Glass-style download button
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(SecondaryPanelStrong)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.15f),
-                                        Color.White.copy(alpha = 0.05f)
-                                    )
-                                )
-                            )
-                            .border(
-                                BorderStroke(1.dp, SecondaryPanelBorder),
-                                RoundedCornerShape(12.dp)
-                            )
-                            .clickable {
-                                val intent = Intent(Intent.ACTION_VIEW, updateState.url.toUri())
-                                context.startActivity(intent)
-                            }
-                    ) {
-                        Text(
-                            text = "前往下载 v${updateState.version}",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = SecondaryTextPrimary,
+                    Spacer(modifier = Modifier.height(8.dp))
+                    IosCard {
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 14.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
+                                .clickable {
+                                    val intent = Intent(Intent.ACTION_VIEW, updateState.url.toUri())
+                                    context.startActivity(intent)
+                                }
+                                .padding(horizontal = 20.dp, vertical = 14.dp)
+                        ) {
+                            Text(
+                                text = "前往下载 v${updateState.version}",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = IosAccentBlue
+                            )
+                        }
+                    }
+                }
+
+                if (isChecking) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    IosCard {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Autorenew,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .rotate(rotation),
+                                tint = IosTextSecondary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = "正在检查更新...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = IosTextSecondary
+                            )
+                        }
                     }
                 }
 
@@ -263,17 +215,17 @@ fun SettingsScreen(
                 Text(
                     text = "QQ群：758426293",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryTextSecondary.copy(alpha = 0.55f),
+                    color = IosTextSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(top = 24.dp, bottom = 4.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
 
                 Text(
                     text = "SkyPulse v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryTextSecondary.copy(alpha = 0.55f),
+                    color = IosTextSecondary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 22.dp),
@@ -284,11 +236,8 @@ fun SettingsScreen(
     }
 }
 
-/**
- * Glass-style section container — translucent frost + soft border
- */
 @Composable
-private fun GlassSection(
+private fun IosCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -296,33 +245,17 @@ private fun GlassSection(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(SecondaryPanelStrong)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.15f),
-                        Color.White.copy(alpha = 0.05f)
-                    )
-                )
-            )
-            .border(
-                BorderStroke(1.dp, SecondaryPanelBorder),
-                RoundedCornerShape(16.dp)
-            ),
+            .clip(RoundedCornerShape(IosCardRadius.dp))
+            .background(IosCardBg),
         content = content
     )
 }
 
-/**
- * Glass-style divider inside sections
- */
 @Composable
-private fun GlassDivider() {
+private fun IosDivider() {
     HorizontalDivider(
-        modifier = Modifier.padding(horizontal = 20.dp),
         thickness = 0.5.dp,
-        color = Color.White.copy(alpha = 0.08f)
+        color = IosDividerColor
     )
 }
 
@@ -331,7 +264,7 @@ private fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall,
-        color = SecondaryTextSecondary,
+        color = IosTextSecondary,
         fontSize = 13.sp,
         modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
     )
@@ -346,42 +279,49 @@ private fun ToggleItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(52.dp)
             .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = SecondaryTextPrimary,
+            color = IosTextPrimary,
             modifier = Modifier.weight(1f)
         )
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            modifier = Modifier.height(32.dp),
+            modifier = Modifier.scale(0.8f),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = SecondaryAccent.copy(alpha = 0.9f),
-                uncheckedThumbColor = SecondaryTextSecondary.copy(alpha = 0.7f),
-                uncheckedTrackColor = SecondaryPanelStrong
+                checkedTrackColor = IosAccentBlue,
+                uncheckedThumbColor = Color.White,
+                uncheckedTrackColor = IosSwitchOff
             )
         )
     }
 }
+
 
 @Composable
 private fun SimpleItem(
     title: String,
     onClick: () -> Unit
 ) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.bodyLarge,
-        color = SecondaryTextPrimary,
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(52.dp)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-    )
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = IosTextPrimary
+        )
+    }
 }

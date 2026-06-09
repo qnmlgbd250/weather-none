@@ -142,7 +142,8 @@ fun WeatherScreen(
                     onAddCity = { result -> viewModel.addCity(result.name, result.longitude, result.latitude) },
                     onRemoveCity = { cityId -> viewModel.removeCity(cityId) },
                     onSearch = { query -> searchViewModel.searchCities(query) },
-                    onClearSearch = { searchViewModel.clearSearchResults() }
+                    onClearSearch = { searchViewModel.clearSearchResults() },
+                    onBack = { viewModel.navigateBack() }
                 )
             }
 

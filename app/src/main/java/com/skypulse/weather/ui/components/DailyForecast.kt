@@ -56,7 +56,7 @@ fun DailyForecastCard(
     GlassCard(
         modifier = modifier.alpha(alpha)
     ) {
-        Column(modifier = Modifier.padding(vertical = 18.dp)) {
+        Column(modifier = Modifier.padding(vertical = 14.dp)) {
             Text(
                 text = "多日预报",
                 style = MaterialTheme.typography.titleMedium,
@@ -186,8 +186,8 @@ private fun DailyColumn(
             globalMin = globalMin,
             globalMax = globalMax,
             modifier = Modifier
-                .width(6.dp)
-                .height(56.dp)
+                .width(4.dp)
+                .height(50.dp)
         )
 
         Spacer(modifier = Modifier.height(6.dp))
