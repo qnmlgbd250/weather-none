@@ -30,7 +30,6 @@ private val SIDE_PADDING = 12
 @Composable
 fun HourlyForecastCard(
     hourly: HourlyForecast?,
-    @Suppress("UNUSED_PARAMETER") currentSkycon: String? = null,
     modifier: Modifier = Modifier
 ) {
     if (hourly?.temperature.isNullOrEmpty()) return

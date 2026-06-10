@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
-import android.location.Location
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -36,7 +35,6 @@ class LocationManager @Inject constructor(
 
     companion object {
         private const val TAG = "LocationManager"
-        private const val DEFAULT_LOCATION_NAME = "\u5317\u4eac\u5e02"
         const val DEFAULT_LONGITUDE = 116.4074
         const val DEFAULT_LATITUDE = 39.9042
         private const val PREFS_NAME = "location_cache"
@@ -79,78 +77,6 @@ class LocationManager @Inject constructor(
         android.location.Location.distanceBetween(lat1, lon1, lat2, lon2, results)
         return results[0]
     }
-    /**
-     * Request current GPS location via AMap SDK.
-     * Returns null if location fails.
-     */
-    suspend fun requestLocation(): Location? {
-        return try {
-            val client = AMapLocationClient(context)
-            val option = AMapLocationClientOption().apply {
-                isOnceLocation = true
-                isNeedAddress = true
-                locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
-                httpTimeOut = 15_000L
-            }
-            client.setLocationOption(option)
-
-            val result = suspendCancellableCoroutine { cont ->
-                client.setLocationListener { location ->
-                    if (cont.isActive) {
-                        if (location != null && location.errorCode == 0) {
-                            cont.resume(location)
-                        } else {
-                            Log.w(TAG, "AMap error: ${location?.errorCode} ${location?.errorInfo}")
-                            cont.resume(null)
-                        }
-                    }
-                    client.stopLocation()
-                    client.onDestroy()
-                }
-                client.startLocation()
-                cont.invokeOnCancellation {
-                    client.stopLocation()
-                    client.onDestroy()
-                }
-            }
-
-            result?.let { loc ->
-                Location("amap").apply {
-                    latitude = loc.latitude
-                    longitude = loc.longitude
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "AMap location failed", e)
-            null
-        }
-    }
-
-    /**
-     * Get a human-readable location name from an AMap location result.
-     */
-    fun buildLocationName(location: AMapLocation): String = buildString {
-        val city = location.city?.takeIf { it.isNotBlank() }
-        val district = location.district?.takeIf { it.isNotBlank() && it != city }
-        when {
-            district != null -> append(district)
-            city != null -> append(city)
-        }
-        val poi = location.poiName?.takeIf { it.isNotBlank() }
-        val street = location.street?.takeIf { it.isNotBlank() }
-        val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
-        when {
-            poi != null -> append(" $poi")
-            street != null -> {
-                append(street)
-                streetNum?.let { append(it) }
-            }
-        }
-        if (isEmpty()) {
-            location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
-        }
-    }
-
     /**
      * Request location and return the full AMapLocation result (includes poiName, city, district, etc.)
      */
