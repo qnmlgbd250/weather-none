@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import android.content.Intent
 import android.widget.Toast
@@ -33,6 +33,7 @@ import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.notification.WeatherNotificationScheduler
 import com.skypulse.weather.ui.components.DonateDialog
 import com.skypulse.weather.ui.theme.*
+import com.skypulse.weather.ui.theme.SetLightStatusBarEffect
 import com.skypulse.weather.viewmodel.UpdateCheckResult
 
 private const val GITHUB_URL = "https://github.com/qnmlgbd250/weather-none"
@@ -85,6 +86,8 @@ fun SettingsScreen(
             else -> {}
         }
     }
+    SetLightStatusBarEffect(lightStatusBar = true)
+
 
     if (showDonateDialog) {
         DonateDialog(onDismiss = { showDonateDialog = false })

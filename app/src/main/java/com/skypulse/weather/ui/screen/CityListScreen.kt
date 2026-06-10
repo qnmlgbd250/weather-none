@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,9 +27,9 @@ import com.skypulse.weather.model.City
 import com.skypulse.weather.ui.components.CitySearchResultRow
 import com.skypulse.weather.ui.components.SwipeableCityListRow
 import com.skypulse.weather.ui.theme.*
+import com.skypulse.weather.ui.theme.SetLightStatusBarEffect
 import com.skypulse.weather.viewmodel.CitySearchResult
 import com.skypulse.weather.viewmodel.CityWeatherData
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CityListScreen(
@@ -48,6 +48,8 @@ fun CityListScreen(
     var searchQuery by remember { mutableStateOf("") }
     val isSearchActive = searchQuery.isNotBlank()
     val focusManager = LocalFocusManager.current
+
+    SetLightStatusBarEffect(lightStatusBar = true)
 
     Box(
         modifier = modifier

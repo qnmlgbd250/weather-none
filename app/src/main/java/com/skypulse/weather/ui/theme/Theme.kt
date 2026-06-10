@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -25,6 +26,20 @@ private val DarkColorScheme = darkColorScheme(
     error = AlertRed,
     onError = Color.White
 )
+
+
+@Composable
+fun SetLightStatusBarEffect(lightStatusBar: Boolean) {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+    DisposableEffect(lightStatusBar) {
+        val window = (view.context as Activity).window
+        val controller = WindowCompat.getInsetsController(window, view)
+        val previous = controller.isAppearanceLightStatusBars
+        controller.isAppearanceLightStatusBars = lightStatusBar
+        onDispose { controller.isAppearanceLightStatusBars = previous }
+    }
+}
 
 @Composable
 fun SkyPulseTheme(

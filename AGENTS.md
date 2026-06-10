@@ -28,6 +28,11 @@
 - **改动后发版**: 每次代码改动完成并验证后，默认自动执行云剪贴板发版；除非用户明确要求暂不发版
 - 发版前必须清理 build.gradle.kts 和 CHANGELOG.md 的 UTF-8 BOM
 
+
+## 包体命名
+- **云剪贴板 APK 命名**: `南风天气_<versionName>.apk`
+- release 脚本在重命名 APK 和上传前必须使用该格式
+
 ## 编码规范
 - **所有源码文件统一使用 UTF-8 编码（无 BOM）**
 - 涵盖文件类型：`*.kt`、`*.java`、`*.xml`、`*.gradle`、`*.kts`、`*.properties`、`*.md`、`*.json`、`*.pro`

@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     一键发布：自增版本号 → 构建发行版 → 重命名 APK → 上传云剪贴板
 .PARAMETER Entry
@@ -20,7 +20,7 @@ $env:JAVA_HOME   = "C:\Program Files\Android\Android Studio\jbr"
 $gradleWrapper   = Join-Path $projectRoot "gradlew.bat"
 $releaseApkDir   = Join-Path $projectRoot "app\build\outputs\apk\release"
 $releaseApkSrc   = Join-Path $releaseApkDir "app-release.apk"
-$uploadUrl       = "http://114.132.226.161:5000/api/files?room=2027"
+$uploadUrl       = "http://114.132.226.161:5000/api/files?room=sky"
 
 # ── 1. 读取当前版本 ──────────────────────────────────────────
 $content = Get-Content $buildFile -Raw
@@ -91,10 +91,10 @@ if ($gradleExit -ne 0) {
 Write-Host "  构建成功" -ForegroundColor Green
 
 # ── 5. 重命名 APK ───────────────────────────────────────────
-$apkDst = Join-Path $releaseApkDir "SkyPulse-v$newVersion.apk"
+$apkDst = Join-Path $releaseApkDir "南风天气_$newVersion.apk"
 if (Test-Path $releaseApkSrc) {
     Move-Item -Path $releaseApkSrc -Destination $apkDst -Force
-    Write-Host "[3/4] APK 已重命名: SkyPulse-v$newVersion.apk" -ForegroundColor Cyan
+    Write-Host "[3/4] APK 已重命名: 南风天气_$newVersion.apk" -ForegroundColor Cyan
 } else {
     Write-Error "找不到构建产物 $releaseApkSrc"
     exit 1
@@ -112,7 +112,7 @@ try {
 # ── 完成 ─────────────────────────────────────────────────────
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  发布完成: SkyPulse v$newVersion" -ForegroundColor Green
+Write-Host "  发布完成: 南风天气 v$newVersion" -ForegroundColor Green
 Write-Host "  APK: $apkDst" -ForegroundColor Green
-Write-Host "  下载: http://114.132.226.161:5000/r/2027" -ForegroundColor Green
+Write-Host "  下载: http://114.132.226.161:5000/r/sky" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
