@@ -105,6 +105,7 @@ class WeatherWidgetWorker(
         } else {
             locationManager.resolveLocationName(amapLocation)
         }
+        locationManager.saveCachedLocation(locationName, lon, lat)
 
         return saveCurrentLocationCity(
             cities = cities,

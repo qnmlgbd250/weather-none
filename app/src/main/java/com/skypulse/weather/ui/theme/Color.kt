@@ -42,11 +42,11 @@ val CardBorderNight = Color(0x22FFFFFF)  // 13% white — subtle at night
 // ============ iOS Weather-style Background Gradients ============
 // Each gradient uses 5 stops for smooth, natural sky transitions
 
-// Sunny (Day) — bright sky blue with light halo, top white-blue -> sky blue
+// Sunny (Day) — clear sky blue, with a deeper top for readable white text
 val SunnyGradient = listOf(
-    Color(0xFFA0D5F5),
-    Color(0xFF87CEEB),
-    Color(0xFF6DB5E0),
+    Color(0xFF4A9AD8),
+    Color(0xFF5FB0E5),
+    Color(0xFF6DBAE8),
     Color(0xFF5AA0D9),
     Color(0xFF4A90D9)
 )

@@ -387,6 +387,7 @@ class WeatherViewModel @Inject constructor(
                     val lon = amapLocation.longitude
                     val lat = amapLocation.latitude
                     val locationName = locationManager.resolveLocationName(amapLocation)
+                    locationManager.saveCachedLocation(locationName, lon, lat)
                     updateCurrentLocationCityCoords(lon, lat)
                     updateCurrentLocationCityName(locationName)
                     fetchWeatherForLocation(lon, lat, locationName)
@@ -464,6 +465,7 @@ class WeatherViewModel @Inject constructor(
                 val lon = amapLocation.longitude
                 val lat = amapLocation.latitude
                 val locationName = locationManager.resolveLocationName(amapLocation)
+                locationManager.saveCachedLocation(locationName, lon, lat)
                 updateCurrentLocationCityCoords(lon, lat)
                 updateCurrentLocationCityName(locationName)
                 fetchWeatherForLocation(lon, lat, locationName, silent)

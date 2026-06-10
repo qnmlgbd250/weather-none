@@ -195,6 +195,7 @@ class WeatherNotificationWorker(
             val lon = amapLocation.longitude
             val lat = amapLocation.latitude
             val locationName = locationManager.resolveLocationName(amapLocation)
+            locationManager.saveCachedLocation(locationName, lon, lat)
             return saveCurrentLocationCity(
                 cities = cities,
                 currentCity = currentCity,

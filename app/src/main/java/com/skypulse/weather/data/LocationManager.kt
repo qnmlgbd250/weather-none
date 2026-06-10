@@ -64,6 +64,16 @@ class LocationManager @Inject constructor(
         return CachedLocation(latitude = lat, longitude = lon, name = name)
     }
 
+    fun saveCachedLocation(name: String, longitude: Double, latitude: Double) {
+        val normalizedName = name.takeIf { it.isNotBlank() } ?: return
+        if (latitude == 0.0 || longitude == 0.0) return
+        cachePrefs.edit()
+            .putFloat(KEY_CACHED_LAT, latitude.toFloat())
+            .putFloat(KEY_CACHED_LON, longitude.toFloat())
+            .putString(KEY_CACHED_NAME, normalizedName)
+            .apply()
+    }
+
 
     private fun hasPermission(permission: String): Boolean {
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
