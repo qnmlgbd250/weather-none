@@ -91,13 +91,27 @@ class LocationManager @Inject constructor(
      * Request location and return the full AMapLocation result (includes poiName, city, district, etc.)
      */
     suspend fun requestAmapLocation(): AMapLocation? {
+        return requestAmapLocation(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy, 15_000L)
+    }
+
+    /**
+     * Request a single low-power location for background widget refresh.
+     */
+    suspend fun requestLightweightAmapLocation(): AMapLocation? {
+        return requestAmapLocation(AMapLocationClientOption.AMapLocationMode.Battery_Saving, 8_000L)
+    }
+
+    private suspend fun requestAmapLocation(
+        mode: AMapLocationClientOption.AMapLocationMode,
+        timeoutMillis: Long
+    ): AMapLocation? {
         return try {
             val client = AMapLocationClient(context)
             val option = AMapLocationClientOption().apply {
                 isOnceLocation = true
                 isNeedAddress = true
-                locationMode = AMapLocationClientOption.AMapLocationMode.Hight_Accuracy
-                httpTimeOut = 15_000L
+                locationMode = mode
+                httpTimeOut = timeoutMillis
             }
             client.setLocationOption(option)
 

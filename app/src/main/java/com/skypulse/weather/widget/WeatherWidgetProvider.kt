@@ -64,9 +64,12 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         private const val WORK_NAME = "weather_widget_periodic"
         private const val WORK_NAME_ONETIME = "weather_widget_onetime"
 
-        /** 每 30 分钟定时刷新 */
+        /** Lightweight periodic refresh for location-aware widgets. */
         fun enqueueWorker(context: Context) {
-            val request = PeriodicWorkRequestBuilder<WeatherWidgetWorker>(30, TimeUnit.MINUTES)
+            val request = PeriodicWorkRequestBuilder<WeatherWidgetWorker>(
+                WidgetRefreshPolicy.PERIODIC_REFRESH_MINUTES,
+                TimeUnit.MINUTES
+            )
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -75,7 +78,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 .build()
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
                 WORK_NAME,
-                ExistingPeriodicWorkPolicy.KEEP,
+                ExistingPeriodicWorkPolicy.UPDATE,
                 request
             )
         }

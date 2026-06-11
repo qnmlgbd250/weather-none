@@ -29,27 +29,35 @@ class WeatherWidgetWorker(
             val cityDataStore = CityDataStore(context, moshi)
             val cityManager = CityManager(context, moshi)
             val cities = cityDataStore.getCities().ifEmpty { cityManager.getCities() }
-            val city = resolveWidgetCity(context, cities, cityDataStore, cityManager)
+            val resolved = resolveWidgetCity(context, cities, cityDataStore, cityManager)
+            val city = resolved?.city
 
             if (city != null) {
                 val cache = WeatherCache(context)
-                // 先用缓存立即刷新 UI
                 val cached = cache.load(city.id)
                 WeatherWidgetUpdater.updateAll(context, cached, city.name)
 
-                // 再从 API 拉取最新数据
-                try {
-                    val api = createCaiyunApi(moshi)
-                    val repo = WeatherRepository(api)
-                    val result = repo.getWeather(city.longitude, city.latitude)
-                    result.getOrNull()?.let { fresh ->
-                        cache.save(city.id, fresh)
-                        WeatherDataStore(context, moshi).save(city.id, fresh)
-                        // 用最新数据再次刷新 UI
-                        WeatherWidgetUpdater.updateAll(context, fresh, city.name)
+                val lastFetchTime = getLastFetchTime(context, city.id)
+                val shouldFetch = cached == null || WidgetRefreshPolicy.shouldFetchWeather(
+                    distanceMeters = resolved.distanceMeters,
+                    lastFetchTimeMillis = lastFetchTime,
+                    nowMillis = System.currentTimeMillis()
+                )
+
+                if (shouldFetch) {
+                    try {
+                        val api = createCaiyunApi(moshi)
+                        val repo = WeatherRepository(api)
+                        val result = repo.getWeather(city.longitude, city.latitude)
+                        result.getOrNull()?.let { fresh ->
+                            cache.save(city.id, fresh)
+                            WeatherDataStore(context, moshi).save(city.id, fresh)
+                            saveLastFetchTime(context, city.id, System.currentTimeMillis())
+                            WeatherWidgetUpdater.updateAll(context, fresh, city.name)
+                        }
+                    } catch (e: Exception) {
+                        Log.w("WidgetWorker", "API fetch failed, using cache", e)
                     }
-                } catch (e: Exception) {
-                    Log.w("WidgetWorker", "API fetch failed, using cache", e)
                 }
             } else {
                 WeatherWidgetUpdater.updateAll(context, null, null)
@@ -66,12 +74,12 @@ class WeatherWidgetWorker(
         cities: List<City>,
         cityDataStore: CityDataStore,
         cityManager: CityManager
-    ): City? {
+    ): ResolvedWidgetCity? {
         val currentCity = cities.firstOrNull { it.isCurrentLocation }
         val locationManager = LocationManager(context)
         val amapLocation = if (locationManager.hasBackgroundLocationPermission()) {
             try {
-                locationManager.requestAmapLocation()
+                locationManager.requestLightweightAmapLocation()
             } catch (e: Exception) {
                 Log.w("WidgetWorker", "Location fetch failed, using saved city", e)
                 null
@@ -83,39 +91,68 @@ class WeatherWidgetWorker(
 
         if (amapLocation == null) {
             locationManager.getCachedLocation()?.let { cached ->
-                return saveCurrentLocationCity(
-                    cities = cities,
-                    currentCity = currentCity,
-                    cityDataStore = cityDataStore,
-                    cityManager = cityManager,
-                    name = cached.name,
-                    longitude = cached.longitude,
-                    latitude = cached.latitude
+                val distance = currentCity?.let {
+                    distanceBetween(cached.latitude, cached.longitude, it.latitude, it.longitude)
+                }
+                return ResolvedWidgetCity(
+                    city = saveCurrentLocationCity(
+                        cities = cities,
+                        currentCity = currentCity,
+                        cityDataStore = cityDataStore,
+                        cityManager = cityManager,
+                        name = cached.name,
+                        longitude = cached.longitude,
+                        latitude = cached.latitude
+                    ),
+                    distanceMeters = distance
                 )
             }
-            return currentCity ?: cities.firstOrNull()
+            return (currentCity ?: cities.firstOrNull())?.let { city ->
+                ResolvedWidgetCity(city = city, distanceMeters = 0f)
+            }
         }
 
         val lon = amapLocation.longitude
         val lat = amapLocation.latitude
-        val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
         val distance = currentCity?.let { distanceBetween(lat, lon, it.latitude, it.longitude) }
-        val locationName = if (savedName != null && distance != null && distance < 500f) {
+        val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
+        val locationName = if (savedName != null && !WidgetRefreshPolicy.hasMovedSignificantly(distance)) {
             savedName
         } else {
             locationManager.resolveLocationName(amapLocation)
         }
         locationManager.saveCachedLocation(locationName, lon, lat)
 
-        return saveCurrentLocationCity(
-            cities = cities,
-            currentCity = currentCity,
-            cityDataStore = cityDataStore,
-            cityManager = cityManager,
-            name = locationName,
-            longitude = lon,
-            latitude = lat
+        return ResolvedWidgetCity(
+            city = saveCurrentLocationCity(
+                cities = cities,
+                currentCity = currentCity,
+                cityDataStore = cityDataStore,
+                cityManager = cityManager,
+                name = locationName,
+                longitude = lon,
+                latitude = lat
+            ),
+            distanceMeters = distance
         )
+    }
+
+    private data class ResolvedWidgetCity(
+        val city: City,
+        val distanceMeters: Float?
+    )
+
+    private fun getLastFetchTime(context: Context, cityId: String): Long? {
+        val value = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getLong("$KEY_LAST_FETCH_PREFIX$cityId", 0L)
+        return value.takeIf { it > 0L }
+    }
+
+    private fun saveLastFetchTime(context: Context, cityId: String, timeMillis: Long) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong("$KEY_LAST_FETCH_PREFIX$cityId", timeMillis)
+            .apply()
     }
 
     private suspend fun saveCurrentLocationCity(
@@ -167,5 +204,10 @@ class WeatherWidgetWorker(
             .addConverterFactory(retrofit2.converter.moshi.MoshiConverterFactory.create(moshi))
             .build()
         return retrofit.create(CaiyunApi::class.java)
+    }
+
+    companion object {
+        private const val PREFS_NAME = "weather_widget_refresh"
+        private const val KEY_LAST_FETCH_PREFIX = "last_fetch_"
     }
 }
