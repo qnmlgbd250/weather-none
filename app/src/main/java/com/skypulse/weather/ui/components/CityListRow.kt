@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.components
+package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -120,7 +120,7 @@ fun SwipeableCityListRow(
             ) {
                 // Row 1: city name (left) + temperature (right)
                 val nameStyle = TextStyle(
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )

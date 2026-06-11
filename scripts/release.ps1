@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    一键发布：自增版本号 → 构建发行版 → 重命名 APK → 上传云剪贴板
+    Release: bump version -> build release APK -> rename APK -> upload to cloud clipboard
 .PARAMETER Entry
-    可选的变更说明，会写入 CHANGELOG.md
+    Optional changelog entry.
 .EXAMPLE
-    .\scripts\release.ps1 -Entry "修复城市列表崩溃"
+    .\scripts\release.ps1 -Entry "Fix city list crash"
 #>
 param(
     [string]$Entry = ""
@@ -15,21 +15,30 @@ $projectRoot = Join-Path $PSScriptRoot ".."
 $buildFile   = Join-Path $projectRoot "app\build.gradle.kts"
 $changelog   = Join-Path $projectRoot "CHANGELOG.md"
 
-# ── 项目固定参数 ──────────────────────────────────────────────
+# Project constants
 $env:JAVA_HOME   = "C:\Program Files\Android\Android Studio\jbr"
 $gradleWrapper   = Join-Path $projectRoot "gradlew.bat"
 $releaseApkDir   = Join-Path $projectRoot "app\build\outputs\apk\release"
 $releaseApkSrc   = Join-Path $releaseApkDir "app-release.apk"
 $uploadUrl       = "http://114.132.226.161:5000/api/files?room=sky"
 
-# ── 1. 读取当前版本 ──────────────────────────────────────────
-$content = Get-Content $buildFile -Raw
+function Set-Utf8NoBom {
+    param(
+        [string]$Path,
+        [string]$Value
+    )
+    $encoding = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($Path, $Value, $encoding)
+}
+
+# 1. Read current version
+$content = Get-Content $buildFile -Raw -Encoding UTF8
 
 $versionMatch = [regex]::Match($content, 'versionName\s*=\s*"(\d+)\.(\d+)\.(\d+)"')
 $codeMatch    = [regex]::Match($content, 'versionCode\s*=\s*(\d+)')
 
 if (-not $versionMatch.Success -or -not $codeMatch.Success) {
-    Write-Error "无法从 build.gradle.kts 解析版本号"
+    Write-Error "Failed to parse version from build.gradle.kts"
     exit 1
 }
 
@@ -40,22 +49,22 @@ $code  = [int]$codeMatch.Groups[1].Value
 
 $oldVersion = "$major.$minor.$patch"
 
-# ── 2. 递增版本号 (patch +1, code +1) ───────────────────────
+# 2. Bump version (patch +1, code +1)
 $patch++
 $code++
 $newVersion = "$major.$minor.$patch"
 
 $content = $content -replace 'versionName\s*=\s*"[^"]*"', "versionName = `"$newVersion`""
 $content = $content -replace 'versionCode\s*=\s*\d+', "versionCode = $code"
-Set-Content $buildFile -Value $content -Encoding UTF8 -NoNewline
+Set-Utf8NoBom -Path $buildFile -Value $content
 
-Write-Host "[1/4] 版本号: $oldVersion -> $newVersion (code $code)" -ForegroundColor Cyan
+Write-Host "[1/4] Version: $oldVersion -> $newVersion (code $code)" -ForegroundColor Cyan
 
-# ── 3. 写入 CHANGELOG ────────────────────────────────────────
+# 3. Update CHANGELOG
 if ($Entry -and (Test-Path $changelog)) {
     $date    = Get-Date -Format "yyyy-MM-dd"
     $section = "`n## [$newVersion] - $date`n`n- $Entry`n"
-    $clText  = Get-Content $changelog -Raw
+    $clText  = Get-Content $changelog -Raw -Encoding UTF8
     $idx     = $clText.IndexOf("---")
     if ($idx -ge 0) {
         $next = $clText.IndexOf("---", $idx + 3)
@@ -67,12 +76,12 @@ if ($Entry -and (Test-Path $changelog)) {
     } else {
         $clText += $section
     }
-    Set-Content $changelog -Value $clText -Encoding UTF8 -NoNewline
-    Write-Host "  CHANGELOG.md 已更新" -ForegroundColor DarkGray
+    Set-Utf8NoBom -Path $changelog -Value $clText
+    Write-Host "  CHANGELOG.md updated" -ForegroundColor DarkGray
 }
 
-# ── 4. 构建发行版 ────────────────────────────────────────────
-Write-Host "[2/4] 开始构建 assembleRelease ..." -ForegroundColor Cyan
+# 4. Build release
+Write-Host "[2/4] Running assembleRelease ..." -ForegroundColor Cyan
 Set-Location $projectRoot
 $output = & cmd /c "`"$gradleWrapper`" assembleRelease 2>&1" | Out-String
 $outputLines = $output -split "`n"
@@ -85,34 +94,34 @@ foreach ($line in $outputLines) {
 }
 
 if ($gradleExit -ne 0) {
-    Write-Error "构建失败 (exit code $gradleExit)"
+    Write-Error "Build failed (exit code $gradleExit)"
     exit $gradleExit
 }
-Write-Host "  构建成功" -ForegroundColor Green
+Write-Host "  Build succeeded" -ForegroundColor Green
 
-# ── 5. 重命名 APK ───────────────────────────────────────────
-$apkDst = Join-Path $releaseApkDir "南风天气_$newVersion.apk"
+# 5. Rename APK
+$apkDst = Join-Path $releaseApkDir "skypulse-v$newVersion.apk"
 if (Test-Path $releaseApkSrc) {
     Move-Item -Path $releaseApkSrc -Destination $apkDst -Force
-    Write-Host "[3/4] APK 已重命名: 南风天气_$newVersion.apk" -ForegroundColor Cyan
+    Write-Host "[3/4] APK renamed: skypulse-v$newVersion.apk" -ForegroundColor Cyan
 } else {
-    Write-Error "找不到构建产物 $releaseApkSrc"
+    Write-Error "Missing build artifact $releaseApkSrc"
     exit 1
 }
 
-# ── 6. 上传到云剪贴板 ───────────────────────────────────────
-Write-Host "[4/4] 上传到云剪贴板 ..." -ForegroundColor Cyan
+# 6. Upload to cloud clipboard
+Write-Host "[4/4] Uploading to cloud clipboard ..." -ForegroundColor Cyan
 try {
     $uploadResult = & cmd /c "curl.exe -s -X POST -F `"file=@$apkDst`" `"$uploadUrl`" 2>&1"
-    Write-Host "  上传完成: $uploadResult" -ForegroundColor Green
+    Write-Host "  Upload complete: $uploadResult" -ForegroundColor Green
 } catch {
-    Write-Warning "上传失败: $_"
+    Write-Warning "Upload failed: $_"
 }
 
-# ── 完成 ─────────────────────────────────────────────────────
+# Done
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  发布完成: 南风天气 v$newVersion" -ForegroundColor Green
+Write-Host "  Release complete: SkyPulse v$newVersion" -ForegroundColor Green
 Write-Host "  APK: $apkDst" -ForegroundColor Green
-Write-Host "  下载: http://114.132.226.161:5000/r/sky" -ForegroundColor Green
+Write-Host "  Download: http://114.132.226.161:5000/r/sky" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green

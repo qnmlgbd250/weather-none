@@ -30,8 +30,8 @@
 
 
 ## 包体命名
-- **云剪贴板 APK 命名**: `南风天气_<versionName>.apk`
-- release 脚本在重命名 APK 和上传前必须使用该格式
+- **APK 命名**: `skypulse-v<versionName>.apk`
+- 云剪贴板和 GitHub Release 都必须使用该格式
 
 ## 编码规范
 - **所有源码文件统一使用 UTF-8 编码（无 BOM）**
