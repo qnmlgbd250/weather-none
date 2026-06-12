@@ -133,10 +133,10 @@ class WeatherViewModel @Inject constructor(
             val cities = cityDataStore.getCities()
             _savedCities.value = cities
             syncCitiesToWidget()
-            // Load cached weather data so city list has data immediately
+             // Load cached weather data (including expired) so city list shows immediately
             val cachedMap = mutableMapOf<String, CityWeatherData>()
             for (city in cities) {
-                val cached = weatherDataStore.load(city.id)
+                 val cached = weatherDataStore.loadCached(city.id)
                 if (cached != null) {
                     cachedMap[city.id] = CityWeatherData(weather = cached)
                 }
@@ -147,10 +147,10 @@ class WeatherViewModel @Inject constructor(
                     data.weather?.let { weatherCache.save(cityId, it) }
                 }
             }
-            // Initialize detail screen with cached data for current location
+             // Initialize detail screen with cached data for current location (including expired)
             val currentCity = cities.find { it.isCurrentLocation }
             if (currentCity != null) {
-                val cachedWeather = weatherDataStore.load(currentCity.id)
+                 val cachedWeather = weatherDataStore.loadCached(currentCity.id)
                 if (cachedWeather != null) {
                     _uiState.value = WeatherUiState.Success(
                         weather = cachedWeather,
