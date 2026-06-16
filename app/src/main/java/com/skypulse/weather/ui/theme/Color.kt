@@ -23,8 +23,8 @@ val TextTertiary = Color(0x99FFFFFF)
 val TextDisabled = Color(0x66FFFFFF)
 
 // ============ Alert Semantic Colors ============
-val AlertRed = Color(0xFFFF4444)
-val AlertOrange = Color(0xFFFF8C00)
+val AlertRed = Color(0xFFFF6B6B)
+val AlertOrange = Color(0xFFFFB74D)
 val AlertYellow = Color(0xFFFFD54F)   // same hue as WarmGold
 val AlertBlue = Color(0xFF4488FF)
 
