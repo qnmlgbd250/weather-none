@@ -5,7 +5,7 @@
 - **Gradle Wrapper**: `gradlew.bat` (Gradle 8.5)
 - **compileSdk / targetSdk**: 34
 - **minSdk**: 26
-- **Java Version**: 17
+- **Java Version**: 21
 
 ## 签名信息 (Release)
 - **Keystore 文件**: `app/release-keystore.jks`

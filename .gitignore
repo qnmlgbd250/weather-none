@@ -11,8 +11,6 @@ local.properties
 /app/build
 /app/release
 .claude
-*.jks
-*.keystore
 
 scripts/tools/
 
