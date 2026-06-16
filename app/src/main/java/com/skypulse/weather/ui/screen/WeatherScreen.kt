@@ -235,6 +235,7 @@ fun WeatherScreen(
                                         refreshPhase = refreshPhase,
                                         onLocationClick = { viewModel.relocateAndRefresh() },
                                         onListClick = { viewModel.navigateToCityList() },
+                                        onRadarClick = { viewModel.navigateToRadarMap() },
                                         onSettingsClick = { viewModel.navigateToSettings() }
                                     )
 
@@ -311,6 +312,16 @@ fun WeatherScreen(
                 AlertDetailScreen(
                     alerts = contents,
                     initialSelectedIndex = selectedAlertIndex,
+                    onBack = { viewModel.navigateBack() }
+                )
+            }
+
+            AppScreen.RadarMap -> {
+                val city = viewModel.getCurrentCity()
+                RadarMapScreen(
+                    cityName = city?.name ?: "未知",
+                    longitude = city?.longitude ?: 116.4,
+                    latitude = city?.latitude ?: 39.9,
                     onBack = { viewModel.navigateBack() }
                 )
             }
