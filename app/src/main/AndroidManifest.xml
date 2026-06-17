@@ -17,8 +17,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SkyPulse"
-        android:usesCleartextTraffic="true">
+        android:theme="@style/Theme.SkyPulse">
 
         <meta-data
             android:name="com.amap.api.v2.apikey"

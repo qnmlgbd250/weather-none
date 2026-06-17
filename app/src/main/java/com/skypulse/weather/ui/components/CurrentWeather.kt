@@ -50,7 +50,6 @@ fun LocationHeader(
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
     onLocationClick: (() -> Unit)? = null,
     onListClick: (() -> Unit)? = null,
-    onRadarClick: (() -> Unit)? = null,
     onSettingsClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -185,24 +184,6 @@ fun LocationHeader(
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                if (onRadarClick != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = onRadarClick
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        SpacedRadarIcon(
-                            tint = TextSecondary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(8.dp))
                 if (onSettingsClick != null) {
                     Box(
                         modifier = Modifier
@@ -270,54 +251,6 @@ private fun SpacedMoreVertIcon(
                 center = Offset(centerX, y)
             )
         }
-    }
-}
-
-@Composable
-private fun SpacedRadarIcon(
-    tint: Color,
-    modifier: Modifier = Modifier
-) {
-    Canvas(
-        modifier = modifier.semantics { contentDescription = "\u5929\u6c14\u5730\u56fe" }
-    ) {
-        val cx = size.width / 2f
-        val cy = size.height / 2f
-        val r = size.minDimension / 2f - 1.dp.toPx()
-        val sw = 1.5.dp.toPx()
-
-        // Outer circle
-        drawCircle(
-            color = tint.copy(alpha = 0.4f),
-            radius = r,
-            center = Offset(cx, cy),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(sw)
-        )
-
-        // Inner circle
-        drawCircle(
-            color = tint.copy(alpha = 0.4f),
-            radius = r * 0.5f,
-            center = Offset(cx, cy),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(sw)
-        )
-
-        // Cross lines
-        drawLine(tint.copy(alpha = 0.3f), Offset(cx - r, cy), Offset(cx + r, cy), sw)
-        drawLine(tint.copy(alpha = 0.3f), Offset(cx, cy - r), Offset(cx, cy + r), sw)
-
-        // Sweep line (upper-right direction)
-        val angle = Math.toRadians(-60.0)
-        drawLine(
-            tint,
-            Offset(cx, cy),
-            Offset(cx + r * Math.cos(angle).toFloat(), cy + r * Math.sin(angle).toFloat()),
-            sw,
-            cap = StrokeCap.Round
-        )
-
-        // Center dot
-        drawCircle(tint, 1.5.dp.toPx(), Offset(cx, cy))
     }
 }
 

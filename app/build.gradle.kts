@@ -27,8 +27,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 416
-        versionName = "2.0.66"
+        versionCode = 412
+        versionName = "2.0.62"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -129,9 +129,6 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
-
-    // Image loading
-    implementation(libs.coil.compose)
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

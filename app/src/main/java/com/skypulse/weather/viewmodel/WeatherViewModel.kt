@@ -52,7 +52,7 @@ enum class RefreshPhase {
 }
 
 enum class AppScreen {
-    CityList, CityDetail, Settings, AlertDetail, RadarMap
+    CityList, CityDetail, Settings, AlertDetail
 }
 
 data class CityWeatherData(
@@ -257,20 +257,6 @@ class WeatherViewModel @Inject constructor(
         _currentScreen.value = AppScreen.Settings
     }
 
-    fun navigateToRadarMap() {
-        _currentScreen.value = AppScreen.RadarMap
-    }
-
-    fun getCurrentCity(): City? {
-        val selectedId = _selectedCityId.value
-        val cities = _savedCities.value
-        return if (selectedId != null) {
-            cities.find { it.id == selectedId }
-        } else {
-            cities.find { it.isCurrentLocation } ?: cities.firstOrNull()
-        }
-    }
-
     fun navigateToAlertDetail(alertIndex: Int = 0) {
         _selectedAlertIndex.value = alertIndex
         _currentScreen.value = AppScreen.AlertDetail
@@ -278,7 +264,7 @@ class WeatherViewModel @Inject constructor(
 
     fun navigateBack() {
         when (_currentScreen.value) {
-            AppScreen.Settings, AppScreen.AlertDetail, AppScreen.RadarMap -> {
+            AppScreen.Settings, AppScreen.AlertDetail -> {
                 _currentScreen.value = AppScreen.CityDetail
             }
             AppScreen.CityList -> {
