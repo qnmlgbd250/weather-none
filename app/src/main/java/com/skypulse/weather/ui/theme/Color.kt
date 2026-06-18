@@ -13,17 +13,17 @@ val CardSurfaceNight = Color(0x1AFFFFFF)
 val CardSurfaceNightLight = Color(0x0DFFFFFF)
 
 // ============ Text Hierarchy ============
-// 100% white — headlines, temperature, key data
+// 100% white 鈥?headlines, temperature, key data
 val TextPrimary = Color(0xFFFFFFFF)
-// 85% white — weather description, labels
+// 85% white 鈥?weather description, labels
 val TextSecondary = Color(0xD9FFFFFF)
-// 60% white — tertiary labels, footnotes, timestamps
+// 60% white 鈥?tertiary labels, footnotes, timestamps
 val TextTertiary = Color(0x99FFFFFF)
-// 40% white — disabled / placeholder text
+// 40% white 鈥?disabled / placeholder text
 val TextDisabled = Color(0x66FFFFFF)
 
 // ============ Alert Semantic Colors ============
-val AlertRed = Color(0xFFFF6B6B)
+val AlertRed = Color(0xFFC05050)
 val AlertOrange = Color(0xFFFFB74D)
 val AlertYellow = Color(0xFFFFD54F)   // same hue as WarmGold
 val AlertBlue = Color(0xFF4488FF)
@@ -36,13 +36,13 @@ val PrecipBarShadow = Color(0xFF92DDFE)
 // ============ Interactive State Colors ============
 val PressedOverlay = Color(0x14FFFFFF)   // ~8% white overlay on press
 val DisabledOverlay = Color(0x1A000000)  // ~10% black overlay on disabled
-val CardBorderDay = Color(0x66FFFFFF)    // 40% white — visible in bright sun
-val CardBorderNight = Color(0x22FFFFFF)  // 13% white — subtle at night
+val CardBorderDay = Color(0x66FFFFFF)    // 40% white 鈥?visible in bright sun
+val CardBorderNight = Color(0x22FFFFFF)  // 13% white 鈥?subtle at night
 
 // ============ iOS Weather-style Background Gradients ============
 // Each gradient uses 5 stops for smooth, natural sky transitions
 
-// Sunny (Day) — clear sky blue, with a deeper top for readable white text
+// Sunny (Day) 鈥?clear sky blue, with a deeper top for readable white text
 val SunnyGradient = listOf(
     Color(0xFF4A9AD8),
     Color(0xFF5FB0E5),
@@ -51,7 +51,7 @@ val SunnyGradient = listOf(
     Color(0xFF4A90D9)
 )
 
-// Sunny (Night) — deep navy to midnight blue
+// Sunny (Night) 鈥?deep navy to midnight blue
 val SunnyNightGradient = listOf(
     Color(0xFF0B1929),
     Color(0xFF122640),
@@ -60,7 +60,7 @@ val SunnyNightGradient = listOf(
     Color(0xFF234A72)
 )
 
-// Partly Cloudy (Day) — medium blue, slightly desaturated
+// Partly Cloudy (Day) 鈥?medium blue, slightly desaturated
 val PartialCloudGradient = listOf(
     Color(0xFF8BB8E0),
     Color(0xFF7AAFE0),
@@ -69,7 +69,7 @@ val PartialCloudGradient = listOf(
     Color(0xFF3A7CC4)
 )
 
-// Partly Cloudy (Night) — indigo to blue-violet
+// Partly Cloudy (Night) 鈥?indigo to blue-violet
 val PartialCloudNightGradient = listOf(
     Color(0xFF141E3A),
     Color(0xFF1C2B50),
@@ -78,7 +78,7 @@ val PartialCloudNightGradient = listOf(
     Color(0xFF375590)
 )
 
-// Cloudy (Day) — blue-gray, heavy cloud, low saturation
+// Cloudy (Day) 鈥?blue-gray, heavy cloud, low saturation
 val CloudyGradient = listOf(
     Color(0xFF9BAFB8),
     Color(0xFF90A5B0),
@@ -87,7 +87,7 @@ val CloudyGradient = listOf(
     Color(0xFF6B7F8F)
 )
 
-// Cloudy (Night) — dark blue-gray
+// Cloudy (Night) 鈥?dark blue-gray
 val CloudyNightGradient = listOf(
     Color(0xFF1C2834),
     Color(0xFF283848),
@@ -96,7 +96,7 @@ val CloudyNightGradient = listOf(
     Color(0xFF4A6075)
 )
 
-// Rainy (Day) — deep blue-gray, darkest and heaviest
+// Rainy (Day) 鈥?deep blue-gray, darkest and heaviest
 val RainyGradient = listOf(
     Color(0xFF8A9AA5),
     Color(0xFF7A8FA0),
@@ -105,7 +105,7 @@ val RainyGradient = listOf(
     Color(0xFF556070)
 )
 
-// Rainy (Night) — deep blue-black
+// Rainy (Night) 鈥?deep blue-black
 val RainyNightGradient = listOf(
     Color(0xFF0F1A24),
     Color(0xFF182636),
@@ -114,7 +114,7 @@ val RainyNightGradient = listOf(
     Color(0xFF324A60)
 )
 
-// Snowy (Day) — cold gray-blue
+// Snowy (Day) 鈥?cold gray-blue
 val SnowyGradient = listOf(
     Color(0xFF6E8A9E),
     Color(0xFF8BA5B5),
@@ -123,7 +123,7 @@ val SnowyGradient = listOf(
     Color(0xFFA5BBC4)
 )
 
-// Snowy (Night) — muted blue-gray
+// Snowy (Night) 鈥?muted blue-gray
 val SnowyNightGradient = listOf(
     Color(0xFF1E2D38),
     Color(0xFF2A3D4D),
@@ -132,7 +132,7 @@ val SnowyNightGradient = listOf(
     Color(0xFF4E6D82)
 )
 
-// Haze/Fog (Day & Night) — warm brown-gray, atmospheric
+// Haze/Fog (Day & Night) 鈥?warm brown-gray, atmospheric
 val HazeGradient = listOf(
     Color(0xFF7A6B5E),
     Color(0xFF948578),
@@ -141,7 +141,7 @@ val HazeGradient = listOf(
     Color(0xFFAA9B90)
 )
 
-// Windy (Day & Night) — teal-blue, fresh
+// Windy (Day & Night) 鈥?teal-blue, fresh
 val WindyGradient = listOf(
     Color(0xFF2A7B72),
     Color(0xFF3A968C),
@@ -150,7 +150,7 @@ val WindyGradient = listOf(
     Color(0xFF55B0A8)
 )
 
-// Night Fallback — deep night sky
+// Night Fallback 鈥?deep night sky
 val NightFallbackGradient = SunnyNightGradient
 
 
@@ -166,14 +166,14 @@ val IosAccentBlue = Color(0xFF007AFF)
 val IosSwitchOff = Color(0xFFE5E5EA)
 val IosToggleTrackOn = Color(0xFF007AFF)
 
-// Secondary screens — deep indigo-violet palette.
+// Secondary screens 鈥?deep indigo-violet palette.
 // Rich purple-blue base for an immersive, modern night atmosphere.
 val SecondaryScreenGradient = listOf(
     Color(0xFF141332),
     Color(0xFF191742),
     Color(0xFF1E1B4B)
 )
-// Frost glass panels — layered like main-page GlassCard
+// Frost glass panels 鈥?layered like main-page GlassCard
 val SecondaryPanel = Color(0x26FFFFFF)          // ~15% white frost
 val SecondaryPanelStrong = Color(0x3DFFFFFF)     // ~24% white frost
 val SecondaryPanelBorder = Color(0x33FFFFFF)     // 20% white border
@@ -190,3 +190,4 @@ val DialogTextSecondary = Color(0xB3FFFFFF)     // 70% white
 // ============ Accent Colors ============
 val PrecipitationBlue = Color(0xFF29B6F6)
 val HumidityBlue = Color(0xFF42A5F5)
+
