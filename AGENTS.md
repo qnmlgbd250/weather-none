@@ -41,6 +41,10 @@
 - 云剪贴板和 GitHub Release 都必须使用该格式
 - **APK 清理**: 每次构建成功并生成新的 APK 后，清理根目录中旧的 `skypulse-v*.apk` 包，仅保留最新构建产物；除非用户明确要求保留历史 APK
 
+## 打赏名单规则
+- 打赏名单位于 `app/src/main/java/com/skypulse/weather/ui/components/DonateDialog.kt` 的 `donors` 列表
+- 列表按金额从高到低降序排列；新增打赏时必须插入到正确的位置
+
 ## 编码规范
 - **所有源码文件统一使用 UTF-8 编码（无 BOM）**
 - 涵盖文件类型：`*.kt`、`*.java`、`*.xml`、`*.gradle`、`*.kts`、`*.properties`、`*.md`、`*.json`、`*.pro`
