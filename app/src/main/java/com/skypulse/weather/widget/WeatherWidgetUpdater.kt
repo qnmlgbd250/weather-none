@@ -2,6 +2,7 @@ package com.skypulse.weather.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
+import android.os.Bundle
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -36,7 +37,6 @@ object WeatherWidgetUpdater {
             val cityText = shortenLocation(cityName ?: "--")
             val detailText = "${info.description}  $minTemp / $maxTemp"
             val iconBitmap = renderIcon(context, info.icon)
-            val bgBitmap = buildGradientBitmap(context, skycon)
             ids.forEach { widgetId ->
                 val views = RemoteViews(context.packageName, R.layout.widget_small)
                 views.setTextViewText(R.id.widget_city, cityText)
@@ -45,7 +45,9 @@ object WeatherWidgetUpdater {
                 if (iconBitmap != null) {
                     views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
                 }
-                views.setImageViewBitmap(R.id.widget_bg, bgBitmap)
+                val (w, h) = getWidgetSizePx(context, widgetId)
+                val sizedBg = buildGradientBitmap(context, skycon, w, h)
+                views.setImageViewBitmap(R.id.widget_bg, sizedBg)
                 views.setImageViewResource(R.id.widget_pin, R.drawable.ic_widget_location)
 
                 val intent = Intent(context, MainActivity::class.java)
@@ -60,10 +62,11 @@ object WeatherWidgetUpdater {
             try {
                 val manager = AppWidgetManager.getInstance(context)
                 val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
-                val bgBitmap = buildGradientBitmap(context, null)
                 ids.forEach { widgetId ->
                     val views = RemoteViews(context.packageName, R.layout.widget_small)
-                    views.setImageViewBitmap(R.id.widget_bg, bgBitmap)
+                    val (w, h) = getWidgetSizePx(context, widgetId)
+                    val sizedBg = buildGradientBitmap(context, null, w, h)
+                    views.setImageViewBitmap(R.id.widget_bg, sizedBg)
                     views.setTextViewText(R.id.widget_city, "--")
                     views.setTextViewText(R.id.widget_temp, "--")
                     views.setTextViewText(R.id.widget_detail, "\u52a0\u8f7d\u4e2d...")
@@ -110,21 +113,37 @@ object WeatherWidgetUpdater {
         }
     }
 
-    private fun buildGradientBitmap(context: Context, skycon: String?): Bitmap {
+    /**
+     * Get the actual pixel size of a widget instance from system options.
+     * Falls back to a sensible default if options are not yet available.
+     */
+    private fun getWidgetSizePx(context: Context, widgetId: Int): Pair<Int, Int> {
         val density = context.resources.displayMetrics.density
-        val width = (180 * density).toInt()
-        val height = (180 * density).toInt()
+        return try {
+            val options = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
+            val wDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 180)
+            val hDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180)
+            val w = (wDp * density).toInt().coerceAtLeast((110 * density).toInt())
+            val h = (hDp * density).toInt().coerceAtLeast((110 * density).toInt())
+            Pair(w, h)
+        } catch (_: Exception) {
+            val fallback = (180 * density).toInt()
+            Pair(fallback, fallback)
+        }
+    }
+
+    /**
+     * Build gradient bitmap sized to the actual widget dimensions.
+     * No manual rounded corners — the system applies its own corner mask on API 31+.
+     * On older devices, the XML background handles shape.
+     */
+    private fun buildGradientBitmap(context: Context, skycon: String?, width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val colors = WeatherUtils.getWeatherGradient(skycon).map { it.toArgb() }.toIntArray()
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), colors, null, Shader.TileMode.CLAMP)
-        val radius = 18f * density
-        val path = Path().apply { addRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius, Path.Direction.CW) }
-        canvas.save()
-        canvas.clipPath(path)
-        canvas.drawPath(path, paint)
-        canvas.restore()
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
         return bitmap
     }
 }

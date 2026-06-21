@@ -6,11 +6,12 @@
     android:padding="0dp"
     android:background="@android:color/transparent">
 
+    <!-- Background fills the entire widget; centerCrop prevents stretching distortion -->
     <ImageView
         android:id="@+id/widget_bg"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="fitXY"
+        android:scaleType="centerCrop"
         android:contentDescription="@null" />
 
     <!-- Top row: pin icon + city name -->
