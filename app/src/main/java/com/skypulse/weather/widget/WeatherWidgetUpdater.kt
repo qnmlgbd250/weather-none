@@ -95,6 +95,16 @@ object WeatherWidgetUpdater {
 
     private fun renderIcon(context: Context, icon: String): Bitmap? {
         iconCache.get(icon)?.let { return it }
+        val bitmap = if (icon == "clear-night") {
+            renderMoonBitmap(context)
+        } else {
+            renderLottieIcon(context, icon)
+        }
+        if (bitmap != null) iconCache.put(icon, bitmap)
+        return bitmap
+    }
+
+    private fun renderLottieIcon(context: Context, icon: String): Bitmap? {
         return try {
             val composition = LottieCompositionFactory.fromAssetSync(context, "meteocons/fill/${icon}.json").value
                 ?: return null
@@ -106,7 +116,88 @@ object WeatherWidgetUpdater {
             val canvas = Canvas(bitmap)
             drawable.setBounds(0, 0, size, size)
             drawable.draw(canvas)
-            iconCache.put(icon, bitmap)
+            bitmap
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * Hand-drawn moon icon matching the Compose MoonIcon in WeatherIcon.kt.
+     * Uses the same Lottie bezier path from clear-night.json with warm golden gradient.
+     */
+    private fun renderMoonBitmap(context: Context): Bitmap? {
+        return try {
+            val density = context.resources.displayMetrics.density
+            val size = (96 * density).toInt()
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val scale = size / 128f
+
+            // Original Lottie path from clear-night.json (128x128 canvas)
+            val v = arrayOf(
+                floatArrayOf(60.3018f, 32.582f),
+                floatArrayOf(95.3252f, 72.5146f),
+                floatArrayOf(64.5361f, 95.5f),
+                floatArrayOf(32.5f, 63.8984f),
+                floatArrayOf(60.3018f, 32.582f)
+            )
+            val o = arrayOf(
+                floatArrayOf(-5.0201f, 21.1179f),
+                floatArrayOf(-3.8059f, 13.2556f),
+                floatArrayOf(-17.6986f, 0f),
+                floatArrayOf(0f, -16.0296f),
+                floatArrayOf(0f, 0f)
+            )
+            val inn = arrayOf(
+                floatArrayOf(0f, 0f),
+                floatArrayOf(-21.7251f, 1.8331f),
+                floatArrayOf(14.6625f, -0.0002f),
+                floatArrayOf(0.0001f, 17.446f),
+                floatArrayOf(-15.6952f, 2.0458f)
+            )
+
+            val path = Path().apply {
+                moveTo(v[0][0] * scale, v[0][1] * scale)
+                for (i in 0 until 4) {
+                    val p0 = v[i]
+                    val p1 = v[i + 1]
+                    cubicTo(
+                        (p0[0] + o[i][0]) * scale,
+                        (p0[1] + o[i][1]) * scale,
+                        (p1[0] + inn[i + 1][0]) * scale,
+                        (p1[1] + inn[i + 1][1]) * scale,
+                        p1[0] * scale,
+                        p1[1] * scale
+                    )
+                }
+                close()
+            }
+
+            // Gradient fill: warm yellow matching WeatherIcon MoonIcon
+            val gradient = LinearGradient(
+                0f, 32f * scale,
+                0f, 96f * scale,
+                intArrayOf(Color.parseColor("#FFFFD54F"), Color.parseColor("#FFFFCA28")),
+                null,
+                Shader.TileMode.CLAMP
+            )
+            val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.FILL
+                shader = gradient
+            }
+            canvas.drawPath(path, fillPaint)
+
+            // Gold stroke matching original
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                color = Color.parseColor("#FFF9AF03")
+                strokeWidth = 1f * density
+                strokeCap = Paint.Cap.ROUND
+                strokeJoin = Paint.Join.ROUND
+            }
+            canvas.drawPath(path, strokePaint)
+
             bitmap
         } catch (_: Exception) {
             null
