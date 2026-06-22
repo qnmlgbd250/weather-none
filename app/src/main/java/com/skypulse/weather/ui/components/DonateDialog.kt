@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.components
+package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -40,6 +40,7 @@ fun DonateDialog(
         "芳华" to "66",
         "维涅斯" to "50",
         "我有点柿" to "20",
+        "*酮" to "20",
         "小熊尼克队长" to "18.88",
         "三十九の度" to "18",
         "叁拾而已" to "15",
@@ -49,6 +50,7 @@ fun DonateDialog(
         "BIN0678" to "8.8",
         "微言" to "8.8",
         "c*l" to "6.66",
+        "*岭" to "4",
         "*年" to "3.88",
         "*风" to "3"
     )
