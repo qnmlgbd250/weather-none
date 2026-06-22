@@ -12,6 +12,7 @@ import com.skypulse.weather.data.CityDataStore
 import com.skypulse.weather.data.CityManager
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.data.WeatherCache
+import com.skypulse.weather.data.PermissionDataStore
 import com.skypulse.weather.data.WeatherDataStore
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
@@ -78,6 +79,7 @@ class WeatherViewModel @Inject constructor(
     private val weatherCache: WeatherCache,
     private val cityManager: CityManager,
     private val locationManager: LocationManager,
+    private val permissionDataStore: PermissionDataStore,
 ) : ViewModel() {
 
     companion object {
@@ -88,6 +90,16 @@ class WeatherViewModel @Inject constructor(
     // --- Screen navigation ---
     private val _currentScreen = MutableStateFlow(AppScreen.CityDetail)
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
+
+    // --- Permission onboarding ---
+    private val _showOnboarding = MutableStateFlow(true)
+    val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _showOnboarding.value = !permissionDataStore.isOnboardingCompleted()
+        }
+    }
 
     // --- Saved cities ---
     private val _savedCities = MutableStateFlow<List<City>>(emptyList())
@@ -250,6 +262,13 @@ class WeatherViewModel @Inject constructor(
         } else {
             // No cache — keep old data visible, fetch silently
             fetchWeatherForCitySilent(city)
+        }
+    }
+
+    fun completeOnboarding() {
+        _showOnboarding.value = false
+        viewModelScope.launch {
+            permissionDataStore.setOnboardingCompleted()
         }
     }
 
