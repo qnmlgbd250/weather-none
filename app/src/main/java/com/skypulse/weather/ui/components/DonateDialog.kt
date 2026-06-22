@@ -39,6 +39,7 @@ fun DonateDialog(
     val donors = listOf(
         "芳华" to "66",
         "维涅斯" to "50",
+        "*啦" to "23.33",
         "我有点柿" to "20",
         "*酮" to "20",
         "小熊尼克队长" to "18.88",
