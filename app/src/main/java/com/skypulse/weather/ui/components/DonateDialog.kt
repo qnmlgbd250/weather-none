@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.components
+﻿package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -38,7 +38,7 @@ fun DonateDialog(
     val donorScrollState = rememberScrollState()
     val donors = listOf(
         "芳华" to "66",
-        "*珏" to "50",
+        "维涅斯" to "50",
         "我有点柿" to "20",
         "小熊尼克队长" to "18.88",
         "三十九の度" to "18",

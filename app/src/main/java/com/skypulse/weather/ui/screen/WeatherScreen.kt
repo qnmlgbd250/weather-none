@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.screen
+﻿package com.skypulse.weather.ui.screen
 
 import android.Manifest
 import androidx.activity.compose.BackHandler
@@ -31,6 +31,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
 import com.skypulse.weather.ui.components.*
+import com.skypulse.weather.ui.screen.PermissionOnboardingScreen
 import com.skypulse.weather.ui.theme.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -104,24 +105,8 @@ fun WeatherScreen(
     val hasLocationPermission = locationPermissions.permissions.any { it.status.isGranted }
     var useDefaultLocation by rememberSaveable { mutableStateOf(false) }
 
-    var notificationRequested by rememberSaveable { mutableStateOf(false) }
-    var locationRequested by rememberSaveable { mutableStateOf(false) }
+    var showOnboarding by rememberSaveable { mutableStateOf(true) }
     var allPermissionsHandled by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(notificationPermission?.status, locationPermissions.allPermissionsGranted) {
-        if (allPermissionsHandled) return@LaunchedEffect
-        if (notificationPermission != null && !notificationPermission.status.isGranted && !notificationRequested) {
-            notificationPermission.launchPermissionRequest()
-            notificationRequested = true
-            return@LaunchedEffect
-        }
-        if (!hasLocationPermission && !locationRequested) {
-            locationPermissions.launchMultiplePermissionRequest()
-            locationRequested = true
-            return@LaunchedEffect
-        }
-        allPermissionsHandled = true
-    }
 
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -164,6 +149,16 @@ fun WeatherScreen(
 
     BackHandler(enabled = currentScreen != AppScreen.CityDetail) {
         viewModel.navigateBack()
+    }
+
+    if (showOnboarding && !allPermissionsHandled) {
+        PermissionOnboardingScreen(
+            onFinished = {
+                showOnboarding = false
+                allPermissionsHandled = true
+            }
+        )
+        return
     }
 
     CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {
