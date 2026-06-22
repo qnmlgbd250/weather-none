@@ -132,13 +132,10 @@ fun WeatherScreen(
             useDefaultLocation = false
             viewModel.ensureCurrentLocationCity()
             viewModel.fetchWeather()
+            viewModel.completeOnboarding()
         } else if (allPermissionsHandled) {
-            // Wait briefly for permission state to update after onboarding
-            kotlinx.coroutines.delay(300)
-            if (!hasLocationPermission) {
-                useDefaultLocation = true
-                viewModel.fetchDefaultWeather()
-            }
+            // Location denied - go back to onboarding
+            allPermissionsHandled = false
         }
     }
 
@@ -158,7 +155,6 @@ fun WeatherScreen(
     if (showOnboarding && !allPermissionsHandled) {
         PermissionOnboardingScreen(
             onFinished = {
-                viewModel.completeOnboarding()
                 allPermissionsHandled = true
             }
         )
@@ -273,20 +269,8 @@ fun WeatherScreen(
                                 }
                             }
                             is WeatherUiState.Error -> {
-                                ErrorContent(
-                                    message = state.message,
-                                    onRetry = {
-                                        if (hasLocationPermission && !useDefaultLocation) {
-                                            viewModel.fetchWeather()
-                                        } else {
-                                            viewModel.fetchDefaultWeather()
-                                        }
-                                    },
-                                    onUseDefault = {
-                                        useDefaultLocation = true
-                                        viewModel.fetchDefaultWeather()
-                                    }
-                                )
+                                // No location permission - go back to onboarding
+                                allPermissionsHandled = false
                             }
                         }
                     }
@@ -506,46 +490,5 @@ private fun WeatherContentBody(
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun ErrorContent(
-    message: String,
-    onRetry: () -> Unit,
-    onUseDefault: () -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.ErrorOutline,
-            contentDescription = null,
-            tint = TextSecondary.copy(alpha = 0.6f),
-            modifier = Modifier.size(64.dp)
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "\u52A0\u8F7D\u5931\u8D25",
-            style = MaterialTheme.typography.headlineMedium,
-            color = TextPrimary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onRetry,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) { Text("\u91CD\u8BD5") }
-        Spacer(modifier = Modifier.height(8.dp))
-        TextButton(onClick = onUseDefault) {
-            Text("\u4F7F\u7528\u9ED8\u8BA4\u4F4D\u7F6E", color = TextSecondary)
-        }
     }
 }
