@@ -19,6 +19,11 @@ val amapApiKey = providers.gradleProperty("AMAP_API_KEY")
     .get()
 val escapedAmapApiKey = amapApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
+val caiyunToken = providers.gradleProperty("CAIYUN_TOKEN")
+    .orElse(localProperties.getProperty("CAIYUN_TOKEN", ""))
+    .get()
+val escapedCaiyunToken = caiyunToken.replace("\\", "\\\\").replace("\"", "\\\"")
+
 android {
     namespace = "com.skypulse.weather"
     compileSdk = 34
@@ -27,8 +32,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 433
-        versionName = "2.0.83"
+        versionCode = 434
+        versionName = "2.0.84"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -36,6 +41,7 @@ android {
 
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
         buildConfigField("String", "AMAP_API_KEY", "\"$escapedAmapApiKey\"")
+        buildConfigField("String", "CAIYUN_TOKEN", "\"$escapedCaiyunToken\"")
     }
 
     signingConfigs {

@@ -1,5 +1,6 @@
 package com.skypulse.weather.repository
 
+import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.api.CaiyunApi
 import com.skypulse.weather.model.HourlyAqiValue
 import com.skypulse.weather.model.HourlySkycon
@@ -17,7 +18,7 @@ class WeatherRepository @Inject constructor(
 ) {
 
     companion object {
-        const val CAIYUN_TOKEN = "Y2FpeXVuIGFuZHJpb2QgYXBp"
+        val CAIYUN_TOKEN: String get() = BuildConfig.CAIYUN_TOKEN
     }
 
     suspend fun getWeather(
