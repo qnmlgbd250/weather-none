@@ -92,12 +92,13 @@ class WeatherViewModel @Inject constructor(
     val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
 
     // --- Permission onboarding ---
-    private val _showOnboarding = MutableStateFlow(true)
+    private val _showOnboarding = MutableStateFlow(false)
     val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
 
     init {
         viewModelScope.launch {
-            _showOnboarding.value = !permissionDataStore.isOnboardingCompleted()
+            val completed = permissionDataStore.isOnboardingCompleted()
+            _showOnboarding.value = !completed
         }
     }
 

@@ -1,4 +1,4 @@
-﻿package com.skypulse.weather.ui.screen
+package com.skypulse.weather.ui.screen
 
 import android.Manifest
 import androidx.activity.compose.BackHandler
@@ -105,7 +105,7 @@ fun WeatherScreen(
     val hasLocationPermission = locationPermissions.permissions.any { it.status.isGranted }
     var useDefaultLocation by rememberSaveable { mutableStateOf(false) }
 
-    var showOnboarding by rememberSaveable { mutableStateOf(true) }
+    val showOnboarding by viewModel.showOnboarding.collectAsState()
     var allPermissionsHandled by rememberSaveable { mutableStateOf(false) }
 
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
@@ -154,7 +154,7 @@ fun WeatherScreen(
     if (showOnboarding && !allPermissionsHandled) {
         PermissionOnboardingScreen(
             onFinished = {
-                showOnboarding = false
+                viewModel.completeOnboarding()
                 allPermissionsHandled = true
             }
         )
