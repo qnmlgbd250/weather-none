@@ -133,8 +133,12 @@ fun WeatherScreen(
             viewModel.ensureCurrentLocationCity()
             viewModel.fetchWeather()
         } else if (allPermissionsHandled) {
-            useDefaultLocation = true
-            viewModel.fetchDefaultWeather()
+            // Wait briefly for permission state to update after onboarding
+            kotlinx.coroutines.delay(300)
+            if (!hasLocationPermission) {
+                useDefaultLocation = true
+                viewModel.fetchDefaultWeather()
+            }
         }
     }
 
