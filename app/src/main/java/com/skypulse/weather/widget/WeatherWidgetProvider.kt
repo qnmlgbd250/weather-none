@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import androidx.work.*
 import com.skypulse.weather.data.CityManager
 import com.skypulse.weather.data.WeatherCache
@@ -11,6 +12,13 @@ import com.squareup.moshi.Moshi
 import java.util.concurrent.TimeUnit
 
 class WeatherWidgetProvider : AppWidgetProvider() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            try { enqueueWorker(context) } catch (_: Exception) {}
+        }
+    }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
