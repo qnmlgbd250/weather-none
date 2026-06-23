@@ -49,6 +49,8 @@ object WeatherWidgetUpdater {
                 val sizedBg = buildGradientBitmap(context, skycon, w, h)
                 views.setImageViewBitmap(R.id.widget_bg, sizedBg)
                 views.setImageViewResource(R.id.widget_pin, R.drawable.ic_widget_location)
+                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
+                views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
 
                 val intent = Intent(context, MainActivity::class.java)
                 val pending = PendingIntent.getActivity(
@@ -67,6 +69,8 @@ object WeatherWidgetUpdater {
                     val (w, h) = getWidgetSizePx(context, widgetId)
                     val sizedBg = buildGradientBitmap(context, null, w, h)
                     views.setImageViewBitmap(R.id.widget_bg, sizedBg)
+                    views.setBoolean(R.id.widget_root, "setClipToOutline", true)
+                    views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
                     views.setTextViewText(R.id.widget_city, "--")
                     views.setTextViewText(R.id.widget_temp, "--")
                     views.setTextViewText(R.id.widget_detail, "\u52a0\u8f7d\u4e2d...")
