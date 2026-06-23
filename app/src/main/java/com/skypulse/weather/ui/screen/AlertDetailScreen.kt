@@ -77,7 +77,8 @@ internal fun AlertDetailScreen(
                 itemsIndexed(alerts) { _, alert ->
                     val title = alert.title
                         ?.replace(Regex("\\[.*?\\]"), "")
-                        ?.replace(Regex("^.*发布"), "")
+                        ?.replace(Regex("^.*(?:发布|变更|解除|继续|更新)"), "")
+                        ?.replace(Regex("预警.*$"), "预警")
                         ?.trim()
                         ?.ifBlank { null }
                     val levelColor = alertLevelColor(alert.level, title ?: alert.title, AlertOrange)

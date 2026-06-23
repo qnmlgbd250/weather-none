@@ -127,7 +127,8 @@ class UrgentNotificationWorker(
                     
                     val cleanTitle = title
                         .replace(Regex("\\[.*?\\]"), "")
-                        .replace(Regex("^.*\u53d1\u5e03"), "")
+                        .replace(Regex("^.*(?:\u53d1\u5e03|\u53d8\u66f4|\u89e3\u9664|\u7ee7\u7eed|\u66f4\u65b0)"), "")
+                        .replace(Regex("\u9884\u8b66.*$"), "\u9884\u8b66")
                         .trim()
                     if (cleanTitle.isNotBlank()) {
                         if (dedup.shouldNotifyWarning(cleanTitle)) {

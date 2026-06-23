@@ -43,7 +43,8 @@ internal fun WeatherContent(
     val alerts = result?.alert?.content?.mapNotNull { content ->
         val title = content.title
             ?.replace(Regex("\\[.*?\\]"), "")
-            ?.replace(Regex("^.*发布"), "")
+            ?.replace(Regex("^.*(?:发布|变更|解除|继续|更新)"), "")
+            ?.replace(Regex("预警.*$"), "预警")
             ?.trim()
         if (!title.isNullOrBlank()) AlertItem(title, content.level) else null
     }.orEmpty()

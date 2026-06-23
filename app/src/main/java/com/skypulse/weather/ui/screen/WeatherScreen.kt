@@ -399,7 +399,8 @@ private fun WeatherContentBody(
     val alerts = result?.alert?.content?.mapNotNull { content ->
         val title = content.title
             ?.replace(Regex("\\[.*?\\]"), "")
-            ?.replace(Regex("^.*\u53D1\u5E03"), "")
+            ?.replace(Regex("^.*(?:\u53D1\u5E03|\u53D8\u66F4|\u89E3\u9664|\u7EE7\u7EED|\u66F4\u65B0)"), "")
+            ?.replace(Regex("\u9884\u8B66.*$"), "\u9884\u8B66")
             ?.trim()
         if (!title.isNullOrBlank()) AlertItem(title, content.level) else null
     }.orEmpty()
