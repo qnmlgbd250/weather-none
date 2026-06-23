@@ -75,11 +75,11 @@ internal fun AlertDetailScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 itemsIndexed(alerts) { _, alert ->
-                    val title = alert.title?.let { raw ->
-                        Regex("(暴雨|高温|大风|雷电|冰雹|暴雪|寒潮|霜冻|大雾|霾|道路结冰|干旱|沙尘暴)([黄橙红蓝]色预警)")
-                            .find(raw)?.value
-                            ?: raw.replace(Regex("\\\\[.*?\\\\]"), "").trim().ifBlank { null }
-                    }
+                    val title = alert.title
+                        ?.replace(Regex("\\[.*?\\]"), "")
+                        ?.replace(Regex("^.*发布"), "")
+                        ?.trim()
+                        ?.ifBlank { null }
                     val levelColor = alertLevelColor(alert.level, title ?: alert.title, AlertOrange)
 
                     // Glass-style card matching main page GlassCard
