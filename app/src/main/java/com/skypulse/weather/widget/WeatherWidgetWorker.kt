@@ -119,7 +119,15 @@ class WeatherWidgetWorker(
         val locationName = if (savedName != null && !WidgetRefreshPolicy.hasMovedSignificantly(distance)) {
             savedName
         } else {
-            locationManager.resolveLocationName(amapLocation)
+            val resolved = locationManager.resolveLocationName(amapLocation)
+            if (resolved == "未知位置") {
+                // AMap 地址字段为空，用经纬度反向地理编码兜底
+                locationManager.reverseGeocode(lon, lat).takeIf { it != "未知位置" }
+                    ?: savedName  // 反向编码也失败，用已保存的名字
+                    ?: resolved   // 都没有，保留"未知位置"
+            } else {
+                resolved
+            }
         }
         locationManager.saveCachedLocation(locationName, lon, lat)
 
