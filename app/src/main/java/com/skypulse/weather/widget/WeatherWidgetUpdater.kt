@@ -224,17 +224,19 @@ object WeatherWidgetUpdater {
     }
 
     /**
-     * Build gradient bitmap sized to the actual widget dimensions.
-     * No manual rounded corners — the system applies its own corner mask on API 31+.
-     * On older devices, the XML background handles shape.
+     * Build gradient bitmap sized to the actual widget dimensions with rounded corners.
      */
     private fun buildGradientBitmap(context: Context, skycon: String?, width: Int, height: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
+        val radius = 18f * context.resources.displayMetrics.density
+        val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
+        val path = Path().apply { addRoundRect(rect, radius, radius, Path.Direction.CW) }
+        canvas.clipPath(path)
         val colors = WeatherUtils.getWeatherGradient(skycon).map { it.toArgb() }.toIntArray()
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         paint.shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), colors, null, Shader.TileMode.CLAMP)
-        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), paint)
+        canvas.drawRect(rect, paint)
         return bitmap
     }
 }
