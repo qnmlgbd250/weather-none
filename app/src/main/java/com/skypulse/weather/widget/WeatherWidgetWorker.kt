@@ -13,6 +13,7 @@ import com.skypulse.weather.data.WeatherCache
 import com.skypulse.weather.data.WeatherDataStore
 import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.WeatherRepository
+import com.skypulse.weather.util.FileLogger
 import com.squareup.moshi.Moshi
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -23,6 +24,8 @@ class WeatherWidgetWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
+        val trigger = inputData.getString("trigger") ?: "periodic"
+        FileLogger.i("WidgetRefresh", "【WorkManager刷新】doWork 触发, trigger=$trigger, runAttemptCount=$runAttemptCount")
         return try {
             val context = applicationContext
             val moshi = Moshi.Builder().build()

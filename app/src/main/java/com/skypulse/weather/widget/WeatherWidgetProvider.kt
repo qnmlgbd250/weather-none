@@ -8,7 +8,11 @@ import android.content.Intent
 import androidx.work.*
 import com.skypulse.weather.data.CityManager
 import com.skypulse.weather.data.WeatherCache
+import com.skypulse.weather.util.FileLogger
 import com.squareup.moshi.Moshi
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class WeatherWidgetProvider : AppWidgetProvider() {
@@ -22,6 +26,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
+        FileLogger.i("WidgetRefresh", "【系统兜底刷新】onUpdate 触发, appWidgetIds=${appWidgetIds.toList()}")
         // 立即用缓存数据刷新 UI
         try {
             val moshi = Moshi.Builder().build()
@@ -34,8 +39,17 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         }
         // 启动后台 Worker 独立拉取最新数据
         enqueueWorker(context)
-        // 立即触发一次 Worker 执行，不等待 30 分钟周期
-        enqueueOneTimeWorker(context)
+        // 节流：10 分钟内不重复触发 onetime worker
+        val now = System.currentTimeMillis()
+        val prefs = context.getSharedPreferences("widget_throttle", Context.MODE_PRIVATE)
+        val lastTrigger = prefs.getLong("last_onetime_trigger", 0L)
+        if (now - lastTrigger >= ONETIME_THROTTLE_MS) {
+            prefs.edit().putLong("last_onetime_trigger", now).apply()
+            FileLogger.i("WidgetRefresh", "【节流通过】触发 onetime worker，距上次 ${(now - lastTrigger) / 1000}秒")
+            enqueueOneTimeWorker(context)
+        } else {
+            FileLogger.i("WidgetRefresh", "【节流拦截】跳过 onetime worker，距上次 ${(now - lastTrigger) / 1000}秒")
+        }
     }
 
     override fun onEnabled(context: Context) {
@@ -71,6 +85,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
         private const val WORK_NAME = "weather_widget_periodic"
         private const val WORK_NAME_ONETIME = "weather_widget_onetime"
+        private const val ONETIME_THROTTLE_MS = 10 * 60 * 1000L // 10 分钟节流
 
         /** Lightweight periodic refresh for location-aware widgets. */
         fun enqueueWorker(context: Context) {
@@ -93,7 +108,11 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
         /** 立即触发一次独立刷新 */
         private fun enqueueOneTimeWorker(context: Context) {
+            val inputData = Data.Builder()
+                .putString("trigger", "onetime")
+                .build()
             val request = OneTimeWorkRequestBuilder<WeatherWidgetWorker>()
+                .setInputData(inputData)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
