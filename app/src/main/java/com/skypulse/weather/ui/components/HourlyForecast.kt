@@ -34,8 +34,9 @@ private val SIDE_PADDING = 12
 
 // ============ Hourly Parameter Colors (低饱和度，兼容毛玻璃主题) ============
 private object HourlyParamColors {
-    // AQI
-    val AqiExcellent = Color(0xFF66BB6A)   // 优 0-50 醒目绿
+    // AQI — 两种绿色：亮色背景用深绿，暗色背景用浅绿
+    val AqiExcellentBright = Color(0xFF43A047)  // 优 亮色背景（晴/多云白天）
+    val AqiExcellentDark = Color(0xFF81C784)    // 优 暗色背景（阴/雨/夜）
     val AqiGood = Color(0xFFFFD54F)        // 良 51-100 暖金
     val AqiLight = Color(0xFFFFB74D)       // 轻度 101-150 柔橙
     val AqiModerate = Color(0xFFE57373)    // 中度 151-200 柔红
@@ -70,11 +71,11 @@ private fun aqiLabel(aqi: Double?): String {
     }
 }
 
-private fun aqiColor(aqi: Double?): Color {
+private fun aqiColor(aqi: Double?, isBrightBg: Boolean = true): Color {
     if (aqi == null) return TextDisabled
     val v = aqi.toInt()
     return when {
-        v <= 50 -> HourlyParamColors.AqiExcellent
+        v <= 50 -> if (isBrightBg) HourlyParamColors.AqiExcellentBright else HourlyParamColors.AqiExcellentDark
         v <= 100 -> HourlyParamColors.AqiGood
         v <= 150 -> HourlyParamColors.AqiLight
         v <= 200 -> HourlyParamColors.AqiModerate
@@ -209,6 +210,10 @@ private fun HourlyTemperatureChart(
 
     val probValues = precipitation?.map { it.probability ?: 0.0 } ?: List(temperatures.size) { 0.0 }
     val skyconValues = skycons?.map { it.value } ?: List(temperatures.size) { null }
+
+    // 判断当前天气背景是否为亮色（用于AQI颜色自适应）
+    val primarySkycon = skyconValues.firstOrNull()
+    val isBrightBg = theme.isDay && WeatherUtils.isBrightBackground(primarySkycon, true)
 
     val itemWidthDp = HOUR_WIDTH.dp
     val sidePad = SIDE_PADDING.dp
@@ -402,13 +407,15 @@ private fun HourlyTemperatureChart(
             Spacer(modifier = Modifier.height(6.dp))
         }
 
+        val tagWidth = 46.dp
+
         // AQI Row
         if (showAqi) {
             Row(modifier = Modifier.width(totalWidth).padding(horizontal = sidePad)) {
                 temperatures.forEachIndexed { index, _ ->
                     val aqi = aqiValues?.getOrNull(index)?.value?.chn
                     val label = aqiLabel(aqi)
-                    val color = aqiColor(aqi)
+                    val color = aqiColor(aqi, isBrightBg)
                     Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                         if (label.isNotEmpty()) {
                             Text(
@@ -418,9 +425,10 @@ private fun HourlyTemperatureChart(
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 modifier = Modifier
+                                    .width(tagWidth)
                                     .clip(ParamTagShape)
-                                    .background(color.copy(alpha = 0.15f))
-                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                    .background(Color.White.copy(alpha = 0.25f))
+                                    .padding(vertical = 1.dp)
                             )
                         }
                     }
@@ -445,9 +453,10 @@ private fun HourlyTemperatureChart(
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 modifier = Modifier
+                                    .width(tagWidth)
                                     .clip(ParamTagShape)
-                                    .background(color.copy(alpha = 0.15f))
-                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                    .background(Color.White.copy(alpha = 0.25f))
+                                    .padding(vertical = 1.dp)
                             )
                         }
                     }
@@ -462,19 +471,19 @@ private fun HourlyTemperatureChart(
                 temperatures.forEachIndexed { index, _ ->
                     val wind = winds?.getOrNull(index)
                     val label = windLabel(wind)
-                    val color = windColor(wind)
                     Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                         if (label.isNotEmpty()) {
                             Text(
                                 text = label,
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = color,
+                                color = TextSecondary,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
                                 modifier = Modifier
+                                    .width(tagWidth)
                                     .clip(ParamTagShape)
-                                    .background(color.copy(alpha = 0.15f))
-                                    .padding(horizontal = 3.dp, vertical = 1.dp)
+                                    .background(Color.White.copy(alpha = 0.25f))
+                                    .padding(vertical = 1.dp)
                             )
                         }
                     }

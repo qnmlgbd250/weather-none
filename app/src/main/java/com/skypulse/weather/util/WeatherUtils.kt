@@ -209,19 +209,19 @@ object WeatherUtils {
     fun formatWindSpeed(speed: Double?): String {
         if (speed == null) return "--"
         return when {
-            speed < 1 -> "0级"
-            speed < 6 -> "1级"
-            speed < 12 -> "2级"
-            speed < 20 -> "3级"
-            speed < 29 -> "4级"
-            speed < 39 -> "5级"
-            speed < 50 -> "6级"
-            speed < 62 -> "7级"
-            speed < 75 -> "8级"
-            speed < 89 -> "9级"
-            speed < 103 -> "10级"
-            speed < 117 -> "11级"
-            else -> "12级"
+            speed < 1 -> "0"
+            speed < 6 -> "1"
+            speed < 12 -> "2"
+            speed < 20 -> "3"
+            speed < 29 -> "4"
+            speed < 39 -> "5"
+            speed < 50 -> "6"
+            speed < 62 -> "7"
+            speed < 75 -> "8"
+            speed < 89 -> "9"
+            speed < 103 -> "10"
+            speed < 117 -> "11"
+            else -> "12"
         }
     }
 
