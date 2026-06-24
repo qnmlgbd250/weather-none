@@ -154,7 +154,20 @@ data class HourlyForecast(
     val pressure: List<HourlyValue>? = null,
     val visibility: List<HourlyValue>? = null,
     val dswrf: List<HourlyValue>? = null,
-    val air_quality: HourlyAirQuality? = null
+    val air_quality: HourlyAirQuality? = null,
+    val life_index: HourlyLifeIndex? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class HourlyLifeIndex(
+    val ultraviolet: List<HourlyUvItem>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class HourlyUvItem(
+    val datetime: String? = null,
+    val index: String? = null,
+    val desc: String? = null
 )
 
 @JsonClass(generateAdapter = true)

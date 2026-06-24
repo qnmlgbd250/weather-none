@@ -3,7 +3,9 @@ package com.skypulse.weather.repository
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.api.CaiyunApi
 import com.skypulse.weather.model.HourlyAqiValue
+import com.skypulse.weather.model.HourlyLifeIndex
 import com.skypulse.weather.model.HourlySkycon
+import com.skypulse.weather.model.HourlyUvItem
 import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.model.HourlyWind
 import com.skypulse.weather.model.WeatherResponse
@@ -65,6 +67,9 @@ class WeatherRepository @Inject constructor(
             air_quality = hourly.air_quality?.copy(
                 aqi = hourly.air_quality.aqi?.filterHourlyAqiFrom(threshold),
                 pm25 = hourly.air_quality.pm25?.filterHourlyValuesFrom(threshold)
+            ),
+            life_index = hourly.life_index?.copy(
+                ultraviolet = hourly.life_index.ultraviolet?.filterHourlyUvFrom(threshold)
             )
         )
         return copy(result = result.copy(hourly = filteredHourly))
@@ -112,6 +117,12 @@ class WeatherRepository @Inject constructor(
     }
 
     private fun List<HourlyAqiValue>.filterHourlyAqiFrom(threshold: OffsetDateTime): List<HourlyAqiValue> {
+        return filter { item ->
+            parseDateTime(item.datetime)?.let { !it.isBefore(threshold) } ?: true
+        }
+    }
+
+    private fun List<HourlyUvItem>.filterHourlyUvFrom(threshold: OffsetDateTime): List<HourlyUvItem> {
         return filter { item ->
             parseDateTime(item.datetime)?.let { !it.isBefore(threshold) } ?: true
         }

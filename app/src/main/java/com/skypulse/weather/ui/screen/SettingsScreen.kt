@@ -54,6 +54,9 @@ fun SettingsScreen(
     var tempChangeAlert by remember { mutableStateOf(prefs.getBoolean("temp_change_alert", false)) }
     var windAlert by remember { mutableStateOf(prefs.getBoolean("wind_alert", false)) }
     var typhoonAlert by remember { mutableStateOf(prefs.getBoolean("typhoon_alert", true)) }
+    var showHourlyAqi by remember { mutableStateOf(prefs.getBoolean("show_hourly_aqi", true)) }
+    var showHourlyUv by remember { mutableStateOf(prefs.getBoolean("show_hourly_uv", true)) }
+    var showHourlyWind by remember { mutableStateOf(prefs.getBoolean("show_hourly_wind", true)) }
     fun updateAlertPreference(key: String, enabled: Boolean) {
         prefs.edit().putBoolean(key, enabled).apply()
         WeatherNotificationScheduler.scheduleIfNeeded(context.applicationContext)
@@ -144,6 +147,24 @@ fun SettingsScreen(
                     IosDivider()
                     ToggleItem("极端天气", typhoonAlert) {
                         typhoonAlert = it; updateAlertPreference("typhoon_alert", it)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Hourly display settings
+                SectionHeader("逐小时显示")
+                IosCard {
+                    ToggleItem("空气质量", showHourlyAqi) {
+                        showHourlyAqi = it; prefs.edit().putBoolean("show_hourly_aqi", it).apply()
+                    }
+                    IosDivider()
+                    ToggleItem("紫外线", showHourlyUv) {
+                        showHourlyUv = it; prefs.edit().putBoolean("show_hourly_uv", it).apply()
+                    }
+                    IosDivider()
+                    ToggleItem("风力", showHourlyWind) {
+                        showHourlyWind = it; prefs.edit().putBoolean("show_hourly_wind", it).apply()
                     }
                 }
 
