@@ -419,7 +419,7 @@ private fun HourlyTemperatureChart(
             Spacer(modifier = Modifier.height(6.dp))
         }
 
-        val tagWidth = 46.dp
+        val tagWidth = 48.dp
 
         // AQI Row
         if (showAqi) {
@@ -450,7 +450,7 @@ private fun HourlyTemperatureChart(
 
         // UV Row
         if (showUv) {
-            if (showAqi) Spacer(modifier = Modifier.height(5.dp))
+            if (showAqi) Spacer(modifier = Modifier.height(7.5.dp))
             Row(modifier = Modifier.width(totalWidth).padding(horizontal = sidePad)) {
                 temperatures.forEachIndexed { index, _ ->
                     val uvIndex = uvItems?.getOrNull(index)?.index
@@ -478,7 +478,7 @@ private fun HourlyTemperatureChart(
 
         // Wind Row
         if (showWind) {
-            if (showAqi || showUv) Spacer(modifier = Modifier.height(5.dp))
+            if (showAqi || showUv) Spacer(modifier = Modifier.height(7.5.dp))
             Row(modifier = Modifier.width(totalWidth).padding(horizontal = sidePad)) {
                 temperatures.forEachIndexed { index, _ ->
                     val wind = winds?.getOrNull(index)
@@ -505,7 +505,7 @@ private fun HourlyTemperatureChart(
 
         // Gust Row
         if (showWindGust) {
-            if (showAqi || showUv || showWind) Spacer(modifier = Modifier.height(5.dp))
+            if (showAqi || showUv || showWind) Spacer(modifier = Modifier.height(7.5.dp))
             Row(modifier = Modifier.width(totalWidth).padding(horizontal = sidePad)) {
                 temperatures.forEachIndexed { index, _ ->
                     val gustSpeed = gustValues?.getOrNull(index)?.value
