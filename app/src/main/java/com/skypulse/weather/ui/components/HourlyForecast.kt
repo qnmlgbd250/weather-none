@@ -129,6 +129,14 @@ private fun windColor(wind: HourlyWind?): Color {
     }
 }
 
+private fun gustLabel(speed: Double?): String {
+    if (speed == null) return ""
+    val level = WeatherUtils.formatWindSpeed(speed)
+    if (level == "--") return ""
+    return "阵风${level}级"
+}
+
+
 private val ParamTagShape = RoundedCornerShape(4.dp)
 
 @Composable
@@ -145,6 +153,7 @@ fun HourlyForecastCard(
     val showAqi = prefs.getBoolean("show_hourly_aqi", true)
     val showUv = prefs.getBoolean("show_hourly_uv", true)
     val showWind = prefs.getBoolean("show_hourly_wind", true)
+    val showWindGust = prefs.getBoolean("show_hourly_wind_gust", false)
 
     val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
@@ -173,7 +182,8 @@ fun HourlyForecastCard(
                 hourlyData = data,
                 showAqi = showAqi,
                 showUv = showUv,
-                showWind = showWind
+                showWind = showWind,
+                showWindGust = showWindGust
             )
         }
     }
@@ -184,13 +194,15 @@ private fun HourlyTemperatureChart(
     hourlyData: HourlyForecast,
     showAqi: Boolean = true,
     showUv: Boolean = true,
-    showWind: Boolean = true
+    showWind: Boolean = true,
+    showWindGust: Boolean = true
 ) {
-    val showAnyParam = showAqi || showUv || showWind
+    val showAnyParam = showAqi || showUv || showWind || showWindGust
     val temperatures = hourlyData.temperature?.take(24) ?: return
     val skycons = hourlyData.skycon?.take(24)
     val precipitation = hourlyData.precipitation?.take(24)
     val winds = hourlyData.wind?.take(24)
+    val gustValues = hourlyData.gust?.take(24)
     val aqiValues = hourlyData.air_quality?.aqi?.take(24)
     val uvItems = hourlyData.life_index?.ultraviolet?.take(24)
 
@@ -471,6 +483,33 @@ private fun HourlyTemperatureChart(
                 temperatures.forEachIndexed { index, _ ->
                     val wind = winds?.getOrNull(index)
                     val label = windLabel(wind)
+                    Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
+                        if (label.isNotEmpty()) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                color = TextSecondary,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .width(tagWidth)
+                                    .clip(ParamTagShape)
+                                    .background(Color.White.copy(alpha = 0.25f))
+                                    .padding(vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Gust Row
+        if (showWindGust) {
+            if (showAqi || showUv || showWind) Spacer(modifier = Modifier.height(5.dp))
+            Row(modifier = Modifier.width(totalWidth).padding(horizontal = sidePad)) {
+                temperatures.forEachIndexed { index, _ ->
+                    val gustSpeed = gustValues?.getOrNull(index)?.value
+                    val label = gustLabel(gustSpeed)
                     Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                         if (label.isNotEmpty()) {
                             Text(

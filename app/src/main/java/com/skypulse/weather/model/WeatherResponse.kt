@@ -148,6 +148,7 @@ data class HourlyForecast(
     val temperature: List<HourlyValue>? = null,
     val apparent_temperature: List<HourlyValue>? = null,
     val wind: List<HourlyWind>? = null,
+    val gust: List<HourlyValue>? = null,
     val humidity: List<HourlyValue>? = null,
     val cloudrate: List<HourlyValue>? = null,
     val skycon: List<HourlySkycon>? = null,

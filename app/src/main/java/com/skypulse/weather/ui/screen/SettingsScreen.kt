@@ -57,6 +57,7 @@ fun SettingsScreen(
     var showHourlyAqi by remember { mutableStateOf(prefs.getBoolean("show_hourly_aqi", true)) }
     var showHourlyUv by remember { mutableStateOf(prefs.getBoolean("show_hourly_uv", true)) }
     var showHourlyWind by remember { mutableStateOf(prefs.getBoolean("show_hourly_wind", true)) }
+    var showHourlyWindGust by remember { mutableStateOf(prefs.getBoolean("show_hourly_wind_gust", false)) }
     fun updateAlertPreference(key: String, enabled: Boolean) {
         prefs.edit().putBoolean(key, enabled).apply()
         WeatherNotificationScheduler.scheduleIfNeeded(context.applicationContext)
@@ -165,6 +166,10 @@ fun SettingsScreen(
                     IosDivider()
                     ToggleItem("风力", showHourlyWind) {
                         showHourlyWind = it; prefs.edit().putBoolean("show_hourly_wind", it).apply()
+                    }
+                    IosDivider()
+                    ToggleItem("阵风", showHourlyWindGust) {
+                        showHourlyWindGust = it; prefs.edit().putBoolean("show_hourly_wind_gust", it).apply()
                     }
                 }
 

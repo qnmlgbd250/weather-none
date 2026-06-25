@@ -212,7 +212,7 @@ object WeatherUtils {
             speed < 1 -> "0"
             speed < 6 -> "1"
             speed < 12 -> "2"
-            speed < 20 -> "3"
+            speed < 19 -> "3"
             speed < 29 -> "4"
             speed < 39 -> "5"
             speed < 50 -> "6"
@@ -220,8 +220,13 @@ object WeatherUtils {
             speed < 75 -> "8"
             speed < 89 -> "9"
             speed < 103 -> "10"
-            speed < 117 -> "11"
-            else -> "12"
+            speed < 118 -> "11"
+            speed < 134 -> "12"
+            speed < 150 -> "13"
+            speed < 167 -> "14"
+            speed < 184 -> "15"
+            speed < 202 -> "16"
+            else -> "17"
         }
     }
 

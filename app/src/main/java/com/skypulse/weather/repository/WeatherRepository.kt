@@ -58,6 +58,7 @@ class WeatherRepository @Inject constructor(
             temperature = hourly.temperature?.filterHourlyValuesFrom(threshold),
             apparent_temperature = hourly.apparent_temperature?.filterHourlyValuesFrom(threshold),
             wind = hourly.wind?.filterHourlyWindFrom(threshold),
+            gust = hourly.gust?.filterHourlyValuesFrom(threshold),
             humidity = hourly.humidity?.filterHourlyValuesFrom(threshold),
             cloudrate = hourly.cloudrate?.filterHourlyValuesFrom(threshold),
             skycon = hourly.skycon?.filterHourlySkyconFrom(threshold),
