@@ -29,6 +29,7 @@ object WeatherWidgetUpdater {
             val realtime = weather?.result?.realtime
             val daily = weather?.result?.daily
             val skycon = realtime?.skycon
+            val isDay = skycon?.contains("NIGHT") != true
             val info = WeatherUtils.getWeatherInfo(skycon)
             val tempText = WeatherUtils.formatTemperature(realtime?.temperature)
             val todayTemp = WeatherUtils.todayTemperature(daily)
@@ -46,7 +47,7 @@ object WeatherWidgetUpdater {
                     views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
                 }
                 val (w, h) = getWidgetSizePx(context, widgetId)
-                val sizedBg = buildGradientBitmap(context, skycon, w, h)
+                val sizedBg = buildGradientBitmap(context, skycon, w, h, isDay)
                 views.setImageViewBitmap(R.id.widget_bg, sizedBg)
                 views.setImageViewResource(R.id.widget_pin, R.drawable.ic_widget_location)
                 views.setBoolean(R.id.widget_root, "setClipToOutline", true)
@@ -231,15 +232,43 @@ object WeatherWidgetUpdater {
      * Build gradient bitmap sized to the actual widget dimensions with rounded corners.
      * Uses drawRoundRect for maximum compatibility across all devices.
      */
-    private fun buildGradientBitmap(context: Context, skycon: String?, width: Int, height: Int): Bitmap {
+    private fun buildGradientBitmap(context: Context, skycon: String?, width: Int, height: Int, isDay: Boolean = true): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val radius = 18f * context.resources.displayMetrics.density
+        val density = context.resources.displayMetrics.density
+        val radius = 18f * density
         val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
-        val colors = WeatherUtils.getWeatherGradient(skycon).map { it.toArgb() }.toIntArray()
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        paint.shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), colors, null, Shader.TileMode.CLAMP)
-        canvas.drawRoundRect(rect, radius, radius, paint)
+
+        // 1. 底层渐变
+        val baseColors = WeatherUtils.getWeatherGradient(skycon, isDay).map { it.toArgb() }.toIntArray()
+        val baseAlpha = if (isDay) 0.85f else 1.0f
+        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            alpha = (255 * baseAlpha).toInt()
+            shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), baseColors, null, Shader.TileMode.CLAMP)
+        }
+        canvas.drawRoundRect(rect, radius, radius, basePaint)
+
+        // 2. 毛玻璃蒙版（上浅下深，模拟真实光影）
+        val frostColors = if (isDay) {
+            intArrayOf(Color.parseColor("#1CFFFFFF"), Color.parseColor("#08FFFFFF"))
+        } else {
+            intArrayOf(Color.parseColor("#20B8D4E8"), Color.parseColor("#08B8D4E8"))
+        }
+        val frostPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(0f, 0f, 0f, height.toFloat(), frostColors, null, Shader.TileMode.CLAMP)
+        }
+        canvas.drawRoundRect(rect, radius, radius, frostPaint)
+
+        // 3. 玻璃边缘高光
+        val borderColor = if (isDay) Color.parseColor("#33FFFFFF") else Color.parseColor("#22FFFFFF")
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = borderColor
+            strokeWidth = 1f * density
+        }
+        val borderRect = RectF(0.5f * density, 0.5f * density, width - 0.5f * density, height - 0.5f * density)
+        canvas.drawRoundRect(borderRect, radius, radius, borderPaint)
+
         return bitmap
     }
 }
