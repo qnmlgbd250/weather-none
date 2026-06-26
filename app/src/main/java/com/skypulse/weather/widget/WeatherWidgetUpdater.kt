@@ -239,27 +239,42 @@ object WeatherWidgetUpdater {
         val radius = 18f * density
         val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
 
-        // 1. 底层渐变
+        // 1. 壁纸高斯模糊底层
+        val blurredWallpaper = getBlurredWallpaper(context, width, height)
+        if (blurredWallpaper != null) {
+            canvas.drawBitmap(blurredWallpaper, 0f, 0f, null)
+            blurredWallpaper.recycle()
+        }
+
+        // 2. 天气渐变叠加（高遮盖，壁纸只留色调轮廓）
         val baseColors = WeatherUtils.getWeatherGradient(skycon, isDay).map { it.toArgb() }.toIntArray()
-        val baseAlpha = if (isDay) 0.85f else 1.0f
+        val baseAlpha = if (isDay) 0.95f else 0.97f
         val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             alpha = (255 * baseAlpha).toInt()
             shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), baseColors, null, Shader.TileMode.CLAMP)
         }
         canvas.drawRoundRect(rect, radius, radius, basePaint)
 
-        // 2. 毛玻璃蒙版（上浅下深，模拟真实光影）
+        // 3. 毛玻璃蒙版（上浅下深，模拟真实光影）
         val frostColors = if (isDay) {
-            intArrayOf(Color.parseColor("#1CFFFFFF"), Color.parseColor("#08FFFFFF"))
+            intArrayOf(Color.parseColor("#80FFFFFF"), Color.parseColor("#50FFFFFF"))
         } else {
-            intArrayOf(Color.parseColor("#20B8D4E8"), Color.parseColor("#08B8D4E8"))
+            intArrayOf(Color.parseColor("#80B8D4E8"), Color.parseColor("#50B8D4E8"))
         }
         val frostPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(0f, 0f, 0f, height.toFloat(), frostColors, null, Shader.TileMode.CLAMP)
         }
         canvas.drawRoundRect(rect, radius, radius, frostPaint)
 
-        // 3. 玻璃边缘高光
+        // 4. 亚克力亮度层（SCREEN混合，提亮背景模拟亚克力透光感）
+        val lumiAlpha = if (isDay) 0x18 else 0x0C
+        val lumiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(lumiAlpha, 255, 255, 255)
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
+        }
+        canvas.drawRoundRect(rect, radius, radius, lumiPaint)
+
+        // 6. 玻璃边缘高光
         val borderColor = if (isDay) Color.parseColor("#33FFFFFF") else Color.parseColor("#22FFFFFF")
         val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -271,4 +286,58 @@ object WeatherWidgetUpdater {
 
         return bitmap
     }
+
+    /**
+     * 获取壁纸并高斯模糊。缩放到小尺寸后模糊，兼顾效果和性能。
+     */
+    @Suppress("DEPRECATION")
+    private fun getBlurredWallpaper(context: Context, width: Int, height: Int): Bitmap? {
+        return try {
+            val wm = android.app.WallpaperManager.getInstance(context)
+            val drawable = wm.peekDrawable() ?: wm.drawable ?: return null
+            val dw = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else width
+            val dh = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else height
+            // 先以原始尺寸绘制壁纸
+            val raw = Bitmap.createBitmap(dw, dh, Bitmap.Config.ARGB_8888)
+            val rawCanvas = Canvas(raw)
+            drawable.setBounds(0, 0, dw, dh)
+            drawable.draw(rawCanvas)
+            // 缩小到极小尺寸再模糊，缩小越多等效模糊半径越大
+            // 1/10 缩放 + 多次模糊，足够产生虚化效果
+            val sampleW = (width / 10).coerceAtLeast(1)
+            val sampleH = (height / 10).coerceAtLeast(1)
+            val scaled = Bitmap.createScaledBitmap(raw, sampleW, sampleH, true)
+            raw.recycle()
+            // 多次模糊叠加（10次25px）
+            var blurred = scaled
+            for (i in 1..20) { blurred = blurBitmap(context, blurred, 25f) }
+            scaled.recycle()
+            // 放大回 widget 尺寸
+            Bitmap.createScaledBitmap(blurred, width, height, true).also { blurred.recycle() }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
+     * RenderScript 高斯模糊
+     */
+    @Suppress("DEPRECATION")
+    private fun blurBitmap(context: Context, source: Bitmap, radius: Float): Bitmap {
+        val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
+        val rs = android.renderscript.RenderScript.create(context)
+        val input = android.renderscript.Allocation.createFromBitmap(rs, source)
+        val out = android.renderscript.Allocation.createFromBitmap(rs, output)
+        val script = android.renderscript.ScriptIntrinsicBlur.create(rs, android.renderscript.Element.U8_4(rs))
+        script.setRadius(radius.coerceIn(1f, 25f))
+        script.setInput(input)
+        script.forEach(out)
+        out.copyTo(output)
+        rs.destroy()
+        return output
+    }
+
+    /**
+     * 生成粗颗粒噪点（小尺寸生成后放大，产生更大的磨砂颗粒感）
+     */
 }
