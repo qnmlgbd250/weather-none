@@ -2,7 +2,6 @@ package com.skypulse.weather.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
-import android.os.Bundle
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -108,6 +107,7 @@ object WeatherWidgetUpdater {
         if (bitmap != null) iconCache.put(icon, bitmap)
         return bitmap
     }
+}
 
     private fun renderLottieIcon(context: Context, icon: String): Bitmap? {
         return try {
@@ -229,8 +229,8 @@ object WeatherWidgetUpdater {
     }
 
     /**
-     * Build gradient bitmap sized to the actual widget dimensions with rounded corners.
-     * Uses drawRoundRect for maximum compatibility across all devices.
+     * Build flat gradient bitmap sized to the actual widget dimensions with rounded corners.
+     * Premium flat design — vibrant, luminous, no glass no blur.
      */
     private fun buildGradientBitmap(context: Context, skycon: String?, width: Int, height: Int, isDay: Boolean = true): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -239,105 +239,49 @@ object WeatherWidgetUpdater {
         val radius = 18f * density
         val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
 
-        // 1. 壁纸高斯模糊底层
-        val blurredWallpaper = getBlurredWallpaper(context, width, height)
-        if (blurredWallpaper != null) {
-            canvas.drawBitmap(blurredWallpaper, 0f, 0f, null)
-            blurredWallpaper.recycle()
+        // Base gradient — 5-stop weather gradient
+        val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay).map { it.toArgb() }.toIntArray()
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), gradientColors, null, Shader.TileMode.CLAMP)
+            canvas.drawRoundRect(rect, radius, radius, this)
         }
 
-        // 2. 天气渐变叠加（高遮盖，壁纸只留色调轮廓）
-        val baseColors = WeatherUtils.getWeatherGradient(skycon, isDay).map { it.toArgb() }.toIntArray()
-        val baseAlpha = if (isDay) 0.95f else 0.97f
-        val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            alpha = (255 * baseAlpha).toInt()
-            shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), baseColors, null, Shader.TileMode.CLAMP)
+        // Central volume light — luminous core for "通透" feel
+        val coreAlpha = if (isDay) 0x5A else 0x36
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                width * 0.5f, height * 0.4f,
+                width * 0.6f,
+                intArrayOf(Color.argb(coreAlpha, 255, 255, 255), Color.argb(coreAlpha / 3, 255, 255, 255), Color.argb(0, 255, 255, 255)),
+                floatArrayOf(0f, 0.45f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawRoundRect(rect, radius, radius, this)
         }
-        canvas.drawRoundRect(rect, radius, radius, basePaint)
 
-        // 3. 毛玻璃蒙版（上浅下深，模拟真实光影）
-        val frostColors = if (isDay) {
-            intArrayOf(Color.parseColor("#80FFFFFF"), Color.parseColor("#50FFFFFF"))
-        } else {
-            intArrayOf(Color.parseColor("#80B8D4E8"), Color.parseColor("#50B8D4E8"))
+        // Warm ambient glow from top-right
+        val glowAlpha = if (isDay) 0x38 else 0x1E
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                width - 40f * density, 30f * density,
+                width * 0.7f,
+                intArrayOf(Color.argb(glowAlpha, 255, 255, 255), Color.argb(glowAlpha / 4, 255, 255, 255), Color.argb(0, 255, 255, 255)),
+                floatArrayOf(0f, 0.3f, 1f),
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawRoundRect(rect, radius, radius, this)
         }
-        val frostPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(0f, 0f, 0f, height.toFloat(), frostColors, null, Shader.TileMode.CLAMP)
-        }
-        canvas.drawRoundRect(rect, radius, radius, frostPaint)
 
-        // 4. 亚克力亮度层（SCREEN混合，提亮背景模拟亚克力透光感）
-        val lumiAlpha = if (isDay) 0x18 else 0x0C
-        val lumiPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(lumiAlpha, 255, 255, 255)
-            xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
+        // Bottom-up soft light for card depth
+        val bottomAlpha = if (isDay) 0x30 else 0x1C
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(
+                0f, height * 0.55f, 0f, height.toFloat(),
+                intArrayOf(Color.argb(0, 255, 255, 255), Color.argb(bottomAlpha, 255, 255, 255)),
+                null, Shader.TileMode.CLAMP
+            )
+            canvas.drawRoundRect(rect, radius, radius, this)
         }
-        canvas.drawRoundRect(rect, radius, radius, lumiPaint)
-
-        // 6. 玻璃边缘高光
-        val borderColor = if (isDay) Color.parseColor("#33FFFFFF") else Color.parseColor("#22FFFFFF")
-        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = borderColor
-            strokeWidth = 1f * density
-        }
-        val borderRect = RectF(0.5f * density, 0.5f * density, width - 0.5f * density, height - 0.5f * density)
-        canvas.drawRoundRect(borderRect, radius, radius, borderPaint)
 
         return bitmap
     }
-
-    /**
-     * 获取壁纸并高斯模糊。缩放到小尺寸后模糊，兼顾效果和性能。
-     */
-    @Suppress("DEPRECATION")
-    private fun getBlurredWallpaper(context: Context, width: Int, height: Int): Bitmap? {
-        return try {
-            val wm = android.app.WallpaperManager.getInstance(context)
-            val drawable = wm.peekDrawable() ?: wm.drawable ?: return null
-            val dw = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else width
-            val dh = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else height
-            // 先以原始尺寸绘制壁纸
-            val raw = Bitmap.createBitmap(dw, dh, Bitmap.Config.ARGB_8888)
-            val rawCanvas = Canvas(raw)
-            drawable.setBounds(0, 0, dw, dh)
-            drawable.draw(rawCanvas)
-            // 缩小到极小尺寸再模糊，缩小越多等效模糊半径越大
-            // 1/10 缩放 + 多次模糊，足够产生虚化效果
-            val sampleW = (width / 10).coerceAtLeast(1)
-            val sampleH = (height / 10).coerceAtLeast(1)
-            val scaled = Bitmap.createScaledBitmap(raw, sampleW, sampleH, true)
-            raw.recycle()
-            // 多次模糊叠加（10次25px）
-            var blurred = scaled
-            for (i in 1..20) { blurred = blurBitmap(context, blurred, 25f) }
-            scaled.recycle()
-            // 放大回 widget 尺寸
-            Bitmap.createScaledBitmap(blurred, width, height, true).also { blurred.recycle() }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    /**
-     * RenderScript 高斯模糊
-     */
-    @Suppress("DEPRECATION")
-    private fun blurBitmap(context: Context, source: Bitmap, radius: Float): Bitmap {
-        val output = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
-        val rs = android.renderscript.RenderScript.create(context)
-        val input = android.renderscript.Allocation.createFromBitmap(rs, source)
-        val out = android.renderscript.Allocation.createFromBitmap(rs, output)
-        val script = android.renderscript.ScriptIntrinsicBlur.create(rs, android.renderscript.Element.U8_4(rs))
-        script.setRadius(radius.coerceIn(1f, 25f))
-        script.setInput(input)
-        script.forEach(out)
-        out.copyTo(output)
-        rs.destroy()
-        return output
-    }
-
-    /**
-     * 生成粗颗粒噪点（小尺寸生成后放大，产生更大的磨砂颗粒感）
-     */
-}
