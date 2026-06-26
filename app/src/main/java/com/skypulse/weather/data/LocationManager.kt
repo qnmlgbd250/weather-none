@@ -150,8 +150,9 @@ class LocationManager @Inject constructor(
         val aoi = location.aoiName?.takeIf { it.isNotBlank() }
         val street = location.street?.takeIf { it.isNotBlank() }
         val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
+        val address = location.address?.takeIf { it.isNotBlank() }
 
-        return buildString {
+        val result = buildString {
             // Prefix: district or city
             when {
                 district != null -> append(district)
@@ -168,9 +169,23 @@ class LocationManager @Inject constructor(
             }
             // Final fallback
             if (isEmpty()) {
-                location.address?.takeIf { it.isNotBlank() }?.let { append(it) }
+                address?.let { append(it) }
             }
-        }.ifEmpty { "\u672a\u77e5\u4f4d\u7f6e" }
+        }
+
+        if (result.isBlank()) {
+            // \u6240\u6709\u5730\u5740\u5b57\u6bb5\u4e3a\u7a7a\uff0c\u8bb0\u5f55\u539f\u59cb\u6570\u636e\u4fbf\u4e8e\u6392\u67e5
+            Log.w(TAG, "resolveLocationName: \u6240\u6709\u5730\u5740\u5b57\u6bb5\u4e3a\u7a7a, " +
+                "city=${location.city}, district=${location.district}, " +
+                "aoiName=${location.aoiName}, street=${location.street}, " +
+                "address=${location.address}, errorCode=${location.errorCode}, " +
+                "locationDetail=${location.locationDetail}")
+            // city-level \u515c\u5e95\uff1a\u6709\u57ce\u5e02\u540d\u603b\u6bd4"\u672a\u77e5\u4f4d\u7f6e"\u597d
+            if (city != null) return city
+            return "\u672a\u77e5\u4f4d\u7f6e"
+        }
+
+        return result
     }
     /**
      * Reverse geocode via AMap SDK. Falls back to Android Geocoder on failure.
@@ -197,18 +212,17 @@ class LocationManager @Inject constructor(
                             if (cont.isActive) {
                                 if (rCode == 1000 && result?.regeocodeAddress != null) {
                                     val addr = result.regeocodeAddress
+                                    val rCity = addr.city?.takeIf { it.isNotBlank() }
+                                    val rDistrict = addr.district?.takeIf { it.isNotBlank() && it != rCity }
+                                    val pois = addr.pois?.filter { !it.title.isNullOrBlank() }
+                                    val poi = pois?.firstOrNull()
+                                    val street = addr.streetNumber?.street?.takeIf { it.isNotBlank() }
+                                    val streetNum = addr.streetNumber?.number?.takeIf { it.isNotBlank() }
                                     val name = buildString {
-                                        val rCity = addr.city?.takeIf { it.isNotBlank() }
-                                        val rDistrict = addr.district?.takeIf { it.isNotBlank() && it != rCity }
                                         when {
                                             rDistrict != null -> append(rDistrict)
                                             rCity != null -> append(rCity)
                                         }
-                                        val pois = addr.pois?.filter { !it.title.isNullOrBlank() }
-                                        val poi = pois?.firstOrNull()
-                                            ?: pois?.firstOrNull()
-                                        val street = addr.streetNumber?.street?.takeIf { it.isNotBlank() }
-                                        val streetNum = addr.streetNumber?.number?.takeIf { it.isNotBlank() }
                                         when {
                                             poi != null -> append(" ${poi.title}")
                                             street != null -> {
@@ -220,8 +234,12 @@ class LocationManager @Inject constructor(
                                             addr.formatAddress?.takeIf { it.isNotBlank() }?.let { append(it) }
                                         }
                                     }
+                                    Log.d(TAG, "amapReverseGeocode($lat,$lon): city=$rCity, district=$rDistrict, " +
+                                        "poi=${poi?.title}, street=$street, result=${name.ifBlank { "EMPTY" }}")
                                     cont.resume(name.takeIf { it.isNotBlank() }, null)
                                 } else {
+                                    Log.w(TAG, "amapReverseGeocode($lat,$lon): failed, rCode=$rCode, " +
+                                        "hasResult=${result != null}, hasAddr=${result?.regeocodeAddress != null}")
                                     cont.resume(null, null)
                                 }
                             }
@@ -234,7 +252,8 @@ class LocationManager @Inject constructor(
                     search.getFromLocationAsyn(query)
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "amapReverseGeocode($lat,$lon): exception: ${e.message}")
             null
         }
     }
@@ -245,7 +264,7 @@ class LocationManager @Inject constructor(
             val addresses = geocoder.getFromLocation(lat, lon, 1)
             if (!addresses.isNullOrEmpty()) {
                 val addr = addresses[0]
-                buildString {
+                val result = buildString {
                     addr.locality?.let { append(it) }
                     addr.subLocality?.let { append(it) }
                     val thoroughfare = addr.thoroughfare?.takeIf { it.isNotBlank() }
@@ -254,11 +273,17 @@ class LocationManager @Inject constructor(
                         append(" $thoroughfare")
                         subThoroughfare?.let { append(it) }
                     }
-                }.ifEmpty { "未知位置" }
+                }
+                Log.d(TAG, "geocoderFallback($lat,$lon): locality=${addr.locality}, " +
+                    "subLocality=${addr.subLocality}, thoroughfare=${addr.thoroughfare}, " +
+                    "result=${result.ifBlank { "EMPTY" }}")
+                result.ifEmpty { "未知位置" }
             } else {
+                Log.w(TAG, "geocoderFallback($lat,$lon): no addresses returned")
                 "未知位置"
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "geocoderFallback($lat,$lon): exception: ${e.message}")
             "未知位置"
         }
     }

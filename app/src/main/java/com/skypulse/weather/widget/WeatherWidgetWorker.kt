@@ -118,21 +118,31 @@ class WeatherWidgetWorker(
         val lon = amapLocation.longitude
         val lat = amapLocation.latitude
         val distance = currentCity?.let { distanceBetween(lat, lon, it.latitude, it.longitude) }
-        val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
+        val savedName = currentCity?.name?.takeIf { it.isNotBlank() && it != "未知位置" }
         val locationName = if (savedName != null && !WidgetRefreshPolicy.hasMovedSignificantly(distance)) {
             savedName
         } else {
             val resolved = locationManager.resolveLocationName(amapLocation)
             if (resolved == "未知位置") {
-                // AMap 地址字段为空，用经纬度反向地理编码兜底
-                locationManager.reverseGeocode(lon, lat).takeIf { it != "未知位置" }
-                    ?: savedName  // 反向编码也失败，用已保存的名字
-                    ?: resolved   // 都没有，保留"未知位置"
+                Log.w("WidgetWorker", "resolveLocationName返回未知位置, " +
+                    "AMap字段: city=${amapLocation.city}, district=${amapLocation.district}, " +
+                    "aoi=${amapLocation.aoiName}, street=${amapLocation.street}, " +
+                    "address=${amapLocation.address}, lat=$lat, lon=$lon")
+                // 第1级: 用经纬度反向地理编码
+                val geocoded = locationManager.reverseGeocode(lon, lat)
+                val result = geocoded.takeIf { it != "未知位置" }
+                    ?: savedName  // 第2级: 用已保存的名字
+                    ?: resolved   // 第3级: 保留"未知位置"
+                Log.i("WidgetWorker", "位置解析结果: geocoded=$geocoded, savedName=$savedName, final=$result")
+                result
             } else {
                 resolved
             }
         }
-        locationManager.saveCachedLocation(locationName, lon, lat)
+        // 不保存"未知位置"到缓存，避免覆盖之前的正确地名
+        if (locationName != "未知位置") {
+            locationManager.saveCachedLocation(locationName, lon, lat)
+        }
 
         return ResolvedWidgetCity(
             city = saveCurrentLocationCity(
@@ -175,14 +185,20 @@ class WeatherWidgetWorker(
         longitude: Double,
         latitude: Double
     ): City {
+        // 如果新名字是"未知位置"但已有有效名字，保留旧名字（仅更新坐标）
+        val effectiveName = if (name == "未知位置" && !currentCity?.name.isNullOrBlank() && currentCity?.name != "未知位置") {
+            currentCity!!.name
+        } else {
+            name
+        }
         val updatedCity = (currentCity ?: City(
             id = "current_location",
-            name = name,
+            name = effectiveName,
             longitude = longitude,
             latitude = latitude,
             isCurrentLocation = true
         )).copy(
-            name = name,
+            name = effectiveName,
             longitude = longitude,
             latitude = latitude,
             isCurrentLocation = true
