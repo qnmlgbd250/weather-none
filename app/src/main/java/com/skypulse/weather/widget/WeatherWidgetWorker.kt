@@ -118,7 +118,7 @@ class WeatherWidgetWorker(
         val lon = amapLocation.longitude
         val lat = amapLocation.latitude
         val distance = currentCity?.let { distanceBetween(lat, lon, it.latitude, it.longitude) }
-        val savedName = currentCity?.name?.takeIf { it.isNotBlank() && it != "未知位置" }
+        val savedName = currentCity?.name?.takeIf { it.isNotBlank() }
         val locationName = if (savedName != null && !WidgetRefreshPolicy.hasMovedSignificantly(distance)) {
             savedName
         } else {
@@ -139,10 +139,7 @@ class WeatherWidgetWorker(
                 resolved
             }
         }
-        // 不保存"未知位置"到缓存，避免覆盖之前的正确地名
-        if (locationName != "未知位置") {
-            locationManager.saveCachedLocation(locationName, lon, lat)
-        }
+        locationManager.saveCachedLocation(locationName, lon, lat)
 
         return ResolvedWidgetCity(
             city = saveCurrentLocationCity(
@@ -185,20 +182,14 @@ class WeatherWidgetWorker(
         longitude: Double,
         latitude: Double
     ): City {
-        // 如果新名字是"未知位置"但已有有效名字，保留旧名字（仅更新坐标）
-        val effectiveName = if (name == "未知位置" && !currentCity?.name.isNullOrBlank() && currentCity?.name != "未知位置") {
-            currentCity!!.name
-        } else {
-            name
-        }
         val updatedCity = (currentCity ?: City(
             id = "current_location",
-            name = effectiveName,
+            name = name,
             longitude = longitude,
             latitude = latitude,
             isCurrentLocation = true
         )).copy(
-            name = effectiveName,
+            name = name,
             longitude = longitude,
             latitude = latitude,
             isCurrentLocation = true
