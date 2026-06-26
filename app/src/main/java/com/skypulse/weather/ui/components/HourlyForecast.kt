@@ -44,7 +44,8 @@ private object HourlyParamColors {
     val AqiSevere = Color(0xFFA1887F)      // 严重 300+ 棕灰
 
     // UV
-    val UvWeak = Color(0xFF81D4FA)         // 无/很弱 0-2 柔蓝
+    val UvWeakBright = Color(0xFF43A047)   // 无/很弱 0-2 亮色背景（与空气优一致）
+    val UvWeakDark = Color(0xFF81C784)     // 无/很弱 0-2 暗色背景（与空气优一致）
     val UvLow = Color(0xFFFFD54F)          // 弱 3-4 暖金
     val UvMedium = Color(0xFFFFB74D)       // 中等 5-6 柔橙
     val UvStrong = Color(0xFFEF9A9A)       // 强 7-9 柔粉红
@@ -97,11 +98,11 @@ private fun uvLabel(uvIndex: String?): String {
     }
 }
 
-private fun uvColor(uvIndex: String?): Color {
+private fun uvColor(uvIndex: String?, isBrightBg: Boolean = true): Color {
     if (uvIndex.isNullOrBlank()) return TextDisabled
     val v = uvIndex.toIntOrNull() ?: return TextDisabled
     return when {
-        v <= 2 -> HourlyParamColors.UvWeak
+        v <= 2 -> if (isBrightBg) HourlyParamColors.UvWeakBright else HourlyParamColors.UvWeakDark
         v <= 4 -> HourlyParamColors.UvLow
         v <= 6 -> HourlyParamColors.UvMedium
         v <= 9 -> HourlyParamColors.UvStrong
@@ -455,7 +456,7 @@ private fun HourlyTemperatureChart(
                 temperatures.forEachIndexed { index, _ ->
                     val uvIndex = uvItems?.getOrNull(index)?.index
                     val label = uvLabel(uvIndex)
-                    val color = uvColor(uvIndex)
+                    val color = uvColor(uvIndex, isBrightBg)
                     Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                         if (label.isNotEmpty()) {
                             Text(
