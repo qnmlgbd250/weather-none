@@ -28,7 +28,7 @@ object WeatherWidgetUpdater {
             val realtime = weather?.result?.realtime
             val daily = weather?.result?.daily
             val skycon = realtime?.skycon
-            val isDay = skycon?.contains("NIGHT") != true
+            val isDay = WeatherUtils.isCurrentlyDay()
             val info = WeatherUtils.getWeatherInfo(skycon)
             val tempText = WeatherUtils.formatTemperature(realtime?.temperature)
             val todayTemp = WeatherUtils.todayTemperature(daily)
