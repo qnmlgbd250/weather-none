@@ -1,0 +1,36 @@
+name: Publish Draft Releases
+
+on:
+  schedule:
+    - cron: "0 20 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            const drafts = releases.filter(r => r.draft);
+            if (drafts.length === 0) {
+              console.log("No draft releases to publish.");
+              return;
+            }
+            for (const release of drafts) {
+              await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+                draft: false,
+              });
+              console.log(`Published: ${release.tag_name}`);
+            }
