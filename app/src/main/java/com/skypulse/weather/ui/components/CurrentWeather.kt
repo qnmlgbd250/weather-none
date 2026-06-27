@@ -213,22 +213,26 @@ private fun SpacedListIcon(
     modifier: Modifier = Modifier
 ) {
     Canvas(
-        modifier = modifier.semantics { contentDescription = "\u57ce\u5e02\u5217\u8868" }
+        modifier = modifier.semantics { contentDescription = "城市列表" }
     ) {
         val strokeWidth = 1.75.dp.toPx()
         val halfWidth = 8.dp.toPx()
-        val spacing = 5.3.dp.toPx()
         val centerX = size.width / 2f
         val centerY = size.height / 2f
-        listOf(centerY - spacing, centerY, centerY + spacing).forEach { y ->
-            drawLine(
-                color = tint,
-                start = Offset(centerX - halfWidth, y),
-                end = Offset(centerX + halfWidth, y),
-                strokeWidth = strokeWidth,
-                cap = StrokeCap.Round
-            )
-        }
+        drawLine(
+            color = tint,
+            start = Offset(centerX - halfWidth, centerY),
+            end = Offset(centerX + halfWidth, centerY),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
+        drawLine(
+            color = tint,
+            start = Offset(centerX, centerY - halfWidth),
+            end = Offset(centerX, centerY + halfWidth),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round
+        )
     }
 }
 
@@ -241,7 +245,7 @@ private fun SpacedMoreVertIcon(
         modifier = modifier.semantics { contentDescription = "\u8bbe\u7f6e" }
     ) {
         val radius = 1.75.dp.toPx()
-        val spacing = 5.2.dp.toPx()
+        val spacing = 8.dp.toPx()
         val centerX = size.width / 2f
         val centerY = size.height / 2f
         listOf(centerY - spacing, centerY, centerY + spacing).forEach { y ->
