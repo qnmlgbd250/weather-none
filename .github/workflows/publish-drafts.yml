@@ -25,12 +25,16 @@ jobs:
               console.log("No draft releases to publish.");
               return;
             }
-            for (const release of drafts) {
-              await github.rest.repos.updateRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: release.id,
-                draft: false,
-              });
-              console.log(`Published: ${release.tag_name}`);
+            // Sort by creation date (oldest first) and publish only one per run
+            drafts.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            const release = drafts[0];
+            await github.rest.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: release.id,
+              draft: false,
+            });
+            console.log(`Published: ${release.tag_name} (created ${release.created_at})`);
+            if (drafts.length > 1) {
+              console.log(`${drafts.length - 1} draft(s) remaining, will publish next run.`);
             }
