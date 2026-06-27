@@ -70,6 +70,8 @@ Write-Host "[2/5] Local APK: size=$localSize, SHA256=$localHash" -ForegroundColo
 
 # 5. Auto-generate body from git log (since last tag)
 if (-not $Body) {
+    $prevEncoding = [Console]::OutputEncoding
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
     $lastTag = $null
     try {
         $lastTag = & git describe --tags --abbrev=0 2>$null
@@ -79,6 +81,7 @@ if (-not $Body) {
     } else {
         $log = & git log --oneline --no-decorate -10 2>$null
     }
+    [Console]::OutputEncoding = $prevEncoding
     if ($log) {
         $lines = $log -split "`n" | ForEach-Object {
             $msg = $_ -replace '^[0-9a-f]+\s+', ''

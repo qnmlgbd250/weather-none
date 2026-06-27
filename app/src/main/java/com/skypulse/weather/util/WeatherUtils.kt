@@ -272,6 +272,18 @@ object WeatherUtils {
         }
     }
 
+    fun extractHour(datetime: String?): Int {
+        if (datetime == null) return -1
+        return try {
+            val date = hourFormat.get()!!.parse(datetime) ?: return -1
+            val cal = Calendar.getInstance()
+            cal.time = date
+            cal.get(Calendar.HOUR_OF_DAY)
+        } catch (e: Exception) {
+            -1
+        }
+    }
+
     fun formatWeekday(dateStr: String?): String {
         return try {
             val date = parseDateOnly(dateStr) ?: return ""

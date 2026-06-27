@@ -411,7 +411,7 @@ private fun HourlyTemperatureChart(
             skycons?.forEach { skycon ->
                 val info = WeatherUtils.getWeatherInfo(skycon.value)
                 Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
-                    WeatherIcon(iconType = info.icon, size = 36.dp)
+                    WeatherIcon(iconType = info.icon, size = 36.dp, animated = false)
                 }
             }
         }
@@ -538,7 +538,10 @@ private fun HourlyTemperatureChart(
             temperatures.forEachIndexed { index, temp ->
                 Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                     Text(
-                        text = if (index == 0) "现在" else WeatherUtils.formatHourShort(temp.datetime),
+                        text = if (index == 0) "现在" else {
+                            val h = WeatherUtils.extractHour(temp.datetime)
+                            if (h == 0) "明天" else WeatherUtils.formatHourShort(temp.datetime)
+                        },
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
                         color = TextSecondary,
                         textAlign = TextAlign.Center
