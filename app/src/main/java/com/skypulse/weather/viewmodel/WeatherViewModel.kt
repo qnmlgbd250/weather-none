@@ -165,16 +165,24 @@ class WeatherViewModel @Inject constructor(
                     data.weather?.let { weatherCache.save(cityId, it) }
                 }
             }
-             // Initialize detail screen with cached data for current location (including expired)
-            val currentCity = cities.find { it.isCurrentLocation }
-            if (currentCity != null) {
-                 val cachedWeather = weatherDataStore.loadCached(currentCity.id)
+            // If onboarding completed but no cities, go to city list to add one
+            if (cities.isEmpty() && permissionDataStore.isOnboardingCompleted()) {
+                _currentScreen.value = AppScreen.CityList
+            }
+
+            // Initialize detail screen with cached data
+            val initialCity = cities.find { it.isCurrentLocation } ?: cities.firstOrNull()
+            if (initialCity != null) {
+                _selectedCityId.value = initialCity.id
+                val cachedWeather = weatherDataStore.loadCached(initialCity.id)
                 if (cachedWeather != null) {
                     _uiState.value = WeatherUiState.Success(
                         weather = cachedWeather,
-                        locationName = currentCity.name
+                        locationName = initialCity.name
                     )
                 }
+                // Refresh initial city's data in background
+                refreshCityAfterSwitch(initialCity)
             }
         }
     }
@@ -289,13 +297,9 @@ class WeatherViewModel @Inject constructor(
             }
             AppScreen.CityList -> {
                 _currentScreen.value = AppScreen.CityDetail
-                // Restore selected city's weather when going back from city list
-                var cityId = _selectedCityId.value
-                if (cityId == null) {
-                    cityId = _savedCities.value.firstOrNull()?.id
-                    if (cityId != null) _selectedCityId.value = cityId
-                }
+                val cityId = _selectedCityId.value ?: _savedCities.value.firstOrNull()?.id
                 if (cityId != null) {
+                    _selectedCityId.value = cityId
                     val city = _savedCities.value.find { it.id == cityId }
                     val cached = _cityWeatherMap.value[cityId]
                     if (city != null && cached?.weather != null) {
@@ -303,6 +307,24 @@ class WeatherViewModel @Inject constructor(
                             weather = cached.weather,
                             locationName = city.name
                         )
+                    } else if (city != null) {
+                        fetchWeatherForCity(city)
+                    }
+                } else {
+                    viewModelScope.launch {
+                        citiesLoadJob?.join()
+                        val defaultCity = City(
+                            id = "current_location",
+                            name = "北京市",
+                            longitude = LocationManager.DEFAULT_LONGITUDE,
+                            latitude = LocationManager.DEFAULT_LATITUDE,
+                            isCurrentLocation = true
+                        )
+                        cityDataStore.saveCities(listOf(defaultCity))
+                        _savedCities.value = listOf(defaultCity)
+                        syncCitiesToWidget()
+                        _selectedCityId.value = defaultCity.id
+                        fetchDefaultWeather()
                     }
                 }
             }
