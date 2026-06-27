@@ -149,6 +149,6 @@ Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "  Draft release created: $tagName" -ForegroundColor Green
 Write-Host "  URL: $($release.html_url)" -ForegroundColor Green
-Write-Host "  Auto-publish schedule: Every Friday 20:00 UTC" -ForegroundColor Cyan
+Write-Host "  Auto-publish schedule: Daily 13:00 UTC" -ForegroundColor Cyan
 Write-Host "  Or publish manually: gh release edit $tagName --draft=false" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Green

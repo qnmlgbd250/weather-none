@@ -35,7 +35,7 @@
 ## GitHub 定时发版
 - **Draft 机制**: GitHub Release 先以 `draft: true` 创建（不上公告），APK 上传并校验后暂存
 - **创建 draft**: 执行 `scripts\gh-draft-release.ps1` 脚本自动完成创建 draft release + 上传 + 校验
-- **定时发布**: `.github/workflows/publish-drafts.yml` 每周五 20:00 UTC 自动发布所有 draft release
+- **定时发布**: `.github/workflows/publish-drafts.yml` 每天 13:00 UTC 自动发布所有 draft release
 - **手动发布**: 也可通过 `gh release edit <tag> --draft=false` 手动发布，或在 GitHub Web 页面点 "Publish release"
 - **修改脚本**: 使用 `scripts\gh-draft-release.ps1` 替代原来的手动 GitHub API 调用
 
