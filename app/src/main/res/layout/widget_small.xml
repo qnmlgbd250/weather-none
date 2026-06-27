@@ -44,7 +44,7 @@
             android:layout_gravity="center_vertical"
             android:layout_marginStart="4dp"
             android:textColor="@android:color/white"
-            android:textSize="14sp"
+android:textSize="16sp"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -87,7 +87,7 @@
         android:layout_marginStart="14dp"
         android:layout_marginBottom="12dp"
         android:textColor="#B3FFFFFF"
-        android:textSize="12sp"
+        android:textSize="14sp"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.03"
         android:maxLines="1"
