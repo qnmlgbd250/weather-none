@@ -147,7 +147,7 @@ private fun DailyColumn(
                 .clipToBounds(),
             contentAlignment = Alignment.Center
         ) {
-            WeatherIcon(iconType = weatherInfo.icon, size = 36.dp, animated = !isPast)
+            WeatherIcon(iconType = weatherInfo.icon, size = 36.dp, animated = false)
         }
 
         // --- Weather description ---
