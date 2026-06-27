@@ -3,6 +3,7 @@
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,7 +44,8 @@ import com.skypulse.weather.ui.theme.TextSecondary
 
 @Composable
 fun PermissionOnboardingScreen(
-    onFinished: () -> Unit
+    onFinished: () -> Unit,
+    onSkip: () -> Unit = {}
 ) {
     // 处理定位权限回调，完成后进入主页面
     val locationLauncher = rememberLauncherForActivityResult(
@@ -196,5 +198,14 @@ fun PermissionOnboardingScreen(
         ) {
             Text(text = "开启权限并继续", style = MaterialTheme.typography.titleMedium)
         }
+
+        Text(
+            text = "跳过，手动添加城市",
+            color = TextSecondary.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .clickable { onSkip() }
+        )
     }
 }

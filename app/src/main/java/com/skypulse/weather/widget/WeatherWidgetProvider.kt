@@ -31,7 +31,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         try {
             val moshi = Moshi.Builder().build()
             val cities = CityManager(context, moshi).getCities()
-            val city = cities.firstOrNull { it.isCurrentLocation }
+            val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
             val weather = city?.let { WeatherCache(context).load(it.id) }
             WeatherWidgetUpdater.updateAll(context, weather, city?.name)
         } catch (_: Exception) {
@@ -76,7 +76,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 if (ids.isNotEmpty()) {
                     val moshi = Moshi.Builder().build()
                     val cities = CityManager(context, moshi).getCities()
-                    val city = cities.firstOrNull { it.isCurrentLocation }
+                    val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
                     val weather = city?.let { WeatherCache(context).load(it.id) }
                     WeatherWidgetUpdater.updateAll(context, weather, city?.name)
                 }

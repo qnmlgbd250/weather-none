@@ -290,7 +290,11 @@ class WeatherViewModel @Inject constructor(
             AppScreen.CityList -> {
                 _currentScreen.value = AppScreen.CityDetail
                 // Restore selected city's weather when going back from city list
-                val cityId = _selectedCityId.value
+                var cityId = _selectedCityId.value
+                if (cityId == null) {
+                    cityId = _savedCities.value.firstOrNull()?.id
+                    if (cityId != null) _selectedCityId.value = cityId
+                }
                 if (cityId != null) {
                     val city = _savedCities.value.find { it.id == cityId }
                     val cached = _cityWeatherMap.value[cityId]
@@ -321,6 +325,9 @@ class WeatherViewModel @Inject constructor(
             _savedCities.value = cityDataStore.getCities()
             syncCitiesToWidget()
             loadWeatherForCity(city)
+            if (_selectedCityId.value == null) {
+                _selectedCityId.value = city.id
+            }
         }
     }
 

@@ -107,6 +107,7 @@ fun WeatherScreen(
 
     val showOnboarding by viewModel.showOnboarding.collectAsState()
     var allPermissionsHandled by rememberSaveable { mutableStateOf(false) }
+    var locationSkipped by rememberSaveable { mutableStateOf(false) }
 
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -129,13 +130,15 @@ fun WeatherScreen(
 
     LaunchedEffect(hasLocationPermission, allPermissionsHandled) {
         if (hasLocationPermission) {
-            useDefaultLocation = false
             viewModel.ensureCurrentLocationCity()
             viewModel.fetchWeather()
             viewModel.completeOnboarding()
-        } else if (allPermissionsHandled) {
-            // Location denied - go back to onboarding
-            allPermissionsHandled = false
+        }
+    }
+
+    LaunchedEffect(locationSkipped, savedCities) {
+        if (locationSkipped && savedCities.isEmpty()) {
+            viewModel.navigateToCityList()
         }
     }
 
@@ -152,10 +155,12 @@ fun WeatherScreen(
         viewModel.navigateBack()
     }
 
-    if (showOnboarding && !allPermissionsHandled) {
+    if (showOnboarding && !allPermissionsHandled && !locationSkipped) {
         PermissionOnboardingScreen(
-            onFinished = {
-                allPermissionsHandled = true
+            onFinished = { allPermissionsHandled = true },
+            onSkip = {
+                locationSkipped = true
+                viewModel.completeOnboarding()
             }
         )
         return
@@ -269,8 +274,9 @@ fun WeatherScreen(
                                 }
                             }
                             is WeatherUiState.Error -> {
-                                // No location permission - go back to onboarding
-                                allPermissionsHandled = false
+                                if (!locationSkipped) {
+                                    allPermissionsHandled = false
+                                }
                             }
                         }
                     }
