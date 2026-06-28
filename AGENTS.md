@@ -14,9 +14,12 @@
 - **Key Password**: `weather123`
 
 ## AMAP (高德地图)
+- **定位服务**: 使用 AMAP Location SDK 进行 GPS 定位
 - **API Key 配置位置**: `local.properties` 中的 `AMAP_API_KEY`
-- **读取优先级**: `gradle.properties` > `local.properties`
-- **当前包名**: `com.skypulse.weather`
+
+## 天地图 (Tianditu)
+- **城市搜索/逆地理编码**: 使用天地图 REST API
+- **API Key 配置位置**: `local.properties` 中的 `T_MAP_KEY`
 
 ## 版本管理
 - **版本号位置**: `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`

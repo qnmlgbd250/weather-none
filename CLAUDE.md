@@ -13,9 +13,8 @@
 - **Key Alias**: `weather-app`
 - **Key Password**: `weather123`
 
-## AMAP (高德地图)
-- **API Key 配置位置**: `local.properties` 中的 `AMAP_API_KEY`
-- **读取优先级**: `gradle.properties` > `local.properties`
+## 天地图 (Tianditu)
+- **API Key 配置位置**: `local.properties` 中的 `T_MAP_KEY`
 - **当前包名**: `com.skypulse.weather`
 
 ## 版本管理

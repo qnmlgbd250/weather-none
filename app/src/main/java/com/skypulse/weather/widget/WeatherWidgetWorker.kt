@@ -124,15 +124,11 @@ class WeatherWidgetWorker(
         } else {
             val resolved = locationManager.resolveLocationName(amapLocation)
             if (resolved == "未知位置") {
-                Log.w("WidgetWorker", "resolveLocationName返回未知位置, " +
-                    "AMap字段: city=${amapLocation.city}, district=${amapLocation.district}, " +
-                    "aoi=${amapLocation.aoiName}, street=${amapLocation.street}, " +
-                    "address=${amapLocation.address}, lat=$lat, lon=$lon")
-                // 第1级: 用经纬度反向地理编码
-                val geocoded = locationManager.reverseGeocode(lon, lat)
+                Log.w("WidgetWorker", "resolveLocationName返回未知位置, lat=$lat, lon=$lon")
+                val geocoded = locationManager.reverseGeocode(lat, lon)
                 val result = geocoded.takeIf { it != "未知位置" }
-                    ?: savedName  // 第2级: 用已保存的名字
-                    ?: resolved   // 第3级: 保留"未知位置"
+                    ?: savedName
+                    ?: resolved
                 Log.i("WidgetWorker", "位置解析结果: geocoded=$geocoded, savedName=$savedName, final=$result")
                 result
             } else {

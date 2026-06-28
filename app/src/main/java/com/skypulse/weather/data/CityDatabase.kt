@@ -1,15 +1,15 @@
 package com.skypulse.weather.data
 
-import android.content.Context
 import android.util.Log
-import com.amap.api.services.core.AMapException
-import com.amap.api.services.core.LatLonPoint
-import com.amap.api.services.core.PoiItem
-import com.amap.api.services.core.ServiceSettings
-import com.amap.api.services.poisearch.PoiResult
-import com.amap.api.services.poisearch.PoiSearch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
+import com.skypulse.weather.BuildConfig
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.JsonClass
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 
 data class CityEntry(
     val name: String,
@@ -18,68 +18,79 @@ data class CityEntry(
     val lon: Double
 )
 
-class CityDatabase(context: Context) {
+@JsonClass(generateAdapter = true)
+data class TiandituLocation(
+    val lon: String,
+    val lat: String,
+    val score: Int? = null,
+    val level: String? = null,
+    val keyWord: String? = null
+)
 
-    private val appContext = context.applicationContext
+@JsonClass(generateAdapter = true)
+data class TiandituResponse(
+    val status: String? = null,
+    val msg: String? = null,
+    val location: TiandituLocation? = null
+)
 
-    init {
-        try {
-            ServiceSettings.updatePrivacyShow(appContext, true, true)
-            ServiceSettings.updatePrivacyAgree(appContext, true)
-        } catch (e: Exception) {
-            Log.e("CityDatabase", "Privacy init failed", e)
-        }
+class CityDatabase() {
+
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+
+    private val responseAdapter = moshi.adapter(TiandituResponse::class.java)
+
+    companion object {
+        private const val ENDPOINT = "https://api.tianditu.gov.cn/geocoder"
+        private const val TIMEOUT_MS = 10_000
     }
 
     suspend fun search(query: String): List<CityEntry> {
         if (query.isBlank()) return emptyList()
 
-        return suspendCancellableCoroutine { cont ->
+        return withContext(Dispatchers.IO) {
             try {
-                val poiQuery = PoiSearch.Query(query, "")
-                poiQuery.pageSize = 15
-                poiQuery.pageNum = 0
-
-                val poiSearch = PoiSearch(appContext, poiQuery)
-                poiSearch.setOnPoiSearchListener(object : PoiSearch.OnPoiSearchListener {
-                    override fun onPoiSearched(result: PoiResult?, rCode: Int) {
-                        Log.d("CityDatabase", "PoiSearch result: rCode=$rCode, pois=${result?.pois?.size}")
-                        if (rCode == AMapException.CODE_AMAP_SUCCESS && result != null) {
-                            val pois = result.pois
-                            if (pois != null && pois.isNotEmpty()) {
-                                val entries = pois.mapNotNull { poi ->
-                                    val city = poi.cityName ?: return@mapNotNull null
-                                    val title = poi.title ?: return@mapNotNull null
-                                    val point: LatLonPoint? = poi.latLonPoint
-                                    if (point == null) return@mapNotNull null
-                                    val district = poi.adName ?: ""
-                                    CityEntry(
-                                        name = title,
-                                        province = if (district.isNotBlank()) "$city · $district" else city,
-                                        lat = point.latitude,
-                                        lon = point.longitude
-                                    )
-                                }
-                                if (cont.isActive) cont.resume(entries)
-                            } else {
-                                if (cont.isActive) cont.resume(emptyList())
-                            }
-                        } else {
-                            Log.w("CityDatabase", "PoiSearch failed: rCode=$rCode")
-                            if (cont.isActive) cont.resume(emptyList())
-                        }
-                    }
-
-                    override fun onPoiItemSearched(item: PoiItem?, rCode: Int) {}
-                })
-                poiSearch.searchPOIAsyn()
-
-                cont.invokeOnCancellation {
-                    poiSearch.setOnPoiSearchListener(null)
+                val key = BuildConfig.T_MAP_KEY
+                if (key.isBlank()) {
+                    Log.e("CityDatabase", "T_MAP_KEY is not configured")
+                    return@withContext emptyList()
                 }
+
+                val ds = """{"keyWord":"$query"}"""
+                val encodedDs = URLEncoder.encode(ds, "UTF-8")
+                val url = "$ENDPOINT?ds=$encodedDs&tk=$key"
+
+                val connection = URL(url).openConnection() as HttpURLConnection
+                connection.apply {
+                    connectTimeout = TIMEOUT_MS
+                    readTimeout = TIMEOUT_MS
+                    instanceFollowRedirects = true
+                }
+
+                val body = connection.inputStream.bufferedReader().readText()
+                connection.disconnect()
+
+                val response = responseAdapter.fromJson(body)
+                if (response?.status != "0") {
+                    Log.w("CityDatabase", "Tianditu error: status=${response?.status} msg=${response?.msg}")
+                    return@withContext emptyList()
+                }
+
+                val loc = response.location ?: return@withContext emptyList()
+                val lon = loc.lon.toDoubleOrNull() ?: return@withContext emptyList()
+                val lat = loc.lat.toDoubleOrNull() ?: return@withContext emptyList()
+
+                val name = query.trim()
+                Log.d("CityDatabase", "Tianditu: found '$name' at ($lat, $lon)")
+
+                listOf(
+                    CityEntry(name = name, province = "", lat = lat, lon = lon)
+                )
             } catch (e: Exception) {
-                Log.e("CityDatabase", "Search exception", e)
-                if (cont.isActive) cont.resume(emptyList())
+                Log.e("CityDatabase", "Tianditu search failed", e)
+                emptyList()
             }
         }
     }

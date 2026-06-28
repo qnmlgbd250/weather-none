@@ -10,6 +10,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +23,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -38,6 +40,7 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.viewmodel.CityWeatherData
 import com.skypulse.weather.viewmodel.AppScreen
+import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
 import com.skypulse.weather.viewmodel.CitySearchViewModel
 import com.skypulse.weather.viewmodel.WeatherViewModel
@@ -274,8 +277,37 @@ fun WeatherScreen(
                                 }
                             }
                             is WeatherUiState.Error -> {
-                                if (!locationSkipped) {
-                                    allPermissionsHandled = false
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .statusBarsPadding()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    LocationHeader(
+                                        locationName = "加载失败",
+                                        isLocating = false,
+                                        refreshPhase = RefreshPhase.Idle,
+                                        onLocationClick = {},
+                                        onListClick = { viewModel.navigateToCityList() },
+                                        onSettingsClick = { viewModel.navigateToSettings() }
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text(
+                                        text = state.message,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = TextPrimary,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Button(
+                                        onClick = { viewModel.fetchWeather() },
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text("重试定位")
+                                    }
+                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
                         }

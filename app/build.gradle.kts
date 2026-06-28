@@ -24,6 +24,11 @@ val caiyunToken = providers.gradleProperty("CAIYUN_TOKEN")
     .get()
 val escapedCaiyunToken = caiyunToken.replace("\\", "\\\\").replace("\"", "\\\"")
 
+val tMapKey = providers.gradleProperty("T_MAP_KEY")
+    .orElse(localProperties.getProperty("T_MAP_KEY", ""))
+    .get()
+val escapedTMapKey = tMapKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
 android {
     namespace = "com.skypulse.weather"
     compileSdk = 34
@@ -32,8 +37,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 526
-        versionName = "2.1.73"
+        versionCode = 531
+        versionName = "2.1.78"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -42,6 +47,7 @@ android {
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
         buildConfigField("String", "AMAP_API_KEY", "\"$escapedAmapApiKey\"")
         buildConfigField("String", "CAIYUN_TOKEN", "\"$escapedCaiyunToken\"")
+        buildConfigField("String", "T_MAP_KEY", "\"$escapedTMapKey\"")
     }
 
     signingConfigs {
@@ -118,7 +124,6 @@ dependencies {
     // Location
     implementation(libs.play.services.location)
     implementation(libs.amap.location)
-    implementation(libs.amap.search)
     implementation(libs.accompanist.permissions)
 
     // UI

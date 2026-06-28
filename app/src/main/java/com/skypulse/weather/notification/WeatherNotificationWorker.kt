@@ -182,7 +182,7 @@ class WeatherNotificationWorker(
         val locationManager = LocationManager(context)
         val amapLocation = if (locationManager.hasBackgroundLocationPermission()) {
             try {
-                locationManager.requestAmapLocation()
+                locationManager.requestLightweightAmapLocation()
             } catch (e: Exception) {
                 Log.w(TAG, "Location fetch failed, using saved city", e)
                 null
