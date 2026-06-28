@@ -63,6 +63,7 @@ fun WeatherScreen(
     val cityWeatherMap by viewModel.cityWeatherMap.collectAsState()
     val searchResults by searchViewModel.searchResults.collectAsState()
     val isSearching by searchViewModel.isSearching.collectAsState()
+    val isSearchActive by searchViewModel.isSearchActive.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
     val selectedCityId by viewModel.selectedCityId.collectAsState()
@@ -155,6 +156,7 @@ fun WeatherScreen(
     }
 
     BackHandler(enabled = currentScreen != AppScreen.CityDetail) {
+        searchViewModel.clearSearchResults()
         viewModel.navigateBack()
     }
 
@@ -177,12 +179,16 @@ fun WeatherScreen(
                     cityWeatherMap = cityWeatherMap,
                     searchResults = searchResults,
                     isSearching = isSearching,
+                    isSearchActive = isSearchActive,
                     onCityClick = { cityId -> viewModel.navigateToCityDetail(cityId) },
                     onAddCity = { result -> viewModel.addCity(result.name, result.longitude, result.latitude) },
                     onRemoveCity = { cityId -> viewModel.removeCity(cityId) },
                     onSearch = { query -> searchViewModel.searchCities(query) },
                     onClearSearch = { searchViewModel.clearSearchResults() },
-                    onBack = { viewModel.navigateBack() }
+                    onBack = {
+                        searchViewModel.clearSearchResults()
+                        viewModel.navigateBack()
+                    }
                 )
             }
 

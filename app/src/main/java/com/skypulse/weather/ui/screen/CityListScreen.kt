@@ -37,6 +37,7 @@ fun CityListScreen(
     cityWeatherMap: Map<String, CityWeatherData>,
     searchResults: List<CitySearchResult>,
     isSearching: Boolean,
+    isSearchActive: Boolean,
     onCityClick: (String) -> Unit,
     onAddCity: (CitySearchResult) -> Unit,
     onRemoveCity: (String) -> Unit,
@@ -46,7 +47,6 @@ fun CityListScreen(
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val isSearchActive = searchQuery.isNotBlank()
     val focusManager = LocalFocusManager.current
 
     SetLightStatusBarEffect(lightStatusBar = true)
@@ -83,7 +83,7 @@ fun CityListScreen(
                     value = searchQuery,
                     onValueChange = { query ->
                         searchQuery = query
-                        if (query.isNotBlank()) onSearch(query) else onClearSearch()
+                        if (query.isNotBlank()) onSearch(query)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -181,6 +181,7 @@ fun CityListScreen(
                                 onClick = {
                                     onAddCity(result)
                                     searchQuery = ""
+                                    onClearSearch()
                                     focusManager.clearFocus()
                                 }
                             )

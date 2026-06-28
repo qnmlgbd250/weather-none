@@ -34,6 +34,70 @@ data class TiandituResponse(
     val location: TiandituLocation? = null
 )
 
+@JsonClass(generateAdapter = true)
+data class GeoAddressComponent(
+    val nation: String? = null,
+    val province: String? = null,
+    val city: String? = null,
+    val county: String? = null,
+    val town: String? = null,
+    val road: String? = null,
+    val address: String? = null,
+    val poi: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class GeoReverseResult(
+    val formatted_address: String? = null,
+    val addressComponent: GeoAddressComponent? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class GeoReverseResponse(
+    val status: String? = null,
+    val msg: String? = null,
+    val result: GeoReverseResult? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AdminCenter(
+    val lng: Double? = null,
+    val lat: Double? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AdminDistrict(
+    val name: String? = null,
+    val gb: String? = null,
+    val center: AdminCenter? = null,
+    val level: Int? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AdminSuggestion(
+    val name: String? = null,
+    val gb: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AdminData(
+    val suggestion: List<AdminSuggestion>? = null,
+    val district: List<AdminDistrict>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AdminResponse(
+    val status: Any? = null,
+    val message: String? = null,
+    val data: AdminData? = null
+) {
+    fun isOk(): Boolean {
+        if (status is Int) return status == 200
+        if (status is String) return status == "200"
+        return false
+    }
+}
+
 class CityDatabase() {
 
     private val moshi = Moshi.Builder()
@@ -41,9 +105,12 @@ class CityDatabase() {
         .build()
 
     private val responseAdapter = moshi.adapter(TiandituResponse::class.java)
+    private val reverseAdapter = moshi.adapter(GeoReverseResponse::class.java)
+    private val adminAdapter = moshi.adapter(AdminResponse::class.java)
 
     companion object {
-        private const val ENDPOINT = "https://api.tianditu.gov.cn/geocoder"
+        private const val GEOCODER = "https://api.tianditu.gov.cn/geocoder"
+        private const val ADMIN_API = "http://api.tianditu.gov.cn/v2/administrative"
         private const val TIMEOUT_MS = 10_000
     }
 
@@ -58,40 +125,220 @@ class CityDatabase() {
                     return@withContext emptyList()
                 }
 
-                val ds = """{"keyWord":"$query"}"""
-                val encodedDs = URLEncoder.encode(ds, "UTF-8")
-                val url = "$ENDPOINT?ds=$encodedDs&tk=$key"
-
-                val connection = URL(url).openConnection() as HttpURLConnection
-                connection.apply {
-                    connectTimeout = TIMEOUT_MS
-                    readTimeout = TIMEOUT_MS
-                    instanceFollowRedirects = true
+                val adminResults = administrativeSearch(key, query)
+                if (adminResults != null) {
+                    Log.d("CityDB.search", "admin returned ${adminResults.size} results for '$query'")
+                    return@withContext adminResults
                 }
 
-                val body = connection.inputStream.bufferedReader().readText()
-                connection.disconnect()
-
-                val response = responseAdapter.fromJson(body)
-                if (response?.status != "0") {
-                    Log.w("CityDatabase", "Tianditu error: status=${response?.status} msg=${response?.msg}")
-                    return@withContext emptyList()
-                }
-
-                val loc = response.location ?: return@withContext emptyList()
-                val lon = loc.lon.toDoubleOrNull() ?: return@withContext emptyList()
-                val lat = loc.lat.toDoubleOrNull() ?: return@withContext emptyList()
-
-                val name = query.trim()
-                Log.d("CityDatabase", "Tianditu: found '$name' at ($lat, $lon)")
-
-                listOf(
-                    CityEntry(name = name, province = "", lat = lat, lon = lon)
-                )
+                Log.d("CityDB.search", "admin returned null, falling to single geocode for '$query'")
+                val singleResult = singleGeocodeSearch(key, query)
+                Log.d("CityDB.search", "single geocode returned ${singleResult.size} results for '$query'")
+                singleResult
             } catch (e: Exception) {
-                Log.e("CityDatabase", "Tianditu search failed", e)
+                Log.e("CityDatabase", "search failed", e)
                 emptyList()
             }
+        }
+    }
+
+    private fun administrativeSearch(key: String, query: String): List<CityEntry>? {
+        return try {
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val url = "$ADMIN_API?keyword=$encodedQuery&tk=$key"
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                instanceFollowRedirects = true
+            }
+            val body = connection.inputStream.bufferedReader().readText()
+            connection.disconnect()
+
+            Log.d("CityDatabase", "admin API response for '$query': $body")
+
+            val response = adminAdapter.fromJson(body)
+            if (response == null || !response.isOk()) {
+                Log.w("CityDatabase", "admin API failed: status=${response?.status} msg=${response?.message}")
+                return null
+            }
+
+            val data = response.data ?: run {
+                Log.w("CityDatabase", "admin API: data is null, body=$body")
+                return null
+            }
+
+            val districts = data.district.orEmpty()
+            if (districts.isNotEmpty()) {
+                val results = districts.mapNotNull { dist ->
+                    val center = dist.center ?: return@mapNotNull null
+                    val lat = center.lat ?: return@mapNotNull null
+                    val lng = center.lng ?: return@mapNotNull null
+                    val entryName = dist.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    val (name, province) = reverseGeocode(lat, lng, "区县", entryName)
+                    CityEntry(name = name, province = province, lat = lat, lon = lng)
+                }
+                if (results.isNotEmpty()) return results
+            }
+
+            val suggestions = data.suggestion.orEmpty()
+            if (suggestions.isNotEmpty()) {
+                val queryName = query.trim()
+                val results = suggestions.mapNotNull { sug ->
+                    val sugName = sug.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    val fullName = "$sugName$queryName"
+                    geocodeFullName(key, fullName, queryName)
+                }
+                if (results.isNotEmpty()) return results
+            }
+
+            Log.d("CityDatabase", "admin API: no usable results, falling back")
+            null
+        } catch (e: Exception) {
+            Log.w("CityDatabase", "administrative search failed", e)
+            null
+        }
+    }
+
+    private fun geocodeFullName(key: String, fullName: String, displayName: String): CityEntry? {
+        return try {
+            val ds = """{"keyWord":"$fullName"}"""
+            val encodedDs = URLEncoder.encode(ds, "UTF-8")
+            val url = "$GEOCODER?ds=$encodedDs&tk=$key"
+
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                instanceFollowRedirects = true
+            }
+            val body = connection.inputStream.bufferedReader().readText()
+            connection.disconnect()
+
+            val geoResponse = responseAdapter.fromJson(body)
+            if (geoResponse?.status != "0") return null
+
+            val loc = geoResponse.location ?: return null
+            val lon = loc.lon.toDoubleOrNull() ?: return null
+            val lat = loc.lat.toDoubleOrNull() ?: return null
+
+            val (name, province) = reverseGeocode(lat, lon, loc.level ?: "", displayName)
+            CityEntry(name = name, province = province, lat = lat, lon = lon)
+        } catch (e: Exception) {
+            Log.w("CityDatabase", "geocode full name failed: $fullName", e)
+            null
+        }
+    }
+
+    private fun singleGeocodeSearch(key: String, query: String): List<CityEntry> {
+        try {
+            val ds = """{"keyWord":"$query"}"""
+            val encodedDs = URLEncoder.encode(ds, "UTF-8")
+            val url = "$GEOCODER?ds=$encodedDs&tk=$key"
+
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                instanceFollowRedirects = true
+            }
+            val body = connection.inputStream.bufferedReader().readText()
+            connection.disconnect()
+
+            val response = responseAdapter.fromJson(body)
+            if (response?.status != "0") {
+                Log.w("CityDatabase", "Tianditu error: status=${response?.status} msg=${response?.msg}")
+                return emptyList()
+            }
+
+            val loc = response.location ?: return emptyList()
+            val lon = loc.lon.toDoubleOrNull() ?: return emptyList()
+            val lat = loc.lat.toDoubleOrNull() ?: return emptyList()
+            val geoLevel = loc.level ?: ""
+
+            val (name, province) = reverseGeocode(lat, lon, geoLevel, query.trim())
+            Log.d("CityDatabase", "Tianditu: found '$name' ($province) at ($lat, $lon) level=$geoLevel")
+
+            return listOf(CityEntry(name = name, province = province, lat = lat, lon = lon))
+        } catch (e: Exception) {
+            Log.e("CityDatabase", "Tianditu search failed", e)
+            return emptyList()
+        }
+    }
+
+    private fun reverseGeocode(lat: Double, lon: Double, geoLevel: String, fallbackName: String): Pair<String, String> {
+        return try {
+            val key = BuildConfig.T_MAP_KEY
+            if (key.isBlank()) return fallbackName to ""
+
+            val postStr = """{"lon":$lon,"lat":$lat}"""
+            val encodedPost = URLEncoder.encode(postStr, "UTF-8")
+            val url = "$GEOCODER?postStr=$encodedPost&format=json&tk=$key"
+
+            val connection = URL(url).openConnection() as HttpURLConnection
+            connection.apply {
+                connectTimeout = TIMEOUT_MS
+                readTimeout = TIMEOUT_MS
+                instanceFollowRedirects = true
+            }
+            val body = connection.inputStream.bufferedReader().readText()
+            connection.disconnect()
+
+            val geoResponse = reverseAdapter.fromJson(body) ?: return fallbackName to ""
+            if (geoResponse.status != "0") {
+                Log.w("CityDatabase", "reverse geocode failed: status=${geoResponse.status}")
+                return fallbackName to ""
+            }
+
+            val comp = geoResponse.result?.addressComponent
+            if (comp == null) {
+                Log.w("CityDatabase", "reverse geocode: no addressComponent")
+                return fallbackName to ""
+            }
+
+            val provinceName = comp.province?.takeIf { it.isNotBlank() }
+            val cityName = comp.city?.takeIf { it.isNotBlank() }
+            val countyName = comp.county?.takeIf { it.isNotBlank() }
+            val townName = comp.town?.takeIf { it.isNotBlank() }
+
+            val isCountyLevel = geoLevel.contains("区") || geoLevel.contains("县")
+            val isTownLevel = geoLevel.contains("乡") || geoLevel.contains("镇") || geoLevel.contains("村")
+
+            val effectiveName: String
+            val districtInfo: String
+
+            when {
+                isTownLevel && townName != null && townName != countyName && townName != cityName -> {
+                    effectiveName = townName
+                    districtInfo = buildString {
+                        countyName?.let { append(it) }
+                        cityName?.takeIf { it != countyName }?.let {
+                            if (isNotEmpty()) append("，"); append(it)
+                        }
+                        provinceName?.takeIf { it != cityName }?.let {
+                            if (isNotEmpty()) append("，"); append(it)
+                        }
+                    }
+                }
+                isCountyLevel && countyName != null && countyName != cityName -> {
+                    effectiveName = countyName
+                    districtInfo = buildString {
+                        cityName?.let { append(it) }
+                        provinceName?.takeIf { it != cityName }?.let {
+                            if (isNotEmpty()) append("，"); append(it)
+                        }
+                    }
+                }
+                else -> {
+                    effectiveName = cityName ?: fallbackName
+                    districtInfo = provinceName ?: ""
+                }
+            }
+
+            effectiveName to districtInfo
+        } catch (e: Exception) {
+            Log.w("CityDatabase", "reverse geocode failed", e)
+            fallbackName to ""
         }
     }
 }
