@@ -10,8 +10,8 @@ import com.skypulse.weather.widget.WeatherWidgetProvider
 class SkyPulseApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        // 临时: 初始化文件日志 (测试完毕后删除此行)
         FileLogger.init(this)
+        FileLogger.initCrashHandler()
 
         WeatherNotificationScheduler.scheduleIfNeeded(this)
         WeatherWidgetProvider.enqueueWorker(this)

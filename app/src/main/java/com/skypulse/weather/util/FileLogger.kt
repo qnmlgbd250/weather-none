@@ -1,7 +1,7 @@
 package com.skypulse.weather.util
 
 import android.content.Context
-import android.os.Environment
+import android.os.Build
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
@@ -9,10 +9,8 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 临时文件日志工具 - 用于测试调试
+ * 文件日志工具
  * 日志存储路径: /storage/emulated/0/Android/data/com.skypulse.weather/files/skypulselog/
- *
- * ⚠️ 此文件为临时测试用途，正式发版前请删除此文件及相关调用
  */
 object FileLogger {
 
@@ -21,6 +19,7 @@ object FileLogger {
     private val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
 
     private var logDir: File? = null
+    private var appVersion: String = "unknown"
 
     /**
      * 初始化日志目录（需在 Application 中调用）
@@ -28,12 +27,57 @@ object FileLogger {
      */
     fun init(context: Context) {
         try {
-            // 使用应用专属外部存储目录，无需权限
             logDir = context.getExternalFilesDir(LOG_DIR)
             logDir?.mkdirs()
+            appVersion = try {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
+            } catch (_: Exception) { "unknown" }
             android.util.Log.i("FileLogger", "日志目录: ${logDir?.absolutePath}")
         } catch (e: Exception) {
             android.util.Log.e("FileLogger", "初始化失败: ${e.message}")
+        }
+    }
+
+    /**
+     * 注册全局崩溃捕获器，将未捕获异常写入日志文件
+     */
+    fun initCrashHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                val crashFile = File(logDir, "crash_${dateFormat.format(Date())}.txt")
+                val timeStr = timeFormat.format(Date())
+                val deviceInfo = buildString {
+                    appendLine("=== SkyPulse Crash Report ===")
+                    appendLine("Time: $timeStr")
+                    appendLine("App Version: $appVersion")
+                    appendLine("Thread: ${thread.name}")
+                    appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")
+                    appendLine("Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                    appendLine("Board: ${Build.BOARD}")
+                    appendLine("ABI: ${Build.SUPPORTED_ABIS.joinToString()}")
+                    appendLine()
+                    appendLine("=== Exception ===")
+                    appendLine("${throwable.javaClass.name}: ${throwable.message}")
+                    appendLine()
+                    appendLine("=== Stack Trace ===")
+                    appendLine(throwable.stackTraceToString())
+                    // 链式异常
+                    var cause = throwable.cause
+                    var depth = 0
+                    while (cause != null && depth < 5) {
+                        appendLine()
+                        appendLine("=== Caused by (depth ${++depth}) ===")
+                        appendLine("${cause.javaClass.name}: ${cause.message}")
+                        appendLine(cause.stackTraceToString())
+                        cause = cause.cause
+                    }
+                }
+                FileWriter(crashFile, true).use { it.append(deviceInfo) }
+                android.util.Log.e("FileLogger", "崩溃已记录: ${crashFile.absolutePath}")
+            } catch (_: Exception) {}
+            // 交给系统默认处理（弹窗 / 杀进程）
+            defaultHandler?.uncaughtException(thread, throwable)
         }
     }
 
