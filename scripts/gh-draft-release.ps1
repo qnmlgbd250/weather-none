@@ -111,7 +111,7 @@ $tempPath = Join-Path $env:TEMP "skypulse-verify.apk"
 Remove-Item -LiteralPath $tempPath -ErrorAction Ignore
 
 try {
-    $assetUrl = $release.assets[0].url
+    $assetUrl = $asset.url
     if (-not $assetUrl) {
         Write-Error "No asset URL found"
         exit 1
