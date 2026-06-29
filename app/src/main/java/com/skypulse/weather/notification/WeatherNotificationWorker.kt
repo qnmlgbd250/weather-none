@@ -39,6 +39,27 @@ class WeatherNotificationWorker(
         private const val TAG = "WeatherNotifWorker"
         private const val KEY_TEMP_BASELINE_DATE = "temp_baseline_date"
         private const val KEY_TEMP_BASELINE_MAX = "temp_baseline_max"
+        private const val PREFS_NAME = "weather_notification_fetch"
+        private const val KEY_LAST_FETCH_PREFIX = "last_fetch_"
+        private const val CACHE_TTL_MS = 25 * 60 * 1000L
+
+        private fun getLastFetchTime(context: Context, cityId: String): Long? {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val time = prefs.getLong("$KEY_LAST_FETCH_PREFIX$cityId", 0L)
+            return if (time == 0L) null else time
+        }
+
+        private fun saveLastFetchTime(context: Context, cityId: String, timeMillis: Long) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putLong("$KEY_LAST_FETCH_PREFIX$cityId", timeMillis)
+                .apply()
+        }
+
+        private fun isCacheFresh(context: Context, cityId: String): Boolean {
+            val lastFetch = getLastFetchTime(context, cityId) ?: return false
+            return System.currentTimeMillis() - lastFetch < CACHE_TTL_MS
+        }
     }
 
     override suspend fun doWork(): Result {
@@ -67,9 +88,14 @@ class WeatherNotificationWorker(
             val city = resolveNotificationCity(context, cities, cityDataStore, cityManager)
                 ?: return Result.success()
 
+            if (isCacheFresh(context, city.id)) {
+                Log.d(TAG, "Cache is fresh, skipping notification fetch")
+                return Result.success()
+            }
             val api = createCaiyunApi(moshi)
             val repo = WeatherRepository(api)
             val weather = repo.getWeather(city.longitude, city.latitude).getOrNull() ?: return Result.success()
+            saveLastFetchTime(context, city.id, System.currentTimeMillis())
             WeatherCache(context).save(city.id, weather)
 
             // Initialize deduplicator and clean up expired records
@@ -464,4 +490,5 @@ class WeatherNotificationWorker(
             .build()
         return retrofit.create(CaiyunApi::class.java)
     }
+
 }

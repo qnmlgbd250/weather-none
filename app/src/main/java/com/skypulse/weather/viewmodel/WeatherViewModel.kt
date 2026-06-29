@@ -84,7 +84,7 @@ class WeatherViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "WeatherVM"
-        private const val API_COOLDOWN_MS = 30_000L
+        private const val API_COOLDOWN_MS = 80_000L
     }
 
     // --- Screen navigation ---
@@ -313,18 +313,23 @@ class WeatherViewModel @Inject constructor(
                 } else {
                     viewModelScope.launch {
                         citiesLoadJob?.join()
+                        val cachedLocation = locationManager.getCachedLocation()
                         val defaultCity = City(
                             id = "current_location",
-                            name = "北京市",
-                            longitude = LocationManager.DEFAULT_LONGITUDE,
-                            latitude = LocationManager.DEFAULT_LATITUDE,
+                            name = cachedLocation?.name ?: "定位中...",
+                            longitude = cachedLocation?.longitude ?: LocationManager.DEFAULT_LONGITUDE,
+                            latitude = cachedLocation?.latitude ?: LocationManager.DEFAULT_LATITUDE,
                             isCurrentLocation = true
                         )
                         cityDataStore.saveCities(listOf(defaultCity))
                         _savedCities.value = listOf(defaultCity)
                         syncCitiesToWidget()
                         _selectedCityId.value = defaultCity.id
-                        fetchDefaultWeather()
+                        if (cachedLocation != null) {
+                            fetchWeatherForLocation(cachedLocation.longitude, cachedLocation.latitude, cachedLocation.name)
+                        } else {
+                            fetchDefaultWeather()
+                        }
                     }
                 }
             }
@@ -388,11 +393,12 @@ class WeatherViewModel @Inject constructor(
             val cities = _savedCities.value.toMutableList()
             val hasCurrentLocation = cities.any { it.isCurrentLocation }
             if (!hasCurrentLocation) {
+                val cachedLocation = locationManager.getCachedLocation()
                 val currentLocationCity = City(
                     id = "current_location",
-                    name = "北京市",
-                    longitude = LocationManager.DEFAULT_LONGITUDE,
-                    latitude = LocationManager.DEFAULT_LATITUDE,
+                    name = cachedLocation?.name ?: "定位中...",
+                    longitude = cachedLocation?.longitude ?: LocationManager.DEFAULT_LONGITUDE,
+                    latitude = cachedLocation?.latitude ?: LocationManager.DEFAULT_LATITUDE,
                     isCurrentLocation = true
                 )
                 cities.add(0, currentLocationCity)
@@ -674,8 +680,10 @@ class WeatherViewModel @Inject constructor(
         ) == PackageManager.PERMISSION_GRANTED
 
         if (!hasLocationPermission) {
-            val fallback = _savedCities.value.firstOrNull()
-                ?: City("current_location", "北京市", LocationManager.DEFAULT_LONGITUDE, LocationManager.DEFAULT_LATITUDE, true)
+            val fallback = _savedCities.value.firstOrNull() ?: run {
+                val cached = locationManager.getCachedLocation()
+                City("current_location", cached?.name ?: "北京市", cached?.longitude ?: LocationManager.DEFAULT_LONGITUDE, cached?.latitude ?: LocationManager.DEFAULT_LATITUDE, true)
+            }
             return fetchWeatherForLocation(fallback.longitude, fallback.latitude, fallback.name, silent)
         }
 
@@ -779,7 +787,14 @@ class WeatherViewModel @Inject constructor(
             if (attempt > 0) delay(1000L * attempt)
             val result = repository.getWeather(lon, lat, includeYesterday = true)
             result.fold(
-                onSuccess = { return Result.success(it) },
+                onSuccess = { response ->
+                    val hourly = response.result?.hourly
+                    if (hourly == null || hourly.temperature.isNullOrEmpty()) {
+                        lastException = Exception("empty_hourly")
+                    } else {
+                        return Result.success(response)
+                    }
+                },
                 onFailure = { e ->
                     lastException = e as? Exception ?: Exception(e)
                     if (e is HttpException && e.code() == 429) {

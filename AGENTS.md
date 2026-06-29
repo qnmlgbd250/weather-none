@@ -31,7 +31,7 @@
 - **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release（draft）
 - **GitHub Token**: GitHub 发版必须从 `local.properties` 读取 GitHub token，不得硬编码到源码、脚本输出或 Release 描述中
 - **GitHub 包体完整性**: GitHub 发版上传 APK 前必须记录本地 APK 文件大小和 SHA-256；上传后必须从 GitHub Release 下载该 APK 资产并重新计算文件大小和 SHA-256，二者完全一致才算发版成功；如不一致，删除损坏资产后重新上传并再次校验
-- **GitHub Release 描述**: GitHub 发版描述必须使用中文；内容只描述上一个 GitHub Release 版本到当前版本之间的 Git 改动简短总结；必须使用无序列表逐条列出；不得包含下载链接、校验信息、构建过程、致谢或其他无关联信息
+- **GitHub Release 描述**: GitHub 发版描述只写一条中文描述：`修复已知问题`
 - **改动后发版**: 每次代码改动完成并验证后，默认自动执行云剪贴板发版；除非用户明确要求暂不发版
 - 发版前必须清理 build.gradle.kts 和 CHANGELOG.md 的 UTF-8 BOM
 

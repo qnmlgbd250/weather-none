@@ -199,7 +199,8 @@ private fun HourlyTemperatureChart(
     showWindGust: Boolean = true
 ) {
     val showAnyParam = showAqi || showUv || showWind || showWindGust
-    val temperatures = hourlyData.temperature?.take(24) ?: return
+    val temperatures = hourlyData.temperature?.take(24)?.filter { it.value != null } ?: return
+    if (temperatures.size < 2) return
     val skycons = hourlyData.skycon?.take(24)
     val precipitation = hourlyData.precipitation?.take(24)
     val winds = hourlyData.wind?.take(24)
@@ -210,8 +211,7 @@ private fun HourlyTemperatureChart(
     val theme = LocalWeatherTheme.current
     val textMeasurer = rememberTextMeasurer()
 
-    val tempValues = temperatures.mapNotNull { it.value?.let { v -> kotlin.math.round(v) } }
-    if (tempValues.size < 2) return
+    val tempValues = temperatures.map { kotlin.math.round(it.value!!) }
 
     val minTemp = tempValues.min()
     val maxTemp = tempValues.max()
@@ -244,10 +244,12 @@ private fun HourlyTemperatureChart(
                 .height(chartHeight)
                 .padding(horizontal = sidePad)
         ) {
+            val canvasH = size.height
+            if (size.width <= 0f || canvasH <= 0f) return@Canvas
+
             val itemCount = temperatures.size
             val step = size.width / itemCount
             val halfStep = step / 2f
-            val canvasH = size.height
 
             val curveAreaBottom = canvasH * 0.70f
             val curveTop = 20.dp.toPx()

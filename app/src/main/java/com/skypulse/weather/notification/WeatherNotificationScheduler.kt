@@ -46,7 +46,7 @@ object WeatherNotificationScheduler {
         )
 
         // High-frequency worker for time-sensitive alerts (rain, warnings)
-        val urgentRequest = PeriodicWorkRequestBuilder<UrgentNotificationWorker>(5, TimeUnit.MINUTES)
+        val urgentRequest = PeriodicWorkRequestBuilder<UrgentNotificationWorker>(10, TimeUnit.MINUTES)
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
