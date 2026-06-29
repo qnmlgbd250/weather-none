@@ -356,12 +356,29 @@ class WeatherViewModel @Inject constructor(
     fun removeCity(cityId: String) {
         viewModelScope.launch {
             cityDataStore.removeCity(cityId)
-            _savedCities.value = cityDataStore.getCities()
+            val updatedCities = cityDataStore.getCities()
+            _savedCities.value = updatedCities
             syncCitiesToWidget()
             val currentMap = _cityWeatherMap.value.toMutableMap()
             currentMap.remove(cityId)
             _cityWeatherMap.value = currentMap
             weatherDataStore.remove(cityId)
+            // 如果删除的是当前选中的城市，切换到第一个城市
+            if (_selectedCityId.value == cityId) {
+                val nextCity = updatedCities.firstOrNull()
+                _selectedCityId.value = nextCity?.id
+                if (nextCity != null) {
+                    val cached = _cityWeatherMap.value[nextCity.id]
+                    if (cached?.weather != null) {
+                        _uiState.value = WeatherUiState.Success(
+                            weather = cached.weather,
+                            locationName = nextCity.name
+                        )
+                    } else {
+                        fetchWeatherForCity(nextCity)
+                    }
+                }
+            }
         }
     }
 
