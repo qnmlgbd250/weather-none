@@ -649,6 +649,19 @@ class WeatherViewModel @Inject constructor(
     }
 
     private suspend fun doFetchWeather(silent: Boolean = false): Boolean {
+        // 无定位权限时，使用用户添加的城市（或北京兜底）更新天气，不弹错误
+        val hasLocationPermission = ContextCompat.checkSelfPermission(
+            appContext, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            appContext, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasLocationPermission) {
+            val fallback = _savedCities.value.firstOrNull()
+                ?: City("current_location", "北京市", LocationManager.DEFAULT_LONGITUDE, LocationManager.DEFAULT_LATITUDE, true)
+            return fetchWeatherForLocation(fallback.longitude, fallback.latitude, fallback.name, silent)
+        }
+
         return try {
             val amapLocation = locationManager.requestAmapLocation()
 
