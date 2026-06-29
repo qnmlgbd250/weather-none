@@ -211,7 +211,7 @@ private fun HourlyTemperatureChart(
     val textMeasurer = rememberTextMeasurer()
 
     val tempValues = temperatures.mapNotNull { it.value?.let { v -> kotlin.math.round(v) } }
-    if (tempValues.isEmpty()) return
+    if (tempValues.size < 2) return
 
     val minTemp = tempValues.min()
     val maxTemp = tempValues.max()
