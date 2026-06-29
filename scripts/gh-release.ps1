@@ -1,14 +1,12 @@
 <#
 .SYNOPSIS
-    Create a draft GitHub Release with APK upload + integrity verification.
-    The draft can later be auto-published by the scheduled GitHub Action.
+    Create a GitHub Release with APK upload + integrity verification.
 .PARAMETER Version
     Version string (e.g. "2.1.64"). If omitted, auto-detect from APK filename.
 .PARAMETER Body
-    Release description (markdown). Default: auto-generated from git log.
+    Release description (markdown). Default: "修复已知问题".
 .EXAMPLE
-    .\scripts\gh-draft-release.ps1 -Version "2.1.64"
-    .\scripts\gh-draft-release.ps1 -Version "2.1.64" -Body "- 修复xxx`n- 优化xxx"
+    .\scripts\gh-release.ps1 -Version "2.1.64"
 #>
 param(
     [string]$Version = "",
@@ -71,25 +69,37 @@ Write-Host "[2/5] Local APK: size=$localSize, SHA256=$localHash" -ForegroundColo
 # 5. Always use fixed release body
 $Body = "修复已知问题"
 
-# 6. Create draft release (UTF-8 bytes to avoid encoding corruption)
-Write-Host "[3/5] Creating draft release $tagName ..." -ForegroundColor Cyan
-$createBody = @{
+# 6. Create release (write JSON to temp file to guarantee UTF-8 without BOM)
+Write-Host "[3/5] Creating release $tagName ..." -ForegroundColor Cyan
+$jsonPayload = (@{
     tag_name = $tagName
     name = $tagName
     body = $Body
-    draft = $true
-} | ConvertTo-Json -Depth 3
-$utf8Body = [System.Text.Encoding]::UTF8.GetBytes($createBody)
+    draft = $false
+} | ConvertTo-Json -Depth 3)
+$tmpFile = Join-Path $env:TEMP "gh_release_payload_$([System.IO.Path]::GetRandomFileName()).json"
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($tmpFile, $jsonPayload, $utf8NoBom)
 
 try {
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/qnmlgbd250/weather-none/releases" -Method Post -Headers @{
-        Authorization = "token $token"
-    } -ContentType "application/json; charset=utf-8" -Body $utf8Body
+    $response = curl.exe -s -X POST `
+        -H "Authorization: token $token" `
+        -H "Content-Type: application/json; charset=utf-8" `
+        --data-binary "@$tmpFile" `
+        "https://api.github.com/repos/qnmlgbd250/weather-none/releases"
+    $release = $response | ConvertFrom-Json
+    if (-not $release.id) {
+        $errorMsg = if ($response) { $response } else { "Empty response" }
+        Write-Error "Failed to create release: $errorMsg"
+        exit 1
+    }
 } catch {
     Write-Error "Failed to create release: $_"
     exit 1
+} finally {
+    Remove-Item -LiteralPath $tmpFile -ErrorAction Ignore
 }
-Write-Host "  Created: $($release.html_url) (draft)" -ForegroundColor Green
+Write-Host "  Created: $($release.html_url)" -ForegroundColor Green
 
 # 7. Upload APK
 Write-Host "[4/5] Uploading APK ..." -ForegroundColor Cyan
@@ -137,8 +147,6 @@ try {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Draft release created: $tagName" -ForegroundColor Green
+Write-Host "  Release created: $tagName" -ForegroundColor Green
 Write-Host "  URL: $($release.html_url)" -ForegroundColor Green
-Write-Host "  Auto-publish schedule: Daily 13:00 UTC" -ForegroundColor Cyan
-Write-Host "  Or publish manually: gh release edit $tagName --draft=false" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Green

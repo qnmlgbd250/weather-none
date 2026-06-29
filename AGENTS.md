@@ -28,7 +28,7 @@
 ## 发版规则
 - **后续默认发版**: 除非用户主动要求 GitHub 发版，否则日常只执行云剪贴板发版
 - **默认发版**: 只执行 `scripts\release.ps1` 发布到云剪贴板
-- **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release（draft）
+- **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release（直接发布，非 draft）
 - **GitHub Token**: GitHub 发版必须从 `local.properties` 读取 GitHub token，不得硬编码到源码、脚本输出或 Release 描述中
 - **GitHub 包体完整性**: GitHub 发版上传 APK 前必须记录本地 APK 文件大小和 SHA-256；上传后必须从 GitHub Release 下载该 APK 资产并重新计算文件大小和 SHA-256，二者完全一致才算发版成功；如不一致，删除损坏资产后重新上传并再次校验
 - **GitHub Release 描述**: GitHub 发版描述只写一条中文描述：`修复已知问题`

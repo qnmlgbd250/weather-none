@@ -121,7 +121,7 @@ fun WeatherScreen(
                 Lifecycle.Event.ON_PAUSE -> backgroundTimestamp = System.currentTimeMillis()
                 Lifecycle.Event.ON_RESUME -> {
                     if (backgroundTimestamp > 0L) {
-                        viewModel.silentRefresh()
+                        viewModel.onResume()
                         backgroundTimestamp = 0L
                     }
                 }

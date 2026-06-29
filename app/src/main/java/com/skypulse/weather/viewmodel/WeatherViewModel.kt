@@ -438,6 +438,7 @@ class WeatherViewModel @Inject constructor(
     // ============ Multi-city Weather Loading ============
 
     private suspend fun loadWeatherForCity(city: City) {
+        if (isRecentlyFetched(city)) return
         var lastException: Throwable? = null
         var result: Result<WeatherResponse>? = null
         repeat(3) { attempt ->
@@ -475,6 +476,7 @@ class WeatherViewModel @Inject constructor(
 
     private fun fetchWeatherForCitySilent(city: City) {
         viewModelScope.launch {
+            if (isRecentlyFetched(city)) return@launch
             val result = fetchWithRetry(city.longitude, city.latitude)
             result.fold(
                 onSuccess = { response ->
@@ -520,7 +522,11 @@ class WeatherViewModel @Inject constructor(
 
     private fun fetchWeatherForCity(city: City) {
         viewModelScope.launch {
-            _uiState.value = WeatherUiState.Loading
+            if (isRecentlyFetched(city)) return@launch
+            val cached = _cityWeatherMap.value[city.id]?.weather
+            if (cached == null) {
+                _uiState.value = WeatherUiState.Loading
+            }
             val result = fetchWithRetry(city.longitude, city.latitude)
             result.fold(
                 onSuccess = { response ->
@@ -533,7 +539,9 @@ class WeatherViewModel @Inject constructor(
                     weatherCache.save(city.id, response)
                 },
                 onFailure = { e ->
-                    _uiState.value = WeatherUiState.Error(mapError(e))
+                    if (_uiState.value !is WeatherUiState.Success) {
+                        _uiState.value = WeatherUiState.Error(mapError(e))
+                    }
                 }
             )
         }
@@ -618,6 +626,30 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
+    fun onResume() {
+        viewModelScope.launch {
+            val gpsCity = _savedCities.value.find { it.isCurrentLocation }
+            if (gpsCity != null) {
+                _selectedCityId.value = gpsCity.id
+                val cached = _cityWeatherMap.value[gpsCity.id]?.weather
+                if (cached != null) {
+                    _uiState.value = WeatherUiState.Success(
+                        weather = cached,
+                        locationName = gpsCity.name
+                    )
+                }
+            }
+            val refreshCity = selectedCityForRefresh()
+            if (isRecentlyFetched(refreshCity)) return@launch
+            val refreshed = refreshSelectedWeather(refreshCity, silent = true)
+            if (refreshed) {
+                _refreshPhase.value = RefreshPhase.Success
+                delay(2000)
+                _refreshPhase.value = RefreshPhase.Idle
+            }
+        }
+    }
+
     fun silentRefresh() {
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
@@ -667,7 +699,7 @@ class WeatherViewModel @Inject constructor(
                 _cityWeatherMap.value = _cityWeatherMap.value.toMutableMap().apply {
                     put(city.id, CityWeatherData(error = mapError(e)))
                 }
-                if (!silent || _uiState.value !is WeatherUiState.Success) {
+                if (!silent && _uiState.value !is WeatherUiState.Success) {
                     _uiState.value = WeatherUiState.Error(mapError(e))
                 }
                 false
@@ -751,7 +783,7 @@ class WeatherViewModel @Inject constructor(
                 true
             },
             onFailure = { e ->
-                if (!silent || _uiState.value !is WeatherUiState.Success) {
+                if (!silent && _uiState.value !is WeatherUiState.Success) {
                     _uiState.value = WeatherUiState.Error(mapError(e))
                 }
                 false
