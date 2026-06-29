@@ -71,12 +71,7 @@ $Body = "修复已知问题"
 
 # 6. Create release (write JSON to temp file to guarantee UTF-8 without BOM)
 Write-Host "[3/5] Creating release $tagName ..." -ForegroundColor Cyan
-$jsonPayload = (@{
-    tag_name = $tagName
-    name = $tagName
-    body = $Body
-    draft = $false
-} | ConvertTo-Json -Depth 3)
+$jsonPayload = "{`"tag_name`":`"$tagName`",`"name`":`"$tagName`",`"body`":`"\u4fee\u590d\u5df2\u77e5\u95ee\u9898`",`"draft`":false}"
 $tmpFile = Join-Path $env:TEMP "gh_release_payload_$([System.IO.Path]::GetRandomFileName()).json"
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 [System.IO.File]::WriteAllText($tmpFile, $jsonPayload, $utf8NoBom)
@@ -86,7 +81,7 @@ try {
         -H "Authorization: token $token" `
         -H "Content-Type: application/json; charset=utf-8" `
         --data-binary "@$tmpFile" `
-        "https://api.github.com/repos/qnmlgbd250/weather-none/releases"
+        "https://api.github.com/repos/qnmlgbd250/weather-none/releases" 2>$null
     $release = $response | ConvertFrom-Json
     if (-not $release.id) {
         $errorMsg = if ($response) { $response } else { "Empty response" }
