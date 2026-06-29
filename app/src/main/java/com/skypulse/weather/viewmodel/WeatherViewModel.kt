@@ -84,7 +84,7 @@ class WeatherViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "WeatherVM"
-        private const val API_COOLDOWN_MS = 80_000L
+        private const val REFRESH_DEDUP_MS = 60_000L
     }
 
     // --- Screen navigation ---
@@ -497,9 +497,13 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
+    private fun isRecentlyFetched(city: City?): Boolean {
+        val lastFetch = lastFetchTimeFor(city)
+        return lastFetch > 0 && System.currentTimeMillis() - lastFetch < REFRESH_DEDUP_MS
+    }
+
     private fun refreshCityAfterSwitch(city: City) {
-        val sinceLast = System.currentTimeMillis() - lastFetchTimeFor(city)
-        if (sinceLast < API_COOLDOWN_MS || refreshingCityIds.contains(city.id)) return
+        if (isRecentlyFetched(city) || refreshingCityIds.contains(city.id)) return
         viewModelScope.launch {
             refreshingCityIds.add(city.id)
             try {
@@ -545,6 +549,8 @@ class WeatherViewModel @Inject constructor(
     @Suppress("MissingPermission")
     fun relocateAndRefresh() {
         viewModelScope.launch {
+            val currentCity = _savedCities.value.find { it.isCurrentLocation }
+            if (currentCity != null && isRecentlyFetched(currentCity)) return@launch
             _isLocating.value = true
             try {
                 val amapLocation = locationManager.requestAmapLocation()
@@ -572,6 +578,8 @@ class WeatherViewModel @Inject constructor(
 
     fun fetchWeather() {
         viewModelScope.launch {
+            val refreshCity = selectedCityForRefresh()
+            if (_uiState.value is WeatherUiState.Success && isRecentlyFetched(refreshCity)) return@launch
             if (_uiState.value !is WeatherUiState.Success) {
                 _uiState.value = WeatherUiState.Loading
             }
@@ -592,10 +600,11 @@ class WeatherViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
+            val refreshCity = selectedCityForRefresh()
+            if (isRecentlyFetched(refreshCity)) return@launch
             _isRefreshing.value = true
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
-            val refreshCity = selectedCityForRefresh()
             val refreshed = refreshSelectedWeather(refreshCity)
             val elapsed = System.currentTimeMillis() - startTime
             if (elapsed < 1500) delay(1500 - elapsed)
@@ -613,12 +622,8 @@ class WeatherViewModel @Inject constructor(
     fun silentRefresh() {
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
-            val sinceLast = System.currentTimeMillis() - lastFetchTimeFor(refreshCity)
-            val refreshed = if (sinceLast >= API_COOLDOWN_MS) {
-                refreshSelectedWeather(refreshCity, silent = true)
-            } else {
-                false
-            }
+            if (isRecentlyFetched(refreshCity)) return@launch
+            val refreshed = refreshSelectedWeather(refreshCity, silent = true)
             if (refreshed) {
                 _refreshPhase.value = RefreshPhase.Success
                 delay(2000)
