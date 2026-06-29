@@ -68,32 +68,10 @@ $localSize = (Get-Item -LiteralPath $apkPath).Length
 $localHash = (Get-FileHash -LiteralPath $apkPath -Algorithm SHA256).Hash
 Write-Host "[2/5] Local APK: size=$localSize, SHA256=$localHash" -ForegroundColor Cyan
 
-# 5. Auto-generate body from git log (since last tag)
-if (-not $Body) {
-    $prevEncoding = [Console]::OutputEncoding
-    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-    $lastTag = $null
-    try {
-        $lastTag = & git describe --tags --abbrev=0 2>$null
-    } catch {}
-    if ($lastTag) {
-        $log = & git log "$lastTag..HEAD" --oneline --no-decorate 2>$null
-    } else {
-        $log = & git log --oneline --no-decorate -10 2>$null
-    }
-    [Console]::OutputEncoding = $prevEncoding
-    if ($log) {
-        $lines = $log -split "`n" | ForEach-Object {
-            $msg = $_ -replace '^[0-9a-f]+\s+', ''
-            "- $msg"
-        }
-        $Body = $lines -join "`n"
-    } else {
-        $Body = ""
-    }
-}
+# 5. Always use fixed release body
+$Body = "修复已知问题"
 
-# 6. Create draft release
+# 6. Create draft release (UTF-8 bytes to avoid encoding corruption)
 Write-Host "[3/5] Creating draft release $tagName ..." -ForegroundColor Cyan
 $createBody = @{
     tag_name = $tagName
@@ -101,11 +79,12 @@ $createBody = @{
     body = $Body
     draft = $true
 } | ConvertTo-Json -Depth 3
+$utf8Body = [System.Text.Encoding]::UTF8.GetBytes($createBody)
 
 try {
     $release = Invoke-RestMethod -Uri "https://api.github.com/repos/qnmlgbd250/weather-none/releases" -Method Post -Headers @{
         Authorization = "token $token"
-    } -ContentType "application/json" -Body $createBody
+    } -ContentType "application/json; charset=utf-8" -Body $utf8Body
 } catch {
     Write-Error "Failed to create release: $_"
     exit 1
@@ -126,13 +105,21 @@ try {
     exit 1
 }
 
-# 8. Download and verify
+# 8. Download and verify (via API to support draft releases)
 Write-Host "[5/5] Verifying integrity ..." -ForegroundColor Cyan
 $tempPath = Join-Path $env:TEMP "skypulse-verify.apk"
 Remove-Item -LiteralPath $tempPath -ErrorAction Ignore
 
 try {
-    Invoke-WebRequest -Uri "https://github.com/qnmlgbd250/weather-none/releases/download/$tagName/skypulse-v$Version.apk" -OutFile $tempPath -MaximumRedirection 10
+    $assetUrl = $release.assets[0].url
+    if (-not $assetUrl) {
+        Write-Error "No asset URL found"
+        exit 1
+    }
+    Invoke-WebRequest -Uri $assetUrl -Headers @{
+        Authorization = "token $token"
+        Accept = "application/octet-stream"
+    } -OutFile $tempPath -MaximumRedirection 10
     $dlSize = (Get-Item -LiteralPath $tempPath).Length
     $dlHash = (Get-FileHash -LiteralPath $tempPath -Algorithm SHA256).Hash
 
