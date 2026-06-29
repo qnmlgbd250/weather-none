@@ -50,6 +50,35 @@ class WeatherRepository @Inject constructor(
         }
     }
 
+    /**
+     * 小组件专用精简请求：只要 realtime + 今天 daily，不要逐小时、不要预警、不要多天预报。
+     * 相比 getWeather() 大幅减少响应体体积。
+     */
+    suspend fun getWidgetWeather(
+        longitude: Double,
+        latitude: Double
+    ): Result<WeatherResponse> {
+        return try {
+            val response = api.getWeather(
+                token = CAIYUN_TOKEN,
+                longitude = longitude,
+                latitude = latitude,
+                span = 2,
+                alert = false,
+                hourlySteps = 1,
+                lang = "zh_CN",
+                version = "7.59.0"
+            )
+            if (response.status == "ok") {
+                Result.success(response)
+            } else {
+                Result.failure(Exception("API error: ${response.status}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun WeatherResponse.withCurrentHourlyWindow(): WeatherResponse {
         val hourly = result?.hourly ?: return this
         val threshold = currentHour()

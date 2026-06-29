@@ -136,7 +136,11 @@ class LocationManager @Inject constructor(
     }
 
     suspend fun requestLightweightAmapLocation(): AMapLocation? {
-        return requestAmapLocation(AMapLocationClientOption.AMapLocationMode.Battery_Saving, 8_000L)
+        return requestLightweightAmapLocation(8_000L)
+    }
+
+    suspend fun requestLightweightAmapLocation(timeoutMillis: Long): AMapLocation? {
+        return requestAmapLocation(AMapLocationClientOption.AMapLocationMode.Battery_Saving, timeoutMillis)
     }
 
     private suspend fun requestAmapLocation(

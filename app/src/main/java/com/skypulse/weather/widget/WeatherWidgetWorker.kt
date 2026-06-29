@@ -15,6 +15,7 @@ import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.util.FileLogger
 import com.squareup.moshi.Moshi
+import kotlinx.coroutines.delay
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -51,7 +52,7 @@ class WeatherWidgetWorker(
                     try {
                         val api = createCaiyunApi(moshi)
                         val repo = WeatherRepository(api)
-                        val result = repo.getWeather(city.longitude, city.latitude)
+                        val result = repo.getWidgetWeather(city.longitude, city.latitude)
                         result.getOrNull()?.let { fresh ->
                             cache.save(city.id, fresh)
                             WeatherDataStore(context, moshi).save(city.id, fresh)
@@ -82,7 +83,7 @@ class WeatherWidgetWorker(
         val locationManager = LocationManager(context)
         val amapLocation = if (locationManager.hasBackgroundLocationPermission()) {
             try {
-                locationManager.requestLightweightAmapLocation()
+                requestLightweightAmapLocationWithRetry(locationManager)
             } catch (e: Exception) {
                 Log.w("WidgetWorker", "Location fetch failed, using saved city", e)
                 null
@@ -126,11 +127,16 @@ class WeatherWidgetWorker(
             if (resolved == "未知位置") {
                 Log.w("WidgetWorker", "resolveLocationName返回未知位置, lat=$lat, lon=$lon")
                 val geocoded = locationManager.reverseGeocode(lat, lon)
-                val result = geocoded.takeIf { it != "未知位置" }
-                    ?: savedName
-                    ?: resolved
-                Log.i("WidgetWorker", "位置解析结果: geocoded=$geocoded, savedName=$savedName, final=$result")
-                result
+                if (geocoded != "未知位置") {
+                    Log.i("WidgetWorker", "逆地理编码成功: geocoded=$geocoded")
+                    geocoded
+                } else if (savedName != null && savedName != "未知位置") {
+                    Log.i("WidgetWorker", "逆地理编码失败，回退到前一个位置: $savedName")
+                    savedName
+                } else {
+                    Log.w("WidgetWorker", "所有位置解析均失败，无回退可用")
+                    resolved
+                }
             } else {
                 resolved
             }
@@ -199,6 +205,30 @@ class WeatherWidgetWorker(
         cityDataStore.saveCities(updatedCities)
         cityManager.saveCities(updatedCities)
         return updatedCity
+    }
+
+    /**
+     * 带重试的轻量定位：第一次 12 秒超时，失败后等 1 秒再用 15 秒超时重试。
+     * 比主 App 的 Hight_Accuracy（15s）更省电，但比原来的 8s 更可靠。
+     */
+    private suspend fun requestLightweightAmapLocationWithRetry(
+        locationManager: LocationManager
+    ): com.amap.api.location.AMapLocation? {
+        val timeouts = longArrayOf(12_000L, 15_000L)
+        for ((index, timeout) in timeouts.withIndex()) {
+            try {
+                val location = locationManager.requestLightweightAmapLocation(timeout)
+                if (location != null) {
+                    if (index > 0) Log.i("WidgetWorker", "定位重试成功 (第${index + 1}次)")
+                    return location
+                }
+                Log.w("WidgetWorker", "定位第${index + 1}次失败 (timeout=${timeout}ms)")
+            } catch (e: Exception) {
+                Log.w("WidgetWorker", "定位第${index + 1}次异常", e)
+            }
+            if (index < timeouts.lastIndex) delay(1_000L)
+        }
+        return null
     }
 
     private fun distanceBetween(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float {
