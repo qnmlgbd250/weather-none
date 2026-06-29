@@ -48,7 +48,6 @@ fun LocationHeader(
     locationName: String,
     isLocating: Boolean = false,
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
-    onLocationClick: (() -> Unit)? = null,
     onListClick: (() -> Unit)? = null,
     onSettingsClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -62,17 +61,7 @@ fun LocationHeader(
 
     Column(modifier = modifier.padding(horizontal = 20.dp)) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (onLocationClick != null)
-                        Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onLocationClick
-                        )
-                    else Modifier
-                ),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {

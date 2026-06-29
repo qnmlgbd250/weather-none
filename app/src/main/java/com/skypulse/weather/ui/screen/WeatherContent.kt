@@ -29,7 +29,6 @@ internal fun WeatherContent(
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
     cityCount: Int = 1,
     currentCityIndex: Int = 0,
-    onLocationClick: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onListClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -87,7 +86,6 @@ internal fun WeatherContent(
             locationName = state.locationName,
             isLocating = isLocating,
             refreshPhase = refreshPhase,
-            onLocationClick = onLocationClick,
             onListClick = onListClick,
             onSettingsClick = onSettingsClick
         )

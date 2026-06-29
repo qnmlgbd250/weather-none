@@ -242,7 +242,6 @@ fun WeatherScreen(
                                         locationName = state.locationName,
                                         isLocating = isLocating,
                                         refreshPhase = refreshPhase,
-                                        onLocationClick = { viewModel.relocateAndRefresh() },
                                         onListClick = { viewModel.navigateToCityList() },
                                         onSettingsClick = { viewModel.navigateToSettings() }
                                     )
@@ -295,7 +294,6 @@ fun WeatherScreen(
                                         locationName = "加载失败",
                                         isLocating = false,
                                         refreshPhase = RefreshPhase.Idle,
-                                        onLocationClick = {},
                                         onListClick = { viewModel.navigateToCityList() },
                                         onSettingsClick = { viewModel.navigateToSettings() }
                                     )
