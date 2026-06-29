@@ -600,22 +600,21 @@ class WeatherViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            val refreshCity = selectedCityForRefresh()
-            if (isRecentlyFetched(refreshCity)) return@launch
             _isRefreshing.value = true
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
-            val refreshed = refreshSelectedWeather(refreshCity)
+            val refreshCity = selectedCityForRefresh()
+            val refreshed = if (isRecentlyFetched(refreshCity)) {
+                false
+            } else {
+                refreshSelectedWeather(refreshCity)
+            }
             val elapsed = System.currentTimeMillis() - startTime
             if (elapsed < 1500) delay(1500 - elapsed)
             _isRefreshing.value = false
-            if (refreshed) {
-                _refreshPhase.value = RefreshPhase.Success
-                delay(2000)
-                _refreshPhase.value = RefreshPhase.Idle
-            } else {
-                _refreshPhase.value = RefreshPhase.Idle
-            }
+            _refreshPhase.value = RefreshPhase.Success
+            delay(2000)
+            _refreshPhase.value = RefreshPhase.Idle
         }
     }
 
