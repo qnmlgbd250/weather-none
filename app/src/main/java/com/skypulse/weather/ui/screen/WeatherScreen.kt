@@ -55,6 +55,7 @@ fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
     searchViewModel: CitySearchViewModel = hiltViewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val refreshPhase by viewModel.refreshPhase.collectAsState()
     val isLocating by viewModel.isLocating.collectAsState()
@@ -132,8 +133,15 @@ fun WeatherScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(hasLocationPermission, allPermissionsHandled) {
-        if (hasLocationPermission) {
+    LaunchedEffect(hasLocationPermission, allPermissionsHandled, showOnboarding) {
+        // 直接查询系统权限状态，不依赖 Accompanist（引导页通过 ActivityResult 请求权限后，Accompanist 状态可能尚未同步）
+        val locationGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (locationGranted) {
             viewModel.ensureCurrentLocationCity()
             viewModel.fetchWeather()
             viewModel.completeOnboarding()

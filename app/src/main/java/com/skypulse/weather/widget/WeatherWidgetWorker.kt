@@ -10,7 +10,6 @@ import com.skypulse.weather.data.CityDataStore
 import com.skypulse.weather.data.CityManager
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.data.WeatherCache
-import com.skypulse.weather.data.WeatherDataStore
 import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.util.FileLogger
@@ -55,7 +54,6 @@ class WeatherWidgetWorker(
                         val result = repo.getWidgetWeather(city.longitude, city.latitude)
                         result.getOrNull()?.let { fresh ->
                             cache.save(city.id, fresh)
-                            WeatherDataStore(context, moshi).save(city.id, fresh)
                             saveLastFetchTime(context, city.id, System.currentTimeMillis())
                             WeatherWidgetUpdater.updateAll(context, fresh, city.name)
                         }

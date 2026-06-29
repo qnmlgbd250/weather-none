@@ -724,7 +724,16 @@ class WeatherViewModel @Inject constructor(
         }
 
         return try {
-            val amapLocation = locationManager.requestAmapLocation()
+            // 有定位权限时，带重试地获取定位（首次安装 GPS 冷启动可能需要更多时间）
+            var amapLocation: com.amap.api.location.AMapLocation? = null
+            for (attempt in 0..1) {
+                amapLocation = locationManager.requestAmapLocation()
+                if (amapLocation != null) break
+                if (attempt < 1) {
+                    Log.w(TAG, "定位第${attempt + 1}次失败，1秒后重试")
+                    delay(1_000L)
+                }
+            }
 
             if (amapLocation != null) {
                 val lon = amapLocation.longitude
