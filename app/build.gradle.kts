@@ -37,8 +37,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 573
-        versionName = "3.0.1"
+        versionCode = 574
+        versionName = "3.0.2"
 
         vectorDrawables {
             useSupportLibrary = true
