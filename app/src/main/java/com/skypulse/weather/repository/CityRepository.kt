@@ -1,6 +1,7 @@
 package com.skypulse.weather.repository
 
 import android.content.Context
+import android.util.Log
 import com.skypulse.weather.data.local.database.CityDao
 import com.skypulse.weather.data.local.database.CityEntity
 import com.skypulse.weather.model.City
@@ -14,7 +15,7 @@ import javax.inject.Singleton
 /**
  * 城市数据的唯一入口（SSOT = Room）。
  *
- * 替代 CityDataStore（DataStore）+ CityManager（SharedPreferences）双重存储。
+ * 所有写操作自动同步 FileCache，确保 Widget 读到最新数据。
  */
 @Singleton
 class CityRepository @Inject constructor(
@@ -41,11 +42,9 @@ class CityRepository @Inject constructor(
     // ============ Write ============
 
     suspend fun saveCities(cities: List<City>) {
-        // 事务：先删后插，确保 Room 数据与传入列表完全一致
         cityDao.deleteAll()
         cityDao.upsertAll(cities.mapIndexed { index, city -> city.toEntity(index) })
-        // 同步写入文件缓存供 Widget 读取
-        CityFileCache.save(context, cities)
+        syncFileCache()
     }
 
     suspend fun addCity(city: City) {
@@ -54,6 +53,7 @@ class CityRepository @Inject constructor(
         current.add(city.toEntity(current.size))
         cityDao.deleteAll()
         cityDao.upsertAll(current)
+        syncFileCache()
     }
 
     suspend fun removeCity(cityId: String) {
@@ -61,6 +61,7 @@ class CityRepository @Inject constructor(
         current.removeAll { it.id == cityId && !it.isCurrentLocation }
         cityDao.deleteAll()
         cityDao.upsertAll(current)
+        syncFileCache()
     }
 
     suspend fun updateCity(city: City) {
@@ -70,15 +71,25 @@ class CityRepository @Inject constructor(
             current[index] = city.toEntity(index)
             cityDao.deleteAll()
             cityDao.upsertAll(current)
+            syncFileCache()
+        }
+    }
+
+    /**
+     * 从 Room 读取最新城市列表并写入 FileCache。
+     * 确保 Widget（读 FileCache）与 Room 数据一致。
+     */
+    private suspend fun syncFileCache() {
+        try {
+            val cities = cityDao.getAll().map { it.toDomain() }
+            CityFileCache.save(context, cities)
+        } catch (e: Exception) {
+            Log.w("CityRepo", "syncFileCache failed", e)
         }
     }
 
     // ============ Migration Helper ============
 
-    /**
-     * 从 SharedPreferences 迁移城市数据到 Room。
-     * 只在首次升级时调用。
-     */
     suspend fun migrateFromSharedPreferences(json: String) {
         if (json.isBlank() || json == "[]") return
         try {

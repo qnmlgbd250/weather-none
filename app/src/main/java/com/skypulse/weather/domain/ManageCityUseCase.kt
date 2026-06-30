@@ -9,8 +9,7 @@ import javax.inject.Singleton
 /**
  * 城市管理的业务逻辑封装。
  *
- * 封装城市 CRUD，ViewModel 不再直接操作 CityRepository。
- * 职责：协调城市数据变更。
+ * 所有写操作从 Room 读取最新数据，避免用过时内存列表覆盖 GPS 已更新的名字。
  */
 @Singleton
 class ManageCityUseCase @Inject constructor(
@@ -18,16 +17,10 @@ class ManageCityUseCase @Inject constructor(
     private val locationManager: LocationManager
 ) {
 
-    /**
-     * 获取所有城市。
-     */
     suspend fun getCities(): List<City> {
         return cityRepository.getCities()
     }
 
-    /**
-     * 添加新城市。返回更新后的完整城市列表。
-     */
     suspend fun addCity(name: String, longitude: Double, latitude: Double): Pair<City, List<City>> {
         val city = City(
             id = java.util.UUID.randomUUID().toString(),
@@ -41,29 +34,23 @@ class ManageCityUseCase @Inject constructor(
         return city to updatedCities
     }
 
-    /**
-     * 删除城市（定位城市不可删除）。返回更新后的完整城市列表。
-     */
     suspend fun removeCity(cityId: String): List<City> {
         cityRepository.removeCity(cityId)
         val updatedCities = cityRepository.getCities()
         return updatedCities
     }
 
-    /**
-     * 更新城市信息。
-     */
     suspend fun updateCity(city: City) {
         cityRepository.updateCity(city)
     }
 
     /**
-     * 确保存在定位城市。如果不存在，创建一个默认的。
-     * 返回更新后的完整城市列表。
+     * 确保存在定位城市。始终从 Room 读取最新数据。
      */
-    suspend fun ensureCurrentLocationCity(existingCities: List<City>): List<City> {
-        val hasCurrentLocation = existingCities.any { it.isCurrentLocation }
-        if (hasCurrentLocation) return existingCities
+    suspend fun ensureCurrentLocationCity(): List<City> {
+        val cities = cityRepository.getCities()
+        val currentCity = cities.find { it.isCurrentLocation }
+        if (currentCity != null) return cities
 
         val cachedLocation = locationManager.getCachedLocation()
         val currentLocationCity = City(
@@ -73,24 +60,22 @@ class ManageCityUseCase @Inject constructor(
             latitude = cachedLocation?.latitude ?: LocationManager.DEFAULT_LATITUDE,
             isCurrentLocation = true
         )
-        val updatedCities = existingCities.toMutableList().apply {
+        val updatedCities = cities.toMutableList().apply {
             add(0, currentLocationCity)
         }
         cityRepository.saveCities(updatedCities)
         return updatedCities
     }
 
-    /**
-     * 保存城市列表（全量替换）。
-     */
     suspend fun saveCities(cities: List<City>) {
         cityRepository.saveCities(cities)
     }
 
     /**
-     * 更新定位城市名称。返回更新后的完整城市列表。
+     * 更新定位城市名称。从 Room 读取最新列表，避免覆盖其他并发修改。
      */
-    suspend fun updateCurrentLocationCityName(cities: List<City>, name: String): List<City> {
+    suspend fun updateCurrentLocationCityName(name: String): List<City> {
+        val cities = cityRepository.getCities()
         val index = cities.indexOfFirst { it.isCurrentLocation }
         if (index < 0) return cities
         val updatedCities = cities.toMutableList().apply {
@@ -101,9 +86,10 @@ class ManageCityUseCase @Inject constructor(
     }
 
     /**
-     * 更新定位城市坐标。返回更新后的完整城市列表。
+     * 更新定位城市坐标。从 Room 读取最新列表，避免覆盖其他并发修改。
      */
-    suspend fun updateCurrentLocationCityCoords(cities: List<City>, lon: Double, lat: Double): List<City> {
+    suspend fun updateCurrentLocationCityCoords(lon: Double, lat: Double): List<City> {
+        val cities = cityRepository.getCities()
         val index = cities.indexOfFirst { it.isCurrentLocation }
         if (index < 0) return cities
         val updatedCities = cities.toMutableList().apply {
@@ -113,9 +99,6 @@ class ManageCityUseCase @Inject constructor(
         return updatedCities
     }
 
-    /**
-     * 从 SharedPreferences 迁移城市数据到 Room。
-     */
     suspend fun migrateFromSharedPreferences(json: String) {
         cityRepository.migrateFromSharedPreferences(json)
     }

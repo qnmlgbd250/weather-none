@@ -205,6 +205,10 @@ class WeatherViewModel @Inject constructor(
         weatherObservationJob?.cancel()
         weatherObservationJob = viewModelScope.launch {
             repository.observeAllWeather().collect { entities ->
+                // 同步城市列表，确保名字与 Room 一致
+                val freshCities = manageCityUseCase.getCities()
+                _savedCities.value = freshCities
+
                 weatherMapMutex.withLock {
                     val updatedMap = _cityWeatherMap.value.toMutableMap()
                     var changed = false
@@ -349,7 +353,9 @@ class WeatherViewModel @Inject constructor(
                 } else {
                     viewModelScope.launch {
                         citiesLoadJob?.join()
-                        val updatedCities = manageCityUseCase.ensureCurrentLocationCity(_savedCities.value)
+                        val freshCities = manageCityUseCase.getCities()
+                        _savedCities.value = freshCities
+                        val updatedCities = manageCityUseCase.ensureCurrentLocationCity()
                         _savedCities.value = updatedCities
                         val defaultCity = updatedCities.firstOrNull { it.isCurrentLocation } ?: updatedCities.firstOrNull()
                         if (defaultCity != null) {
@@ -410,24 +416,34 @@ class WeatherViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 确保存在定位城市（挂起版本，等待完成后再执行天气刷新）。
+     * 避免与 refreshWithLocation() 竞态导致城市名被旧值覆盖。
+     */
+    suspend fun ensureCurrentLocationCitySync() {
+        citiesLoadJob?.join()
+        val freshCities = manageCityUseCase.getCities()
+        _savedCities.value = freshCities
+        val updatedCities = manageCityUseCase.ensureCurrentLocationCity()
+        _savedCities.value = updatedCities
+    }
+
     fun ensureCurrentLocationCity() {
         viewModelScope.launch {
-            citiesLoadJob?.join()
-            val updatedCities = manageCityUseCase.ensureCurrentLocationCity(_savedCities.value)
-            _savedCities.value = updatedCities
+            ensureCurrentLocationCitySync()
         }
     }
 
     fun updateCurrentLocationCityName(name: String) {
         viewModelScope.launch {
-            val updatedCities = manageCityUseCase.updateCurrentLocationCityName(_savedCities.value, name)
+            val updatedCities = manageCityUseCase.updateCurrentLocationCityName(name)
             _savedCities.value = updatedCities
         }
     }
 
     fun updateCurrentLocationCityCoords(lon: Double, lat: Double) {
         viewModelScope.launch {
-            val updatedCities = manageCityUseCase.updateCurrentLocationCityCoords(_savedCities.value, lon, lat)
+            val updatedCities = manageCityUseCase.updateCurrentLocationCityCoords(lon, lat)
             _savedCities.value = updatedCities
         }
     }
@@ -535,7 +551,10 @@ class WeatherViewModel @Inject constructor(
                 val result = refreshWeatherUseCase.refreshWithLocation()
                 val response = result.getOrNull()
                 if (response != null) {
-                    val city = _savedCities.value.find { it.isCurrentLocation }
+                    // 从 Room 重新读取城市列表，确保名字是最新的
+                    val cities = manageCityUseCase.getCities()
+                    _savedCities.value = cities
+                    val city = cities.find { it.isCurrentLocation }
                     if (city != null) {
                         updateWeatherMap(city.id, CityWeatherData(weather = response))
                     }

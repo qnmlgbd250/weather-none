@@ -142,7 +142,8 @@ fun WeatherScreen(
             context, Manifest.permission.ACCESS_COARSE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         if (locationGranted) {
-            viewModel.ensureCurrentLocationCity()
+            // 先确保定位城市存在（挂起等待完成），再刷新天气，避免竞态覆盖城市名
+            viewModel.ensureCurrentLocationCitySync()
             viewModel.fetchWeather()
             viewModel.completeOnboarding()
         }
