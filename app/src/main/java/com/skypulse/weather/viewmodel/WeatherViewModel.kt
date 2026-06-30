@@ -668,6 +668,10 @@ class WeatherViewModel @Inject constructor(
                         locationName = locationName
                     )
                 }
+                // GPS 成功后通知小组件刷新，确保小组件显示最新的定位名
+                try {
+                    com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext)
+                } catch (_: Exception) {}
             }
         }
         return success
