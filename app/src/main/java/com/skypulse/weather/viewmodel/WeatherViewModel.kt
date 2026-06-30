@@ -225,6 +225,10 @@ class WeatherViewModel @Inject constructor(
                     }
                     if (changed) {
                         _cityWeatherMap.value = updatedMap
+                        // Room 数据变化时同步通知 Widget 刷新，避免 Widget 显示旧数据
+                        try {
+                            com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext)
+                        } catch (_: Exception) {}
                     }
                 }
             }

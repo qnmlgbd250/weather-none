@@ -26,7 +26,7 @@
 - **改动后构建**: 每次代码修改完成后，默认自动执行构建验证；构建流程必须自动递增 `versionCode` 和 `versionName`，除非用户明确要求暂不构建或暂不迭代版本号
 
 ## 发版规则
-- **后续默认发版**: 除非用户主动要求 GitHub 发版，否则日常只执行云剪贴板发版
+- **后续默认发版**: 除非用户主动要求 GitHub 发版（必须每次对话明确提出发版-不能根据上下文内容自己推测），否则日常只执行云剪贴板发版
 - **默认发版**: 只执行 `scripts\release.ps1` 发布到云剪贴板
 - **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release（直接发布，非 draft）
 - **GitHub Token**: GitHub 发版必须从 `local.properties` 读取 GitHub token，不得硬编码到源码、脚本输出或 Release 描述中
