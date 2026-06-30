@@ -29,6 +29,16 @@ val tMapKey = providers.gradleProperty("T_MAP_KEY")
     .get()
 val escapedTMapKey = tMapKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
+val xiaomiAppKey = providers.gradleProperty("XIAOMI_APP_KEY")
+    .orElse(localProperties.getProperty("XIAOMI_APP_KEY", ""))
+    .get()
+val escapedXiaomiAppKey = xiaomiAppKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
+val xiaomiSign = providers.gradleProperty("XIAOMI_SIGN")
+    .orElse(localProperties.getProperty("XIAOMI_SIGN", ""))
+    .get()
+val escapedXiaomiSign = xiaomiSign.replace("\\", "\\\\").replace("\"", "\\\"")
+
 android {
     namespace = "com.skypulse.weather"
     compileSdk = 34
@@ -37,8 +47,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 588
-        versionName = "3.0.16"
+        versionCode = 594
+        versionName = "3.0.22"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -48,6 +58,8 @@ android {
         buildConfigField("String", "AMAP_API_KEY", "\"$escapedAmapApiKey\"")
         buildConfigField("String", "CAIYUN_TOKEN", "\"$escapedCaiyunToken\"")
         buildConfigField("String", "T_MAP_KEY", "\"$escapedTMapKey\"")
+        buildConfigField("String", "XIAOMI_APP_KEY", "\"$escapedXiaomiAppKey\"")
+        buildConfigField("String", "XIAOMI_SIGN", "\"$escapedXiaomiSign\"")
     }
 
     signingConfigs {

@@ -222,8 +222,9 @@ fun CitySearchResultRow(
             ),
         color = Color.Transparent
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = name,
@@ -231,10 +232,14 @@ fun CitySearchResultRow(
                 color = IosTextPrimary
             )
             if (district.isNotBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "，",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = IosTextSecondary
+                )
                 Text(
                     text = district,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = IosTextSecondary
                 )
             }

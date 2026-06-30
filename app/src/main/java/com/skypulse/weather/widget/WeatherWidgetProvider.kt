@@ -68,10 +68,11 @@ class WeatherWidgetProvider : AppWidgetProvider() {
          * 刷新所有 Widget 实例。
          *
          * @param context Application Context
-         * @param weather 可选：直接传入天气数据（避免重复读取）
-         * @param cityName 可选：城市名称
+         * @param weather 可选：传入的天气数据（仅用于第一个城市时才使用）
+         * @param cityName 可选：城市名称（仅用于第一个城市时才使用）
          *
-         * 当 weather 为 null 时，从 WeatherFileCache 读取。
+         * 小组件始终显示第一个城市的天气数据，忽略传入的 weather 和 cityName 参数。
+         * 当 weather 为 null 或不是第一个城市时，从 WeatherFileCache 读取。
          */
         fun refresh(
             context: Context,
@@ -83,15 +84,26 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
                 if (ids.isNotEmpty()) {
                     val cities = CityFileCache.load(context)
-                    val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
-                    val finalWeather = weather ?: run {
-                        city?.let { WeatherFileCache.load(context, it.id) }
-                    }
-                    val finalCityName = cityName ?: city?.name
-                    WeatherWidgetUpdater.updateAll(context, finalWeather, finalCityName)
-                    // 同步写入 FileCache，确保 onUpdate() 读到最新数据
-                    if (finalWeather != null && city != null) {
-                        WeatherFileCache.save(context, city.id, finalWeather)
+                    val firstCity = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
+
+                    if (firstCity != null) {
+                        // 始终使用第一个城市的天气数据
+                        // 如果传入的 weather 对应的是第一个城市，则使用；否则从缓存读取
+                        val isFirstCityWeather = weather != null && cityName == firstCity.name
+                        val finalWeather = if (isFirstCityWeather) {
+                            weather
+                        } else {
+                            WeatherFileCache.load(context, firstCity.id)
+                        }
+                        val finalCityName = firstCity.name
+
+                        WeatherWidgetUpdater.updateAll(context, finalWeather, finalCityName)
+                        // 同步写入 FileCache，确保 onUpdate() 读到最新数据
+                        if (finalWeather != null) {
+                            WeatherFileCache.save(context, firstCity.id, finalWeather)
+                        }
+                    } else {
+                        WeatherWidgetUpdater.updateAll(context, null, null)
                     }
                 }
             } catch (_: Exception) {}

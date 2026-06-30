@@ -38,25 +38,26 @@ class WeatherWidgetWorker @AssistedInject constructor(
         FileLogger.i("WidgetRefresh", "【WorkManager刷新】doWork 触发, trigger=$trigger, runAttemptCount=$runAttemptCount")
         return try {
             val cities = cityRepository.getCities()
-            val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
+            // 小组件始终显示第一个城市的天气数据
+            val firstCity = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
 
-            if (city != null) {
+            if (firstCity != null) {
                 // 优先使用缓存中的定位名（GPS 成功后已更新），而不是 Room 中可能过时的城市名
-                val displayName = if (city.isCurrentLocation) {
+                val displayName = if (firstCity.isCurrentLocation) {
                     locationManager.getCachedLocation()?.name
-                        ?: city.name.takeIf { it != "当前定位" }
+                        ?: firstCity.name.takeIf { it != "当前定位" }
                         ?: "定位中..."
                 } else {
-                    city.name
+                    firstCity.name
                 }
 
                 // 1. 从 Room 读取缓存并立即渲染
-                val cached = repository.getWeatherFromCache(city.id)
+                val cached = repository.getWeatherFromCache(firstCity.id)
                 WeatherWidgetUpdater.updateAll(applicationContext, cached, displayName)
 
                 // 2. 同步写入文件缓存供 WidgetProvider.onUpdate() 读取
                 if (cached != null) {
-                    WeatherFileCache.save(applicationContext, city.id, cached)
+                    WeatherFileCache.save(applicationContext, firstCity.id, cached)
                 }
 
                 // 3. 通过 RefreshManager 请求同步（RefreshManager 决策是否需要联网）
@@ -69,17 +70,17 @@ class WeatherWidgetWorker @AssistedInject constructor(
 
                 // 4. 无论同步结果如何，始终从 Room 重新读取并渲染
                 //    确保 App 写入 Room 的最新数据能被 Widget 读到
-                val freshWeather = repository.getWeatherFromCache(city.id)
-                val freshName = if (city.isCurrentLocation) {
+                val freshWeather = repository.getWeatherFromCache(firstCity.id)
+                val freshName = if (firstCity.isCurrentLocation) {
                     locationManager.getCachedLocation()?.name
-                        ?: city.name.takeIf { it != "当前定位" }
+                        ?: firstCity.name.takeIf { it != "当前定位" }
                         ?: "定位中..."
                 } else {
-                    city.name
+                    firstCity.name
                 }
                 WeatherWidgetUpdater.updateAll(applicationContext, freshWeather, freshName)
                 if (freshWeather != null) {
-                    WeatherFileCache.save(applicationContext, city.id, freshWeather)
+                    WeatherFileCache.save(applicationContext, firstCity.id, freshWeather)
                 }
             } else {
                 WeatherWidgetUpdater.updateAll(applicationContext, null, null)
