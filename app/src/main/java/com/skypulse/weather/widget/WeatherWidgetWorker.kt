@@ -10,7 +10,6 @@ import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.sync.RefreshManager
 import com.skypulse.weather.sync.SyncReason
-import com.skypulse.weather.sync.WeatherSyncManager
 import com.skypulse.weather.util.FileLogger
 import com.skypulse.weather.util.WeatherFileCache
 import dagger.assisted.Assisted
@@ -31,7 +30,6 @@ class WeatherWidgetWorker @AssistedInject constructor(
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
     private val refreshManager: RefreshManager,
-    private val syncManager: WeatherSyncManager,
     private val locationManager: LocationManager,
 ) : CoroutineWorker(appContext, params) {
 
@@ -67,20 +65,21 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     "onetime" -> SyncReason.WIDGET_CREATED
                     else -> SyncReason.PERIODIC
                 }
-                val result = refreshManager.requestSync(reason)
+                refreshManager.requestSync(reason)
 
-                // 4. 同步成功后，从 Room 重新读取并渲染
-                val response = result.getOrNull()
-                if (response != null) {
-                    val updatedName = if (city.isCurrentLocation) {
-                        locationManager.getCachedLocation()?.name
-                            ?: city.name.takeIf { it != "当前定位" }
-                            ?: "定位中..."
-                    } else {
-                        city.name
-                    }
-                    WeatherWidgetUpdater.updateAll(applicationContext, response, updatedName)
-                    WeatherFileCache.save(applicationContext, city.id, response)
+                // 4. 无论同步结果如何，始终从 Room 重新读取并渲染
+                //    确保 App 写入 Room 的最新数据能被 Widget 读到
+                val freshWeather = repository.getWeatherFromCache(city.id)
+                val freshName = if (city.isCurrentLocation) {
+                    locationManager.getCachedLocation()?.name
+                        ?: city.name.takeIf { it != "当前定位" }
+                        ?: "定位中..."
+                } else {
+                    city.name
+                }
+                WeatherWidgetUpdater.updateAll(applicationContext, freshWeather, freshName)
+                if (freshWeather != null) {
+                    WeatherFileCache.save(applicationContext, city.id, freshWeather)
                 }
             } else {
                 WeatherWidgetUpdater.updateAll(applicationContext, null, null)

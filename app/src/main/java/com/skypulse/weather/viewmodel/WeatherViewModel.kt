@@ -726,6 +726,8 @@ class WeatherViewModel @Inject constructor(
                     locationName = city.name
                 )
             }
+            // 通知 Widget 刷新（传入最新的天气数据，避免读旧 FileCache）
+            try { com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext, response, city.name) } catch (_: Exception) {}
         } else {
             val errorMsg = (result as? SyncResult.Error)?.message ?: "获取天气数据失败"
             updateWeatherMap(city.id, CityWeatherData(error = errorMsg))
