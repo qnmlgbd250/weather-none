@@ -137,14 +137,23 @@ class WeatherSyncManager @Inject constructor(
     }
 
     /**
-     * 使用默认坐标（北京）获取天气。
-     * 用于首次安装无定位权限时的兜底。
+     * 获取天气：优先用定位城市的坐标，没有则用手动添加的城市坐标，最后兜底北京。
      */
     suspend fun refreshWeatherDefault(): SyncResult {
         val currentCity = getCurrentLocationCity()
-        val cityId = currentCity?.id ?: "current_location"
-        return refreshWeather(
-            cityId = cityId,
+        if (currentCity != null) {
+            // 有定位城市（含缓存坐标），用其坐标获取天气
+            return doRefreshWeather(currentCity.id, currentCity.longitude, currentCity.latitude)
+        }
+        // 无定位城市，用手动添加的第一个城市的坐标
+        val allCities = cityRepository.getCities()
+        val firstCity = allCities.firstOrNull()
+        if (firstCity != null) {
+            return doRefreshWeather(firstCity.id, firstCity.longitude, firstCity.latitude)
+        }
+        // 都没有，兜底北京
+        return doRefreshWeather(
+            cityId = "current_location",
             longitude = LocationManager.DEFAULT_LONGITUDE,
             latitude = LocationManager.DEFAULT_LATITUDE
         )
