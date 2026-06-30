@@ -8,6 +8,8 @@ import androidx.work.WorkerParameters
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
+import com.skypulse.weather.sync.RefreshManager
+import com.skypulse.weather.sync.SyncReason
 import com.skypulse.weather.sync.WeatherSyncManager
 import com.skypulse.weather.util.FileLogger
 import com.skypulse.weather.util.WeatherFileCache
@@ -17,8 +19,10 @@ import dagger.assisted.AssistedInject
 /**
  * Widget 后台刷新 Worker。
  *
- * Phase 6 架构：通过 CityRepository 读取城市（Room SSOT），
- * 通过 Repository 读取天气（Room SSOT），委托 SyncManager 刷新。
+ * 职责：
+ * 1. 从 Room 读取缓存并立即渲染 Widget
+ * 2. 通过 RefreshManager 请求同步（不直接联网）
+ * 3. 同步完成后重新渲染 Widget
  */
 @HiltWorker
 class WeatherWidgetWorker @AssistedInject constructor(
@@ -26,6 +30,7 @@ class WeatherWidgetWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
+    private val refreshManager: RefreshManager,
     private val syncManager: WeatherSyncManager,
     private val locationManager: LocationManager,
 ) : CoroutineWorker(appContext, params) {
@@ -56,34 +61,26 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     WeatherFileCache.save(applicationContext, city.id, cached)
                 }
 
-                // 3. 判断是否需要刷新
-                val lastFetchTime = syncManager.getLastFetchTime(city.id)
-                val shouldFetch = cached == null || WidgetRefreshPolicy.shouldFetchWeather(
-                    distanceMeters = 0f,
-                    lastFetchTimeMillis = lastFetchTime,
-                    nowMillis = System.currentTimeMillis()
-                )
+                // 3. 通过 RefreshManager 请求同步（RefreshManager 决策是否需要联网）
+                val reason = when (trigger) {
+                    "boot" -> SyncReason.BOOT_COMPLETED
+                    "onetime" -> SyncReason.WIDGET_CREATED
+                    else -> SyncReason.PERIODIC
+                }
+                val result = refreshManager.requestSync(reason)
 
-                // 4. 需要刷新时，委托 SyncManager
-                if (shouldFetch) {
-                    try {
-                        val result = syncManager.refreshWeatherWithLocation()
-                        result.onSuccess { response ->
-                            // 刷新后重新读取定位名
-                            val updatedName = if (city.isCurrentLocation) {
-                                locationManager.getCachedLocation()?.name
-                                    ?: city.name.takeIf { it != "当前定位" }
-                                    ?: "定位中..."
-                            } else {
-                                city.name
-                            }
-                            WeatherWidgetUpdater.updateAll(applicationContext, response, updatedName)
-                            // 同步写入文件缓存
-                            WeatherFileCache.save(applicationContext, city.id, response)
-                        }
-                    } catch (e: Exception) {
-                        Log.w("WidgetWorker", "Sync failed, using cache", e)
+                // 4. 同步成功后，从 Room 重新读取并渲染
+                val response = result.getOrNull()
+                if (response != null) {
+                    val updatedName = if (city.isCurrentLocation) {
+                        locationManager.getCachedLocation()?.name
+                            ?: city.name.takeIf { it != "当前定位" }
+                            ?: "定位中..."
+                    } else {
+                        city.name
                     }
+                    WeatherWidgetUpdater.updateAll(applicationContext, response, updatedName)
+                    WeatherFileCache.save(applicationContext, city.id, response)
                 }
             } else {
                 WeatherWidgetUpdater.updateAll(applicationContext, null, null)

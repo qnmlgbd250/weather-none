@@ -15,6 +15,8 @@ import androidx.work.WorkerParameters
 import com.skypulse.weather.R
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
+import com.skypulse.weather.sync.RefreshManager
+import com.skypulse.weather.sync.SyncReason
 import com.skypulse.weather.sync.WeatherSyncManager
 import com.skypulse.weather.util.WeatherUtils
 import dagger.assisted.Assisted
@@ -36,6 +38,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
+    private val refreshManager: RefreshManager,
     private val syncManager: WeatherSyncManager,
 ) : CoroutineWorker(appContext, params) {
 
@@ -77,9 +80,9 @@ class WeatherNotificationWorker @AssistedInject constructor(
                 System.currentTimeMillis() - lastFetchTime < CACHE_TTL_MS
 
             if (!isCacheFresh) {
-                // 数据过期，委托 SyncManager 刷新
+                // 数据过期，通过 RefreshManager 请求同步
                 try {
-                    syncManager.refreshWeatherWithLocation()
+                    refreshManager.requestSync(SyncReason.PERIODIC)
                 } catch (e: Exception) {
                     Log.w(TAG, "Sync failed", e)
                 }
