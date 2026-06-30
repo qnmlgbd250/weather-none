@@ -705,9 +705,9 @@ class WeatherViewModel @Inject constructor(
                         locationName = locationName
                     )
                 }
-                // GPS 成功后通知小组件刷新，确保小组件显示最新的定位名
+                // GPS 成功后通知小组件刷新，传入最新天气数据避免读旧 FileCache
                 try {
-                    com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext)
+                    com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext, weather, city.name)
                 } catch (_: Exception) {}
             }
         }
