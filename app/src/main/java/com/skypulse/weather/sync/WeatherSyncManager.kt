@@ -49,10 +49,24 @@ class WeatherSyncManager @Inject constructor(
         latitude: Double
     ): SyncResult {
         if (isRecentlyFetched(cityId)) {
+            Log.i(TAG, "refreshWeather: $cityId 限流，跳过")
             return SyncResult.RateLimited
         }
+        return doRefreshWeather(cityId, longitude, latitude)
+    }
 
+    /**
+     * 不限流的天气刷新。用于 GPS 定位成功后的强制刷新。
+     * GPS 定位结果是最新数据，不应被限流跳过。
+     */
+    private suspend fun doRefreshWeather(
+        cityId: String,
+        longitude: Double,
+        latitude: Double
+    ): SyncResult {
+        Log.i(TAG, "refreshWeather: $cityId 开始网络请求 lon=$longitude lat=$latitude")
         val result = fetchWithRetry(longitude, latitude)
+        Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
         return result.fold(
             onSuccess = { response ->
                 markFetched(cityId)
@@ -72,10 +86,12 @@ class WeatherSyncManager @Inject constructor(
      */
     suspend fun refreshWeatherWithLocation(): SyncResult {
         val hasLocationPermission = hasLocationPermission()
+        Log.i(TAG, "refreshWeatherWithLocation: hasPermission=$hasLocationPermission")
 
         if (!hasLocationPermission) {
             // 无定位权限，使用默认坐标
-            return refreshWeather(
+            Log.i(TAG, "无定位权限，使用默认坐标")
+            return doRefreshWeather(
                 cityId = "current_location",
                 longitude = LocationManager.DEFAULT_LONGITUDE,
                 latitude = LocationManager.DEFAULT_LATITUDE
@@ -88,21 +104,26 @@ class WeatherSyncManager @Inject constructor(
             val lon = amapLocation.longitude
             val lat = amapLocation.latitude
             val locationName = locationManager.resolveLocationName(amapLocation)
+            Log.i(TAG, "GPS 成功: lon=$lon, lat=$lat, name=$locationName")
             locationManager.saveCachedLocation(locationName, lon, lat)
             updateCurrentLocationCity(locationName, lon, lat)
 
             val currentCity = getCurrentLocationCity()
+            Log.i(TAG, "getCurrentLocationCity: ${currentCity?.id}, name=${currentCity?.name}")
             if (currentCity != null) {
-                return refreshWeather(currentCity.id, lon, lat)
+                Log.i(TAG, "开始获取天气: cityId=${currentCity.id}")
+                return doRefreshWeather(currentCity.id, lon, lat)
             }
         }
 
         // GPS 失败，尝试缓存位置
         val cachedLocation = locationManager.getCachedLocation()
+        Log.i(TAG, "GPS 失败, cachedLocation=${cachedLocation?.name}")
         if (cachedLocation != null) {
             val currentCity = getCurrentLocationCity()
+            Log.i(TAG, "使用缓存: cityId=${currentCity?.id}")
             if (currentCity != null) {
-                return refreshWeather(
+                return doRefreshWeather(
                     currentCity.id,
                     cachedLocation.longitude,
                     cachedLocation.latitude
@@ -111,6 +132,7 @@ class WeatherSyncManager @Inject constructor(
         }
 
         // 全部失败
+        Log.w(TAG, "refreshWeatherWithLocation: 全部失败，返回 LocationFailed")
         return SyncResult.LocationFailed
     }
 

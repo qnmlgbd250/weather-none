@@ -59,6 +59,9 @@
 -keep class com.amap.api.services.** { *; }
 -dontwarn com.amap.api.**
 
+# === Keep Log calls for debugging ===
+-keep class android.util.Log { *; }
+
 # === Hilt / Dagger ===
 -keep class dagger.hilt.** { *; }
 -keep class javax.inject.** { *; }

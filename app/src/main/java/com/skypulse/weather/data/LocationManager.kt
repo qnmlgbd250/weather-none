@@ -162,8 +162,10 @@ class LocationManager @Inject constructor(
                 client.setLocationListener { location ->
                     if (cont.isActive) {
                         if (location != null && location.errorCode == 0) {
+                            Log.i(TAG, "AMap 定位成功: ${location.latitude}, ${location.longitude}")
                             cont.resume(location)
                         } else {
+                            Log.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, errorDetail=${location?.locationDetail}")
                             cont.resume(null)
                         }
                     }

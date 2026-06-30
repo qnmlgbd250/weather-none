@@ -653,18 +653,19 @@ class WeatherViewModel @Inject constructor(
         }
         // Update cityWeatherMap for current location city
         if (success) {
-            // 从 Room 重新读取城市数据，因为 SyncManager 可能已更新了城市名/坐标
-            val cities = manageCityUseCase.getCities()
-            _savedCities.value = cities
-            val city = cities.find { it.isCurrentLocation }
+            val city = _savedCities.value.find { it.isCurrentLocation }
             if (city != null) {
                 val weather = (result as SyncResult.Success).weather
                 updateWeatherMap(city.id, CityWeatherData(weather = weather))
                 val viewingCityId = _selectedCityId.value
                 if (viewingCityId == null || viewingCityId == city.id) {
+                    // 优先使用缓存中的定位名（GPS 成功后已更新），而不是 _savedCities 中的旧值
+                    val locationName = locationManager.getCachedLocation()?.name
+                        ?: city.name.takeIf { it != "当前定位" }
+                        ?: "定位中..."
                     _uiState.value = WeatherUiState.Success(
                         weather = weather,
-                        locationName = city.name
+                        locationName = locationName
                     )
                 }
             }
