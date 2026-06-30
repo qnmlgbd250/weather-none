@@ -1,8 +1,10 @@
 package com.skypulse.weather.di
 
 import com.skypulse.weather.BuildConfig
-import com.skypulse.weather.api.CaiyunApi
+import com.skypulse.weather.data.remote.CaiyunApi
+import com.skypulse.weather.data.remote.WeatherApiService
 import com.squareup.moshi.Moshi
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -53,4 +55,19 @@ object NetworkModule {
     @Singleton
     fun provideCaiyunApi(retrofit: Retrofit): CaiyunApi =
         retrofit.create(CaiyunApi::class.java)
+}
+
+/**
+ * 将 WeatherApiService 接口绑定到 CaiyunApiService 实现。
+ * 未来切换 API 提供商时，只需修改这里的绑定。
+ */
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class ApiModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindWeatherApiService(
+        impl: com.skypulse.weather.data.remote.CaiyunApiService
+    ): WeatherApiService
 }

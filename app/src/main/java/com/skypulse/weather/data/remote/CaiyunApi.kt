@@ -1,4 +1,4 @@
-package com.skypulse.weather.api
+package com.skypulse.weather.data.remote
 
 import com.skypulse.weather.model.WeatherResponse
 import retrofit2.http.GET

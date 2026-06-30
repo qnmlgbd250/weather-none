@@ -3,7 +3,7 @@ package com.skypulse.weather.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.skypulse.weather.data.CityDatabase
+import com.skypulse.weather.data.GeocodingService
 import com.skypulse.weather.data.CityEntry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -23,7 +23,7 @@ data class CitySearchResult(
 
 @HiltViewModel
 class CitySearchViewModel @Inject constructor(
-    private val cityDatabase: CityDatabase
+    private val geocodingService: GeocodingService
 ) : ViewModel() {
 
     private val _searchResults = MutableStateFlow<List<CitySearchResult>>(emptyList())
@@ -50,7 +50,7 @@ class CitySearchViewModel @Inject constructor(
             delay(400)
             Log.d("SearchVM", "debounce done, fetching results for '$query'")
             try {
-                val entries: List<CityEntry> = cityDatabase.search(query)
+                val entries: List<CityEntry> = geocodingService.search(query)
                 Log.d("SearchVM", "search returned ${entries.size} results for '$query'")
                 _searchResults.value = entries.map { entry ->
                     CitySearchResult(

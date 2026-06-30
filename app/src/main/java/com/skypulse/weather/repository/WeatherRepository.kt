@@ -1,83 +1,108 @@
 package com.skypulse.weather.repository
 
-import com.skypulse.weather.BuildConfig
-import com.skypulse.weather.api.CaiyunApi
+import com.skypulse.weather.data.local.database.WeatherDao
+import com.skypulse.weather.data.local.database.WeatherEntity
+import com.skypulse.weather.data.remote.WeatherRemoteDataSource
 import com.skypulse.weather.model.HourlyAqiValue
-import com.skypulse.weather.model.HourlyLifeIndex
 import com.skypulse.weather.model.HourlySkycon
 import com.skypulse.weather.model.HourlyUvItem
 import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.model.HourlyWind
 import com.skypulse.weather.model.WeatherResponse
+import com.squareup.moshi.Moshi
+import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
+import javax.inject.Singleton
 
+/**
+ * 天气数据仓库 — 唯一的数据入口。
+ *
+ * 职责：
+ * - 通过 WeatherRemoteDataSource 获取网络数据
+ * - 通过 WeatherDao 管理 Room 缓存（SSOT）
+ * - 提供 Flow 供 UI 观察
+ *
+ * 不直接依赖 WeatherApiService，网络请求由 RemoteDataSource 封装。
+ */
+@Singleton
 class WeatherRepository @Inject constructor(
-    private val api: CaiyunApi
+    private val remoteDataSource: WeatherRemoteDataSource,
+    private val weatherDao: WeatherDao,
+    private val moshi: Moshi
 ) {
 
-    companion object {
-        val CAIYUN_TOKEN: String get() = BuildConfig.CAIYUN_TOKEN
-    }
+    // ============ Network (via RemoteDataSource) ============
 
+    /**
+     * 从网络获取天气数据。
+     * 包含小时数据过滤（过滤当前时间之前的小时数据）。
+     */
     suspend fun getWeather(
         longitude: Double,
         latitude: Double,
         includeYesterday: Boolean = false
     ): Result<WeatherResponse> {
+        val result = remoteDataSource.getWeather(longitude, latitude, includeYesterday)
+        return result.map { response ->
+            if (includeYesterday) response.withCurrentHourlyWindow() else response
+        }
+    }
+
+    // ============ Room Cache (SSOT) ============
+
+    /**
+     * 观察指定城市的天气数据（Room Flow）。
+     * 当 Repository 写入新数据时，所有观察者自动收到更新。
+     */
+    fun observeWeather(cityId: String): Flow<WeatherEntity?> {
+        return weatherDao.observeWeather(cityId)
+    }
+
+    /**
+     * 观察所有城市的天气数据。
+     */
+    fun observeAllWeather(): Flow<List<WeatherEntity>> {
+        return weatherDao.observeAllWeather()
+    }
+
+    /**
+     * 从 Room 读取缓存（不检查 TTL），用于立即显示。
+     */
+    suspend fun getWeatherFromCache(cityId: String): WeatherResponse? {
+        val entity = weatherDao.getWeather(cityId) ?: return null
         return try {
-            val response = api.getWeather(
-                token = CAIYUN_TOKEN,
-                longitude = longitude,
-                latitude = latitude,
-                span = 16,
-                alert = true,
-                dailyStart = if (includeYesterday) -1 else null,
-                hourlySteps = if (includeYesterday) 72 else 24,
-                lang = "zh_CN",
-                version = "7.59.0"
-            )
-            if (response.status == "ok") {
-                Result.success(if (includeYesterday) response.withCurrentHourlyWindow() else response)
-            } else {
-                Result.failure(Exception("API error: ${response.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+            moshi.adapter(WeatherResponse::class.java).fromJson(entity.responseJson)
+        } catch (_: Exception) {
+            null
         }
     }
 
     /**
-     * 小组件专用精简请求：只要 realtime + 今天 daily，不要逐小时、不要预警、不要多天预报。
-     * 相比 getWeather() 大幅减少响应体体积。
+     * 将天气数据写入 Room 缓存。
      */
-    suspend fun getWidgetWeather(
-        longitude: Double,
-        latitude: Double
-    ): Result<WeatherResponse> {
-        return try {
-            val response = api.getWeather(
-                token = CAIYUN_TOKEN,
-                longitude = longitude,
-                latitude = latitude,
-                span = 2,
-                alert = false,
-                hourlySteps = 1,
-                lang = "zh_CN",
-                version = "7.59.0"
+    suspend fun saveWeatherToCache(cityId: String, weather: WeatherResponse) {
+        val json = moshi.adapter(WeatherResponse::class.java).toJson(weather)
+        weatherDao.upsert(
+            WeatherEntity(
+                cityId = cityId,
+                responseJson = json,
+                lastUpdated = System.currentTimeMillis()
             )
-            if (response.status == "ok") {
-                Result.success(response)
-            } else {
-                Result.failure(Exception("API error: ${response.status}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        )
     }
+
+    /**
+     * 删除指定城市的缓存。
+     */
+    suspend fun deleteWeatherCache(cityId: String) {
+        weatherDao.delete(cityId)
+    }
+
+    // ============ Hourly Window Filtering ============
 
     private fun WeatherResponse.withCurrentHourlyWindow(): WeatherResponse {
         val hourly = result?.hourly ?: return this

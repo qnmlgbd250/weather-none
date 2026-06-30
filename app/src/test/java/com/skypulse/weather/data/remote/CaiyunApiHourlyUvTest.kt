@@ -1,4 +1,4 @@
-package com.skypulse.weather.api
+package com.skypulse.weather.data.remote
 
 import com.skypulse.weather.model.WeatherResponse
 import com.squareup.moshi.Moshi
@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
  * API 响应路径：result.hourly.life_index.ultraviolet[]
  * 每个元素包含：datetime, index(String), desc(String)
  *
- * 运行方式：./gradlew.bat test --tests "com.skypulse.weather.api.CaiyunApiHourlyUvTest"
+ * 运行方式：./gradlew.bat test --tests "com.skypulse.weather.data.remote.CaiyunApiHourlyUvTest"
  */
 class CaiyunApiHourlyUvTest {
 

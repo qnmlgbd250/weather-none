@@ -6,13 +6,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.work.*
-import com.skypulse.weather.data.CityManager
-import com.skypulse.weather.data.WeatherCache
+import com.skypulse.weather.model.WeatherResponse
+import com.skypulse.weather.util.CityFileCache
 import com.skypulse.weather.util.FileLogger
-import com.squareup.moshi.Moshi
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.skypulse.weather.util.WeatherFileCache
 import java.util.concurrent.TimeUnit
 
 class WeatherWidgetProvider : AppWidgetProvider() {
@@ -27,12 +24,11 @@ class WeatherWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         FileLogger.i("WidgetRefresh", "【系统兜底刷新】onUpdate 触发, appWidgetIds=${appWidgetIds.toList()}")
-        // 立即用缓存数据刷新 UI
+        // 立即用缓存数据刷新 UI（从文件缓存读取）
         try {
-            val moshi = Moshi.Builder().build()
-            val cities = CityManager(context, moshi).getCities()
+            val cities = CityFileCache.load(context)
             val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
-            val weather = city?.let { WeatherCache(context).load(it.id) }
+            val weather = city?.let { WeatherFileCache.load(context, it.id) }
             WeatherWidgetUpdater.updateAll(context, weather, city?.name)
         } catch (_: Exception) {
             WeatherWidgetUpdater.updateAll(context, null, null)
@@ -69,16 +65,35 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 
     companion object {
 
-        fun refresh(context: Context) {
+        /**
+         * 刷新所有 Widget 实例。
+         *
+         * @param context Application Context
+         * @param weather 可选：直接传入天气数据（避免重复读取）
+         * @param cityName 可选：城市名称
+         *
+         * 当 weather 为 null 时，从 WeatherFileCache 读取。
+         */
+        fun refresh(
+            context: Context,
+            weather: WeatherResponse? = null,
+            cityName: String? = null
+        ) {
             try {
                 val manager = AppWidgetManager.getInstance(context)
                 val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
                 if (ids.isNotEmpty()) {
-                    val moshi = Moshi.Builder().build()
-                    val cities = CityManager(context, moshi).getCities()
-                    val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
-                    val weather = city?.let { WeatherCache(context).load(it.id) }
-                    WeatherWidgetUpdater.updateAll(context, weather, city?.name)
+                    val finalWeather = weather ?: run {
+                        val cities = CityFileCache.load(context)
+                        val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
+                        city?.let { WeatherFileCache.load(context, it.id) }
+                    }
+                    val finalCityName = cityName ?: run {
+                        val cities = CityFileCache.load(context)
+                        val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
+                        city?.name
+                    }
+                    WeatherWidgetUpdater.updateAll(context, finalWeather, finalCityName)
                 }
             } catch (_: Exception) {}
         }

@@ -98,7 +98,7 @@ data class AdminResponse(
     }
 }
 
-class CityDatabase() {
+class GeocodingService() {
 
     private val moshi = Moshi.Builder()
         .add(KotlinJsonAdapterFactory())
@@ -121,7 +121,7 @@ class CityDatabase() {
             try {
                 val key = BuildConfig.T_MAP_KEY
                 if (key.isBlank()) {
-                    Log.e("CityDatabase", "T_MAP_KEY is not configured")
+                    Log.e("GeocodingService", "T_MAP_KEY is not configured")
                     return@withContext emptyList()
                 }
 
@@ -136,7 +136,7 @@ class CityDatabase() {
                 Log.d("CityDB.search", "single geocode returned ${singleResult.size} results for '$query'")
                 singleResult
             } catch (e: Exception) {
-                Log.e("CityDatabase", "search failed", e)
+                Log.e("GeocodingService", "search failed", e)
                 emptyList()
             }
         }
@@ -155,16 +155,16 @@ class CityDatabase() {
             val body = connection.inputStream.bufferedReader().readText()
             connection.disconnect()
 
-            Log.d("CityDatabase", "admin API response for '$query': $body")
+            Log.d("GeocodingService", "admin API response for '$query': $body")
 
             val response = adminAdapter.fromJson(body)
             if (response == null || !response.isOk()) {
-                Log.w("CityDatabase", "admin API failed: status=${response?.status} msg=${response?.message}")
+                Log.w("GeocodingService", "admin API failed: status=${response?.status} msg=${response?.message}")
                 return null
             }
 
             val data = response.data ?: run {
-                Log.w("CityDatabase", "admin API: data is null, body=$body")
+                Log.w("GeocodingService", "admin API: data is null, body=$body")
                 return null
             }
 
@@ -192,10 +192,10 @@ class CityDatabase() {
                 if (results.isNotEmpty()) return results
             }
 
-            Log.d("CityDatabase", "admin API: no usable results, falling back")
+            Log.d("GeocodingService", "admin API: no usable results, falling back")
             null
         } catch (e: Exception) {
-            Log.w("CityDatabase", "administrative search failed", e)
+            Log.w("GeocodingService", "administrative search failed", e)
             null
         }
     }
@@ -225,7 +225,7 @@ class CityDatabase() {
             val (name, province) = reverseGeocode(lat, lon, loc.level ?: "", displayName)
             CityEntry(name = name, province = province, lat = lat, lon = lon)
         } catch (e: Exception) {
-            Log.w("CityDatabase", "geocode full name failed: $fullName", e)
+            Log.w("GeocodingService", "geocode full name failed: $fullName", e)
             null
         }
     }
@@ -247,7 +247,7 @@ class CityDatabase() {
 
             val response = responseAdapter.fromJson(body)
             if (response?.status != "0") {
-                Log.w("CityDatabase", "Tianditu error: status=${response?.status} msg=${response?.msg}")
+                Log.w("GeocodingService", "Tianditu error: status=${response?.status} msg=${response?.msg}")
                 return emptyList()
             }
 
@@ -257,11 +257,11 @@ class CityDatabase() {
             val geoLevel = loc.level ?: ""
 
             val (name, province) = reverseGeocode(lat, lon, geoLevel, query.trim())
-            Log.d("CityDatabase", "Tianditu: found '$name' ($province) at ($lat, $lon) level=$geoLevel")
+            Log.d("GeocodingService", "Tianditu: found '$name' ($province) at ($lat, $lon) level=$geoLevel")
 
             return listOf(CityEntry(name = name, province = province, lat = lat, lon = lon))
         } catch (e: Exception) {
-            Log.e("CityDatabase", "Tianditu search failed", e)
+            Log.e("GeocodingService", "Tianditu search failed", e)
             return emptyList()
         }
     }
@@ -286,13 +286,13 @@ class CityDatabase() {
 
             val geoResponse = reverseAdapter.fromJson(body) ?: return fallbackName to ""
             if (geoResponse.status != "0") {
-                Log.w("CityDatabase", "reverse geocode failed: status=${geoResponse.status}")
+                Log.w("GeocodingService", "reverse geocode failed: status=${geoResponse.status}")
                 return fallbackName to ""
             }
 
             val comp = geoResponse.result?.addressComponent
             if (comp == null) {
-                Log.w("CityDatabase", "reverse geocode: no addressComponent")
+                Log.w("GeocodingService", "reverse geocode: no addressComponent")
                 return fallbackName to ""
             }
 
@@ -337,7 +337,7 @@ class CityDatabase() {
 
             effectiveName to districtInfo
         } catch (e: Exception) {
-            Log.w("CityDatabase", "reverse geocode failed", e)
+            Log.w("GeocodingService", "reverse geocode failed", e)
             fallbackName to ""
         }
     }

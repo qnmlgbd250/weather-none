@@ -27,7 +27,7 @@ import kotlin.coroutines.resume
 
 @Singleton
 class LocationManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext val context: Context
 ) {
     data class CachedLocation(
         val latitude: Double,

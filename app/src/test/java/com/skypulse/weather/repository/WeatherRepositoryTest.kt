@@ -1,6 +1,6 @@
 package com.skypulse.weather.repository
 
-import com.skypulse.weather.api.CaiyunApi
+import com.skypulse.weather.data.remote.WeatherApiService
 import com.skypulse.weather.model.HourlyForecast
 import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.model.WeatherResponse
@@ -16,7 +16,7 @@ import org.junit.Test
 
 class WeatherRepositoryTest {
 
-    private lateinit var api: CaiyunApi
+    private lateinit var api: WeatherApiService
     private lateinit var repository: WeatherRepository
 
     @Before
@@ -30,15 +30,12 @@ class WeatherRepositoryTest {
         val mockResponse = WeatherResponse(status = "ok")
         coEvery {
             api.getWeather(
-                token = any(),
                 longitude = 116.4074,
                 latitude = 39.9042,
                 span = 16,
                 alert = true,
                 dailyStart = null,
-                hourlySteps = 24,
-                lang = "zh_CN",
-                version = "7.59.0"
+                hourlySteps = 24
             )
         } returns mockResponse
 
@@ -53,15 +50,12 @@ class WeatherRepositoryTest {
         val mockResponse = WeatherResponse(status = "error")
         coEvery {
             api.getWeather(
-                token = any(),
                 longitude = any(),
                 latitude = any(),
                 span = any(),
                 alert = any(),
-                dailyStart = null,
-                hourlySteps = any(),
-                lang = any(),
-                version = any()
+                dailyStart = any(),
+                hourlySteps = any()
             )
         } returns mockResponse
 
@@ -75,26 +69,18 @@ class WeatherRepositoryTest {
     fun `getWeather returns failure when API throws exception`() = runTest {
         coEvery {
             api.getWeather(
-                token = any(),
                 longitude = any(),
                 latitude = any(),
                 span = any(),
                 alert = any(),
-                dailyStart = null,
-                hourlySteps = any(),
-                lang = any(),
-                version = any()
+                dailyStart = any(),
+                hourlySteps = any()
             )
         } throws RuntimeException("Network error")
 
         val result = repository.getWeather(116.4074, 39.9042)
 
         assertTrue(result.isFailure)
-    }
-
-    @Test
-    fun `CAIYUN_TOKEN is not empty`() {
-        assertTrue(WeatherRepository.CAIYUN_TOKEN.isNotBlank())
     }
 
     @Test
@@ -115,15 +101,12 @@ class WeatherRepositoryTest {
         )
         coEvery {
             api.getWeather(
-                token = any(),
                 longitude = 116.4074,
                 latitude = 39.9042,
                 span = 16,
                 alert = true,
                 dailyStart = -1,
-                hourlySteps = 72,
-                lang = "zh_CN",
-                version = "7.59.0"
+                hourlySteps = 72
             )
         } returns mockResponse
 
@@ -135,15 +118,12 @@ class WeatherRepositoryTest {
         assertEquals("2026-06-13T13:00+08:00", temperatures.first().datetime)
         coVerify(exactly = 1) {
             api.getWeather(
-                token = any(),
                 longitude = 116.4074,
                 latitude = 39.9042,
                 span = 16,
                 alert = true,
                 dailyStart = -1,
-                hourlySteps = 72,
-                lang = "zh_CN",
-                version = "7.59.0"
+                hourlySteps = 72
             )
         }
     }

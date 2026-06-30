@@ -26,8 +26,8 @@
     @retrofit2.http.* <methods>;
 }
 # Keep API interface with ALL members and signatures (R8 strips Signature from interfaces)
--keep,allowobfuscation class com.skypulse.weather.api.** { *; }
--keepclassmembers,allowobfuscation class com.skypulse.weather.api.** { *; }
+-keep,allowobfuscation class com.skypulse.weather.data.remote.** { *; }
+-keepclassmembers,allowobfuscation class com.skypulse.weather.data.remote.** { *; }
 -dontwarn retrofit2.**
 
 # === OkHttp ===
@@ -50,6 +50,7 @@
 # === AndroidX ===
 -keep class androidx.lifecycle.** { *; }
 -keep class androidx.activity.** { *; }
+-keep class androidx.start.** { *; }
 -dontwarn androidx.lifecycle.**
 -dontwarn androidx.activity.**
 

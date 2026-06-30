@@ -1,6 +1,6 @@
 package com.skypulse.weather.di
 
-import com.skypulse.weather.data.CityDatabase
+import com.skypulse.weather.data.GeocodingService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,5 +13,5 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun provideCityDatabase(): CityDatabase = CityDatabase()
+    fun provideGeocodingService(): GeocodingService = GeocodingService()
 }
