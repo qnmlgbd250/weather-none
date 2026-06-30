@@ -175,9 +175,17 @@ class WeatherViewModel @Inject constructor(
                 _selectedCityId.value = initialCity.id
                 val cachedWeather = repository.getWeatherFromCache(initialCity.id)
                 if (cachedWeather != null) {
+                    // 优先使用缓存中的定位名，而不是 Room 中可能过时的城市名
+                    val locationName = if (initialCity.isCurrentLocation) {
+                        locationManager.getCachedLocation()?.name
+                            ?: initialCity.name.takeIf { it != "当前定位" }
+                            ?: "定位中..."
+                    } else {
+                        initialCity.name
+                    }
                     _uiState.value = WeatherUiState.Success(
                         weather = cachedWeather,
-                        locationName = initialCity.name
+                        locationName = locationName
                     )
                 }
                 // Refresh initial city's data in background
@@ -593,14 +601,20 @@ class WeatherViewModel @Inject constructor(
 
     fun onResume() {
         viewModelScope.launch {
-            val gpsCity = _savedCities.value.find { it.isCurrentLocation }
+            // 从 Room 重新读取城市列表，确保名字是最新的
+            val cities = manageCityUseCase.getCities()
+            _savedCities.value = cities
+            val gpsCity = cities.find { it.isCurrentLocation }
             if (gpsCity != null) {
                 _selectedCityId.value = gpsCity.id
                 val cached = _cityWeatherMap.value[gpsCity.id]?.weather
                 if (cached != null) {
+                    val locationName = locationManager.getCachedLocation()?.name
+                        ?: gpsCity.name.takeIf { it != "当前定位" }
+                        ?: "定位中..."
                     _uiState.value = WeatherUiState.Success(
                         weather = cached,
-                        locationName = gpsCity.name
+                        locationName = locationName
                     )
                 }
             }
