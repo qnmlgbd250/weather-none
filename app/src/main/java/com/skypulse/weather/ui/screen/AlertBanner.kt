@@ -109,7 +109,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                     contentKey = { it },
                     modifier = Modifier.height(itemHeightDp).clipToBounds()
                 ) { index ->
-                    val alert = alerts[index]
+                    val alert = alerts.getOrNull(index) ?: currentAlert
                     Text(
                         text = alert.title,
                         style = MaterialTheme.typography.bodyMedium,
