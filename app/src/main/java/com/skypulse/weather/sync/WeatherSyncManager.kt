@@ -178,12 +178,21 @@ class WeatherSyncManager @Inject constructor(
     }
 
     private suspend fun requestLocationWithRetry(): com.amap.api.location.AMapLocation? {
-        for (attempt in 0..1) {
+        // 冷启动时 AMap SDK 内部初始化需要时间，首次尝试前等待 3 秒
+        val isFirstAttempt = lastFetchTimesByCityId.isEmpty()
+        if (isFirstAttempt) {
+            Log.d(TAG, "冷启动定位，等待 AMap SDK 初始化 3 秒")
+            kotlinx.coroutines.delay(3_000L)
+        }
+
+        val maxAttempts = if (isFirstAttempt) 4 else 2
+        for (attempt in 0 until maxAttempts) {
             val location = locationManager.requestAmapLocation()
             if (location != null) return location
-            if (attempt < 1) {
-                Log.w(TAG, "定位第${attempt + 1}次失败，1秒后重试")
-                kotlinx.coroutines.delay(1_000L)
+            if (attempt < maxAttempts - 1) {
+                val delayMs = if (isFirstAttempt) 2_000L else 1_000L
+                Log.w(TAG, "定位第${attempt + 1}次失败，${delayMs / 1000}秒后重试")
+                kotlinx.coroutines.delay(delayMs)
             }
         }
         return null
