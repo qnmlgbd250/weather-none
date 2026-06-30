@@ -82,17 +82,17 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 val manager = AppWidgetManager.getInstance(context)
                 val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
                 if (ids.isNotEmpty()) {
+                    val cities = CityFileCache.load(context)
+                    val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
                     val finalWeather = weather ?: run {
-                        val cities = CityFileCache.load(context)
-                        val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
                         city?.let { WeatherFileCache.load(context, it.id) }
                     }
-                    val finalCityName = cityName ?: run {
-                        val cities = CityFileCache.load(context)
-                        val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
-                        city?.name
-                    }
+                    val finalCityName = cityName ?: city?.name
                     WeatherWidgetUpdater.updateAll(context, finalWeather, finalCityName)
+                    // 同步写入 FileCache，确保 onUpdate() 读到最新数据
+                    if (finalWeather != null && city != null) {
+                        WeatherFileCache.save(context, city.id, finalWeather)
+                    }
                 }
             } catch (_: Exception) {}
         }
