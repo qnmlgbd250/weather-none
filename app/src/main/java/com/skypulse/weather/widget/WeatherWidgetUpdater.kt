@@ -12,18 +12,23 @@ import com.airbnb.lottie.LottieDrawable
 import com.skypulse.weather.MainActivity
 import com.skypulse.weather.R
 import com.skypulse.weather.model.WeatherResponse
+import com.skypulse.weather.util.FileLogger
 import androidx.compose.ui.graphics.toArgb
 import com.skypulse.weather.util.WeatherUtils
 
 object WeatherWidgetUpdater {
 
+    private const val TAG = "WidgetUpdater"
     private val iconCache = android.util.LruCache<String, Bitmap>(14)
 
     fun updateAll(context: Context, weather: WeatherResponse?, cityName: String?) {
         try {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
-            if (ids.isEmpty()) return
+            if (ids.isEmpty()) {
+                FileLogger.w(TAG, "updateAll: \u65e0\u6d3b\u8dc3 widget\uff0c\u8df3\u8fc7\u6e32\u67d3")
+                return
+            }
 
             val realtime = weather?.result?.realtime
             val daily = weather?.result?.daily
@@ -36,7 +41,13 @@ object WeatherWidgetUpdater {
             val minTemp = todayTemp?.min?.let { WeatherUtils.formatTemperature(it) } ?: "--"
             val cityText = shortenLocation(cityName ?: "--")
             val detailText = "${info.description}  $minTemp / $maxTemp"
+            FileLogger.i(TAG, "updateAll: \u6e32\u67d3\u6570\u636e \u2014 city=$cityText, temp=$tempText, " +
+                "detail=$detailText, skycon=$skycon, isDay=$isDay, icon=${info.icon}, " +
+                "widgetCount=${ids.size}")
             val iconBitmap = renderIcon(context, info.icon)
+            if (iconBitmap == null) {
+                FileLogger.w(TAG, "updateAll: \u56fe\u6807\u6e32\u67d3\u5931\u8d25 skycon=$skycon, icon=${info.icon}")
+            }
             ids.forEach { widgetId ->
                 val views = RemoteViews(context.packageName, R.layout.widget_small)
                 views.setTextViewText(R.id.widget_city, cityText)
@@ -59,7 +70,9 @@ object WeatherWidgetUpdater {
                 views.setOnClickPendingIntent(R.id.widget_root, pending)
                 manager.updateAppWidget(widgetId, views)
             }
-        } catch (_: Exception) {
+            FileLogger.i(TAG, "updateAll: \u2713 \u6e32\u67d3\u5b8c\u6210, \u66f4\u65b0\u4e86 ${ids.size} \u4e2a widget")
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "updateAll: \u6e32\u67d3\u5f02\u5e38\uff0c\u5c1d\u8bd5\u663e\u793a\u9ed8\u8ba4\u72b6\u6001", e)
             // Show default gradient even on error
             try {
                 val manager = AppWidgetManager.getInstance(context)
@@ -79,7 +92,10 @@ object WeatherWidgetUpdater {
                     views.setOnClickPendingIntent(R.id.widget_root, pending)
                     manager.updateAppWidget(widgetId, views)
                 }
-            } catch (_: Exception) {}
+                FileLogger.i(TAG, "updateAll: \u9ed8\u8ba4\u72b6\u6001\u6e32\u67d3\u5b8c\u6210")
+            } catch (e2: Exception) {
+                FileLogger.e(TAG, "updateAll: \u9ed8\u8ba4\u72b6\u6001\u6e32\u67d3\u4e5f\u5931\u8d25", e2)
+            }
         }
     }
 

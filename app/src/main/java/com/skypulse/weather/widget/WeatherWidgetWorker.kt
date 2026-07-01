@@ -35,14 +35,18 @@ class WeatherWidgetWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result {
         val trigger = inputData.getString("trigger") ?: "periodic"
-        FileLogger.i("WidgetRefresh", "【WorkManager刷新】doWork 触发, trigger=$trigger, runAttemptCount=$runAttemptCount")
+        FileLogger.i(TAG, "doWork: ★ 开始执行, trigger=$trigger, runAttemptCount=$runAttemptCount, id=${id}")
+        val startTime = System.currentTimeMillis()
         return try {
+            // 1. 解析城市
             val cities = cityRepository.getCities()
-            // 小组件始终显示第一个城市的天气数据
             val firstCity = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
+            FileLogger.i(TAG, "doWork: 城市列表 count=${cities.size}, " +
+                "firstCity=${firstCity?.name}, cityId=${firstCity?.id}, " +
+                "isCurrentLocation=${firstCity?.isCurrentLocation}")
 
             if (firstCity != null) {
-                // 优先使用缓存中的定位名（GPS 成功后已更新），而不是 Room 中可能过时的城市名
+                // 优先使用缓存中的定位名
                 val displayName = if (firstCity.isCurrentLocation) {
                     locationManager.getCachedLocation()?.name
                         ?: firstCity.name.takeIf { it != "当前定位" }
@@ -50,26 +54,35 @@ class WeatherWidgetWorker @AssistedInject constructor(
                 } else {
                     firstCity.name
                 }
+                FileLogger.i(TAG, "doWork: displayName=$displayName")
 
-                // 1. 从 Room 读取缓存并立即渲染
+                // 2. 从 Room 读取缓存并立即渲染
                 val cached = repository.getWeatherFromCache(firstCity.id)
+                FileLogger.i(TAG, "doWork: [步骤1] Room缓存读取完成, " +
+                    "有数据=${cached != null}, " +
+                    "skycon=${cached?.result?.realtime?.skycon}, " +
+                    "temp=${cached?.result?.realtime?.temperature}")
                 WeatherWidgetUpdater.updateAll(applicationContext, cached, displayName)
 
-                // 2. 同步写入文件缓存供 WidgetProvider.onUpdate() 读取
+                // 3. 同步写入文件缓存
                 if (cached != null) {
                     WeatherFileCache.save(applicationContext, firstCity.id, cached)
+                    FileLogger.d(TAG, "doWork: [步骤2] 文件缓存写入完成")
+                } else {
+                    FileLogger.d(TAG, "doWork: [步骤2] Room缓存为空，跳过文件写入")
                 }
 
-                // 3. 通过 RefreshManager 请求同步（RefreshManager 决策是否需要联网）
+                // 4. 通过 RefreshManager 请求同步
                 val reason = when (trigger) {
                     "boot" -> SyncReason.BOOT_COMPLETED
                     "onetime" -> SyncReason.WIDGET_CREATED
                     else -> SyncReason.PERIODIC
                 }
+                FileLogger.i(TAG, "doWork: [步骤3] 请求同步, reason=$reason")
                 refreshManager.requestSync(reason)
+                FileLogger.i(TAG, "doWork: [步骤3] 同步请求完成")
 
-                // 4. 无论同步结果如何，始终从 Room 重新读取并渲染
-                //    确保 App 写入 Room 的最新数据能被 Widget 读到
+                // 5. 同步完成后重新读取并渲染
                 val freshWeather = repository.getWeatherFromCache(firstCity.id)
                 val freshName = if (firstCity.isCurrentLocation) {
                     locationManager.getCachedLocation()?.name
@@ -78,17 +91,39 @@ class WeatherWidgetWorker @AssistedInject constructor(
                 } else {
                     firstCity.name
                 }
+                val dataChanged = cached?.result?.realtime?.temperature !=
+                    freshWeather?.result?.realtime?.temperature
+                FileLogger.i(TAG, "doWork: [步骤4] 同步后读取完成, " +
+                    "有数据=${freshWeather != null}, " +
+                    "skycon=${freshWeather?.result?.realtime?.skycon}, " +
+                    "temp=${freshWeather?.result?.realtime?.temperature}, " +
+                    "displayName=$freshName, 数据变化=$dataChanged")
                 WeatherWidgetUpdater.updateAll(applicationContext, freshWeather, freshName)
                 if (freshWeather != null) {
                     WeatherFileCache.save(applicationContext, firstCity.id, freshWeather)
+                    FileLogger.d(TAG, "doWork: [步骤4] 文件缓存写入完成")
                 }
             } else {
+                FileLogger.w(TAG, "doWork: 无城市数据，渲染空状态")
                 WeatherWidgetUpdater.updateAll(applicationContext, null, null)
             }
+            val elapsed = System.currentTimeMillis() - startTime
+            FileLogger.i(TAG, "doWork: ★ 执行完成, 耗时=${elapsed}ms, trigger=$trigger")
             Result.success()
-        } catch (_: Exception) {
-            try { WeatherWidgetUpdater.updateAll(applicationContext, null, null) } catch (_: Exception) {}
+        } catch (e: Exception) {
+            val elapsed = System.currentTimeMillis() - startTime
+            FileLogger.e(TAG, "doWork: ★ 执行异常, 耗时=${elapsed}ms, trigger=$trigger", e)
+            try {
+                WeatherWidgetUpdater.updateAll(applicationContext, null, null)
+                FileLogger.d(TAG, "doWork: 异常后渲染空状态完成")
+            } catch (e2: Exception) {
+                FileLogger.e(TAG, "doWork: 异常后渲染空状态也失败", e2)
+            }
             Result.success()
         }
+    }
+
+    companion object {
+        private const val TAG = "WidgetWorker"
     }
 }
