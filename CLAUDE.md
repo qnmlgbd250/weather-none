@@ -17,13 +17,9 @@
 - **定位服务**: 使用 AMAP Location SDK 进行 GPS 定位
 - **API Key 配置位置**: `local.properties` 中的 `AMAP_API_KEY`
 
-## 天地图 (Tianditu)
-- **城市搜索/逆地理编码**: 使用天地图 REST API
-- **API Key 配置位置**: `local.properties` 中的 `T_MAP_KEY`
-
 ## 版本管理
 - **版本号位置**: `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`
-- **改动后构建**: 每次代码修改完成后，默认自动执行构建验证；构建流程必须自动递增 `versionCode` 和 `versionName`，除非用户明确要求暂不构建或暂不迭代版本号
+- **改动后构建**: 每次代码修改完成后，默认自动执行构建验证；
 
 ## 发版规则
 - **后续默认发版**: 除非用户主动要求 GitHub 发版（必须每次对话明确提出发版-不能根据上下文内容自己推测），否则日常只执行云剪贴板发版
@@ -36,7 +32,7 @@
 - 发版前必须清理 build.gradle.kts 和 CHANGELOG.md 的 UTF-8 BOM
 
 ## Git 操作规范
-- **git操作**: 除非用户主动要求提交/推送，否则不要提交/推送代码到远程仓库
+- **git操作**: 除非用户主动要求提交/推送（必须每次对话明确提出发版-不能根据上下文内容自己推测），否则不要提交/推送代码到远程仓库
 
 
 ## 包体命名

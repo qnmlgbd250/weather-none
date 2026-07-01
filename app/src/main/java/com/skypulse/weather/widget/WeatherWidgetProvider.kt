@@ -98,10 +98,7 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                         val finalCityName = firstCity.name
 
                         WeatherWidgetUpdater.updateAll(context, finalWeather, finalCityName)
-                        // 同步写入 FileCache，确保 onUpdate() 读到最新数据
-                        if (finalWeather != null) {
-                            WeatherFileCache.save(context, firstCity.id, finalWeather)
-                        }
+                        // FileCache 写入已集中到 WeatherWidgetWorker，此处不再写入
                     } else {
                         WeatherWidgetUpdater.updateAll(context, null, null)
                     }

@@ -3,6 +3,7 @@ package com.skypulse.weather.sync
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.repository.CityRepository
+import com.skypulse.weather.repository.WeatherRepository
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
@@ -21,6 +22,7 @@ class RefreshManager @Inject constructor(
     private val syncManager: WeatherSyncManager,
     private val locationManager: LocationManager,
     private val cityRepository: CityRepository,
+    private val weatherRepository: WeatherRepository,
 ) {
 
     companion object {
@@ -69,15 +71,14 @@ class RefreshManager @Inject constructor(
                 }
             }
 
-            // 3. 缓存检查：天气数据未过期则跳过
+            // 3. 缓存检查：天气数据未过期则跳过（Repository 决定缓存策略）
             if (!force) {
                 val city = cityRepository.getCurrentLocationCity()
                     ?: cityRepository.getCities().firstOrNull()
                 if (city != null) {
-                    val lastFetch = syncManager.getLastFetchTime(city.id)
-                    val cacheAge = System.currentTimeMillis() - lastFetch
-                    if (lastFetch > 0 && cacheAge < WEATHER_TTL_MS) {
-                        Log.d(TAG, "requestSync($reason): 缓存未过期 (${cacheAge / 1000}s)，跳过")
+                    val isStale = weatherRepository.isCacheStale(city.id, WEATHER_TTL_MS)
+                    if (!isStale) {
+                        Log.d(TAG, "requestSync($reason): 缓存未过期，跳过")
                         return@withLock SyncResult.RateLimited
                     }
                 }

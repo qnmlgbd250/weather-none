@@ -115,6 +115,15 @@ class WeatherViewModel @Inject constructor(
     // --- GPS-based state (detail view) ---
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
+    /** 是否已从 Room 缓存初始化过 Success 状态（用于判断是否显示错误页面） */
+    private var hasCachedDataBeenShown = false
+
+    private fun setUiState(state: WeatherUiState) {
+        _uiState.value = state
+        if (state is WeatherUiState.Success) {
+            hasCachedDataBeenShown = true
+        }
+    }
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
@@ -187,6 +196,7 @@ class WeatherViewModel @Inject constructor(
                         weather = cachedWeather,
                         locationName = locationName
                     )
+                    hasCachedDataBeenShown = true
                 }
                 // Refresh initial city's data in background
                 refreshCityAfterSwitch(initialCity)
@@ -225,12 +235,21 @@ class WeatherViewModel @Inject constructor(
                     }
                     if (changed) {
                         _cityWeatherMap.value = updatedMap
-                        // Room 数据变化时同步通知 Widget 刷新，避免 Widget 显示旧数据
-                        try {
-                            com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext)
-                        } catch (_: Exception) {}
                     }
                 }
+
+                // 每次 Room 数据变化都同步 FileCache 并刷新 Widget
+                // 不受 changed 守卫：即使内存已有数据，FileCache 也可能过期
+                try {
+                    val firstCity = freshCities.firstOrNull { it.isCurrentLocation } ?: freshCities.firstOrNull()
+                    if (firstCity != null) {
+                        val weather = repository.getWeatherFromCache(firstCity.id)
+                        if (weather != null) {
+                            com.skypulse.weather.util.WeatherFileCache.save(appContext, firstCity.id, weather)
+                        }
+                    }
+                    com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext)
+                } catch (_: Exception) {}
             }
         }
     }
@@ -264,10 +283,10 @@ class WeatherViewModel @Inject constructor(
         if (city != null) {
             val cached = _cityWeatherMap.value[cityId]
             if (cached?.weather != null) {
-                _uiState.value = WeatherUiState.Success(
+                setUiState(WeatherUiState.Success(
                     weather = cached.weather,
                     locationName = city.name
-                )
+                ))
             } else {
                 fetchWeatherForCity(city)
             }
@@ -308,10 +327,10 @@ class WeatherViewModel @Inject constructor(
         _selectedCityId.value = city.id
         val cached = _cityWeatherMap.value[city.id]
         if (cached?.weather != null) {
-            _uiState.value = WeatherUiState.Success(
+            setUiState(WeatherUiState.Success(
                 weather = cached.weather,
                 locationName = city.name
-            )
+            ))
             refreshCityAfterSwitch(city)
         } else {
             fetchWeatherForCitySilent(city)
@@ -347,10 +366,10 @@ class WeatherViewModel @Inject constructor(
                     val city = _savedCities.value.find { it.id == cityId }
                     val cached = _cityWeatherMap.value[cityId]
                     if (city != null && cached?.weather != null) {
-                        _uiState.value = WeatherUiState.Success(
+                        setUiState(WeatherUiState.Success(
                             weather = cached.weather,
                             locationName = city.name
-                        )
+                        ))
                     } else if (city != null) {
                         fetchWeatherForCity(city)
                     }
@@ -408,10 +427,10 @@ class WeatherViewModel @Inject constructor(
                 if (nextCity != null) {
                     val cached = _cityWeatherMap.value[nextCity.id]
                     if (cached?.weather != null) {
-                        _uiState.value = WeatherUiState.Success(
+                        setUiState(WeatherUiState.Success(
                             weather = cached.weather,
                             locationName = nextCity.name
-                        )
+                        ))
                     } else {
                         fetchWeatherForCity(nextCity)
                     }
@@ -471,10 +490,10 @@ class WeatherViewModel @Inject constructor(
             val response = result.getOrNull()
             if (response != null) {
                 if (_selectedCityId.value == city.id) {
-                    _uiState.value = WeatherUiState.Success(
+                    setUiState(WeatherUiState.Success(
                         weather = response,
                         locationName = city.name
-                    )
+                    ))
                 }
                 updateWeatherMap(city.id, CityWeatherData(weather = response))
                 _refreshPhase.value = RefreshPhase.Success
@@ -518,19 +537,19 @@ class WeatherViewModel @Inject constructor(
             if (refreshWeatherUseCase.isRecentlyFetched(city.id)) return@launch
             val cached = _cityWeatherMap.value[city.id]?.weather
             if (cached == null) {
-                _uiState.value = WeatherUiState.Loading
+                setUiState(WeatherUiState.Loading)
             }
             val result = refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
             result.fold(
                 onSuccess = { response ->
-                    _uiState.value = WeatherUiState.Success(
+                    setUiState(WeatherUiState.Success(
                         weather = response,
                         locationName = city.name
-                    )
+                    ))
                 },
                 onFailure = { e ->
                     if (_uiState.value !is WeatherUiState.Success) {
-                        _uiState.value = WeatherUiState.Error(e.message ?: "获取天气数据失败")
+                        setUiState(WeatherUiState.Error(e.message ?: "获取天气数据失败"))
                     }
                 }
             )
@@ -579,17 +598,17 @@ class WeatherViewModel @Inject constructor(
                     val viewingCityId = _selectedCityId.value
                     val isViewingGpsCity = viewingCityId == null || viewingCityId == city?.id
                     if (isViewingGpsCity) {
-                        _uiState.value = WeatherUiState.Success(
+                        setUiState(WeatherUiState.Success(
                             weather = response,
                             locationName = locationManager.getCachedLocation()?.name ?: city?.name ?: "定位中..."
-                        )
+                        ))
                     }
                 } else {
                     val errorMsg = (result as? SyncResult.Error)?.message ?: "定位失败，请稍后重试"
-                    _uiState.value = WeatherUiState.Error(errorMsg)
+                    setUiState(WeatherUiState.Error(errorMsg))
                 }
             } catch (e: Exception) {
-                _uiState.value = WeatherUiState.Error("定位失败，请稍后重试")
+                setUiState(WeatherUiState.Error("定位失败，请稍后重试"))
             } finally {
                 _isLocating.value = false
             }
@@ -602,7 +621,7 @@ class WeatherViewModel @Inject constructor(
             if (_uiState.value is WeatherUiState.Success &&
                 refreshWeatherUseCase.isRecentlyFetched(refreshCity?.id)) return@launch
             if (_uiState.value !is WeatherUiState.Success) {
-                _uiState.value = WeatherUiState.Loading
+                setUiState(WeatherUiState.Loading)
             }
             refreshCurrentLocation()
         }
@@ -610,7 +629,7 @@ class WeatherViewModel @Inject constructor(
 
     fun fetchDefaultWeather() {
         viewModelScope.launch {
-            _uiState.value = WeatherUiState.Loading
+            setUiState(WeatherUiState.Loading)
             val result = refreshWeatherUseCase.refreshDefault()
             handleSyncResultForCurrentLocation(result)
         }
@@ -649,10 +668,10 @@ class WeatherViewModel @Inject constructor(
                     val locationName = locationManager.getCachedLocation()?.name
                         ?: gpsCity.name.takeIf { it != "当前定位" }
                         ?: "定位中..."
-                    _uiState.value = WeatherUiState.Success(
+                    setUiState(WeatherUiState.Success(
                         weather = cached,
                         locationName = locationName
-                    )
+                    ))
                 }
             }
             val refreshCity = selectedCityForRefresh()
@@ -706,9 +725,11 @@ class WeatherViewModel @Inject constructor(
     private suspend fun refreshCurrentLocation(silent: Boolean = false): Boolean {
         val result = refreshWeatherUseCase.refreshWithLocation()
         val success = result is SyncResult.Success
-        if (!success && !silent && _uiState.value !is WeatherUiState.Success) {
+        // 只有在已展示过缓存数据时才设置错误状态
+        // 首次安装无缓存时保持 Loading，让用户等待后台刷新完成
+        if (!success && !silent && hasCachedDataBeenShown) {
             val errorMsg = (result as? SyncResult.Error)?.message ?: "获取天气数据失败，请稍后重试"
-            _uiState.value = WeatherUiState.Error(errorMsg)
+            setUiState(WeatherUiState.Error(errorMsg))
         }
         // Update cityWeatherMap for current location city
         if (success) {
@@ -722,15 +743,12 @@ class WeatherViewModel @Inject constructor(
                     val locationName = locationManager.getCachedLocation()?.name
                         ?: city.name.takeIf { it != "当前定位" }
                         ?: "定位中..."
-                    _uiState.value = WeatherUiState.Success(
+                    setUiState(WeatherUiState.Success(
                         weather = weather,
                         locationName = locationName
-                    )
+                    ))
                 }
-                // GPS 成功后通知小组件刷新，传入最新天气数据避免读旧 FileCache
-                try {
-                    com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext, weather, city.name)
-                } catch (_: Exception) {}
+                // Widget 刷新由 Room Flow 观察者（startWeatherObservation）统一触发
             }
         }
         return success
@@ -747,18 +765,17 @@ class WeatherViewModel @Inject constructor(
         if (response != null) {
             updateWeatherMap(city.id, CityWeatherData(weather = response))
             if (_selectedCityId.value == city.id) {
-                _uiState.value = WeatherUiState.Success(
+                setUiState(WeatherUiState.Success(
                     weather = response,
                     locationName = city.name
-                )
+                ))
             }
-            // 通知 Widget 刷新（传入最新的天气数据，避免读旧 FileCache）
-            try { com.skypulse.weather.widget.WeatherWidgetProvider.refresh(appContext, response, city.name) } catch (_: Exception) {}
+            // Widget 刷新由 Room Flow 观察者（startWeatherObservation）统一触发
         } else {
             val errorMsg = (result as? SyncResult.Error)?.message ?: "获取天气数据失败"
             updateWeatherMap(city.id, CityWeatherData(error = errorMsg))
             if (!silent && _uiState.value !is WeatherUiState.Success) {
-                _uiState.value = WeatherUiState.Error(errorMsg)
+                setUiState(WeatherUiState.Error(errorMsg))
             }
         }
     }
@@ -780,13 +797,13 @@ class WeatherViewModel @Inject constructor(
             if (city != null) {
                 updateWeatherMap(city.id, CityWeatherData(weather = response))
             }
-            _uiState.value = WeatherUiState.Success(
+            setUiState(WeatherUiState.Success(
                 weather = response,
                 locationName = locationManager.getCachedLocation()?.name ?: city?.name ?: "北京市"
-            )
+            ))
         } else {
             val errorMsg = (result as? SyncResult.Error)?.message ?: "获取天气数据失败，请稍后重试"
-            _uiState.value = WeatherUiState.Error(errorMsg)
+            setUiState(WeatherUiState.Error(errorMsg))
         }
     }
 

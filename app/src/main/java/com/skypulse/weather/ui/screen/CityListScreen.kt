@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -18,11 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.defaultMinSize
 import com.skypulse.weather.model.City
 import com.skypulse.weather.ui.components.CitySearchResultRow
 import com.skypulse.weather.ui.components.SwipeableCityListRow
@@ -78,8 +81,8 @@ fun CityListScreen(
             }
 
             // Search bar
-            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                TextField(
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                BasicTextField(
                     value = searchQuery,
                     onValueChange = { query ->
                         searchQuery = query
@@ -87,42 +90,12 @@ fun CityListScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(50)),
-                    placeholder = {
-                        Text(
-                            text = "搜索城市或景点",
-                            color = IosTextSecondary,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = null,
-                            tint = IosTextSecondary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotBlank()) {
-                            IconButton(
-                                onClick = {
-                                    searchQuery = ""
-                                    onClearSearch()
-                                    focusManager.clearFocus()
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Close,
-                                    contentDescription = "清除",
-                                    tint = IosTextSecondary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                    },
+                        .height(45.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = IosTextPrimary, fontSize = 18.sp),
+                    singleLine = true,
+                    cursorBrush = SolidColor(IosAccentBlue),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(
                         onSearch = {
@@ -130,17 +103,49 @@ fun CityListScreen(
                             focusManager.clearFocus()
                         }
                     ),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.White,
-                        unfocusedContainerColor = Color.White,
-                        focusedTextColor = IosTextPrimary,
-                        unfocusedTextColor = IosTextPrimary,
-                        cursorColor = IosAccentBlue,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
-                    )
+                    decorationBox = { innerTextField ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = null,
+                                tint = IosTextSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        text = "搜索位置",
+                                        color = IosTextSecondary,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 18.sp)
+                                    )
+                                }
+                                innerTextField()
+                            }
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(
+                                    onClick = {
+                                        searchQuery = ""
+                                        onClearSearch()
+                                        focusManager.clearFocus()
+                                    },
+                                    modifier = Modifier.size(34.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Close,
+                                        contentDescription = "清除",
+                                        tint = IosTextSecondary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 )
             }
 

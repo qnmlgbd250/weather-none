@@ -82,6 +82,28 @@ class WeatherRepository @Inject constructor(
     }
 
     /**
+     * 检查指定城市的缓存是否过期。
+     *
+     * @param cityId 城市 ID
+     * @param ttlMs 缓存有效期（毫秒）
+     * @return true 表示缓存已过期或不存在，需要刷新
+     */
+    suspend fun isCacheStale(cityId: String, ttlMs: Long): Boolean {
+        val entity = weatherDao.getWeather(cityId) ?: return true
+        return System.currentTimeMillis() - entity.lastUpdated >= ttlMs
+    }
+
+    /**
+     * 获取指定城市缓存的最后更新时间戳。
+     * 用于替代 WeatherSyncManager.getLastFetchTime()，
+     * 基于 Room 持久化时间戳（重启后不丢失）。
+     */
+    suspend fun getLastFetchTime(cityId: String): Long {
+        val entity = weatherDao.getWeather(cityId) ?: return 0L
+        return entity.lastUpdated
+    }
+
+    /**
      * 将天气数据写入 Room 缓存。
      */
     suspend fun saveWeatherToCache(cityId: String, weather: WeatherResponse) {

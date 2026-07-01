@@ -16,7 +16,6 @@ import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.sync.RefreshManager
 import com.skypulse.weather.sync.SyncReason
-import com.skypulse.weather.sync.WeatherSyncManager
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -33,7 +32,6 @@ class UrgentNotificationWorker @AssistedInject constructor(
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
     private val refreshManager: RefreshManager,
-    private val syncManager: WeatherSyncManager,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -63,12 +61,10 @@ class UrgentNotificationWorker @AssistedInject constructor(
             val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
                 ?: return Result.success()
 
-            // 检查数据是否过期
-            val lastFetchTime = syncManager.getLastFetchTime(city.id)
-            val isCacheFresh = lastFetchTime > 0 &&
-                System.currentTimeMillis() - lastFetchTime < CACHE_TTL_MS
+            // 检查数据是否过期（Repository 决定缓存策略）
+            val isCacheStale = repository.isCacheStale(city.id, CACHE_TTL_MS)
 
-            if (!isCacheFresh) {
+            if (isCacheStale) {
                 // 数据过期，通过 RefreshManager 请求同步
                 try {
                     refreshManager.requestSync(SyncReason.PERIODIC)
