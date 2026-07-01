@@ -680,10 +680,10 @@ class WeatherViewModel @Inject constructor(
             val startTime = System.currentTimeMillis()
             val refreshed = refreshSelectedWeather(refreshCity, silent = true)
             val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed < 1000) delay(1000 - elapsed)
+            if (elapsed < 500) delay(500 - elapsed)
             if (refreshed) {
                 _refreshPhase.value = RefreshPhase.Success
-                delay(1000)
+                delay(300)
             }
             _refreshPhase.value = RefreshPhase.Idle
         }
