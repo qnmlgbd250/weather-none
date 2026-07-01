@@ -33,9 +33,31 @@ class WeatherSyncManager @Inject constructor(
         private const val TAG = "WeatherSyncMgr"
         private const val RATE_LIMIT_MS = 60_000L // 60s per city
         private const val MAX_RETRIES = 2
+        private const val PREFS_NAME = "sync_manager_prefs"
+        private const val KEY_LAST_LOCATION_TIME = "last_location_success_time"
     }
 
     private val lastFetchTimesByCityId = ConcurrentHashMap<String, Long>()
+
+    private val prefs by lazy {
+        locationManager.context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+    }
+
+    /**
+     * 判断是否是真正的冷启动（首次安装或长时间未使用）。
+     * 使用 SharedPreferences 持久化记录，避免进程被杀后误判。
+     */
+    private fun isTrueColdStart(): Boolean {
+        val lastLocationTime = prefs.getLong(KEY_LAST_LOCATION_TIME, 0L)
+        if (lastLocationTime == 0L) return true
+        // 超过24小时未定位，认为是冷启动
+        val elapsed = System.currentTimeMillis() - lastLocationTime
+        return elapsed > 24 * 60 * 60 * 1000L
+    }
+
+    private fun markLocationSuccess() {
+        prefs.edit().putLong(KEY_LAST_LOCATION_TIME, System.currentTimeMillis()).apply()
+    }
 
     // ============ Public API ============
 
@@ -217,19 +239,23 @@ class WeatherSyncManager @Inject constructor(
     }
 
     private suspend fun requestLocationWithRetry(): com.amap.api.location.AMapLocation? {
-        // 冷启动时 AMap SDK 内部初始化需要时间，首次尝试前等待 3 秒
-        val isFirstAttempt = lastFetchTimesByCityId.isEmpty()
-        if (isFirstAttempt) {
+        // 真正冷启动时 AMap SDK 内部初始化需要时间，首次尝试前等待 3 秒
+        // 使用 SharedPreferences 持久化判断，避免进程被杀后误判为冷启动
+        val isColdStart = isTrueColdStart()
+        if (isColdStart) {
             Log.d(TAG, "冷启动定位，等待 AMap SDK 初始化 3 秒")
             kotlinx.coroutines.delay(3_000L)
         }
 
-        val maxAttempts = if (isFirstAttempt) 4 else 2
+        val maxAttempts = if (isColdStart) 4 else 2
         for (attempt in 0 until maxAttempts) {
             val location = locationManager.requestAmapLocation()
-            if (location != null) return location
+            if (location != null) {
+                markLocationSuccess()  // 记录定位成功时间
+                return location
+            }
             if (attempt < maxAttempts - 1) {
-                val delayMs = if (isFirstAttempt) 2_000L else 1_000L
+                val delayMs = if (isColdStart) 2_000L else 1_000L
                 Log.w(TAG, "定位第${attempt + 1}次失败，${delayMs / 1000}秒后重试")
                 kotlinx.coroutines.delay(delayMs)
             }

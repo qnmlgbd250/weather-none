@@ -4,6 +4,7 @@ import android.util.Log
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
+import com.skypulse.weather.util.FileLogger
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
@@ -55,8 +56,12 @@ class RefreshManager @Inject constructor(
      * @return SyncResult
      */
     suspend fun requestSync(reason: SyncReason, force: Boolean = false): SyncResult {
+        FileLogger.i(TAG, "requestSync($reason): ★ 请求开始, force=$force, isSyncing=$isSyncing")
+        val startTime = System.currentTimeMillis()
+
         // 1. 并发控制：已有同步任务在执行中
         if (isSyncing && !force) {
+            FileLogger.i(TAG, "requestSync($reason): [检查1] 已有同步任务在执行，跳过")
             Log.d(TAG, "requestSync($reason): 已有同步任务在执行，跳过")
             return SyncResult.RateLimited
         }
@@ -65,7 +70,9 @@ class RefreshManager @Inject constructor(
             // 2. 全局限流：距离上次同步不足 60 秒
             if (!force) {
                 val elapsed = System.currentTimeMillis() - lastSyncTime
+                FileLogger.i(TAG, "requestSync($reason): [检查2] 距上次同步=${elapsed}ms, 限流阈值=${GLOBAL_SYNC_INTERVAL_MS}ms")
                 if (elapsed < GLOBAL_SYNC_INTERVAL_MS) {
+                    FileLogger.i(TAG, "requestSync($reason): [检查2] 距上次同步仅 ${elapsed}ms，跳过")
                     Log.d(TAG, "requestSync($reason): 距上次同步仅 ${elapsed}ms，跳过")
                     return@withLock SyncResult.RateLimited
                 }
@@ -77,26 +84,39 @@ class RefreshManager @Inject constructor(
                     ?: cityRepository.getCities().firstOrNull()
                 if (city != null) {
                     val isStale = weatherRepository.isCacheStale(city.id, WEATHER_TTL_MS)
+                    val lastUpdated = weatherRepository.getLastFetchTime(city.id)
+                    val cacheAge = System.currentTimeMillis() - lastUpdated
+                    FileLogger.i(TAG, "requestSync($reason): [检查3] 城市=${city.name}, cityId=${city.id}, " +
+                        "缓存年龄=${cacheAge}ms, TTL=${WEATHER_TTL_MS}ms, isStale=$isStale")
                     if (!isStale) {
+                        FileLogger.i(TAG, "requestSync($reason): [检查3] 缓存未过期，跳过同步")
                         Log.d(TAG, "requestSync($reason): 缓存未过期，跳过")
                         return@withLock SyncResult.RateLimited
                     }
+                } else {
+                    FileLogger.w(TAG, "requestSync($reason): [检查3] 无城市数据，跳过缓存检查")
                 }
             }
 
             // 4. 执行同步
             isSyncing = true
             try {
+                FileLogger.i(TAG, "requestSync($reason): [步骤4] 开始执行同步")
                 Log.i(TAG, "requestSync($reason): 开始同步")
                 val result = syncManager.refreshWeatherWithLocation()
+                val elapsed = System.currentTimeMillis() - startTime
                 if (result is SyncResult.Success) {
                     lastSyncTime = System.currentTimeMillis()
+                    FileLogger.i(TAG, "requestSync($reason): [步骤4] 同步成功, 耗时=${elapsed}ms")
                     Log.i(TAG, "requestSync($reason): 同步成功")
                 } else {
+                    FileLogger.w(TAG, "requestSync($reason): [步骤4] 同步失败 - $result, 耗时=${elapsed}ms")
                     Log.w(TAG, "requestSync($reason): 同步失败 - $result")
                 }
                 result
             } catch (e: Exception) {
+                val elapsed = System.currentTimeMillis() - startTime
+                FileLogger.e(TAG, "requestSync($reason): [步骤4] 同步异常, 耗时=${elapsed}ms", e)
                 Log.e(TAG, "requestSync($reason): 同步异常", e)
                 SyncResult.Error(e.message ?: "同步异常")
             } finally {
