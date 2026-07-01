@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Default gradient background for widget preview in picker -->
+    <gradient
+        android:startColor="#FF4FC3F7"
+        android:centerColor="#FF29B6F6"
+        android:endColor="#FF039BE5"
+        android:angle="135" />
+    <corners android:radius="18dp" />
+</shape>
