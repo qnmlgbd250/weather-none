@@ -6,6 +6,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.skypulse.weather.data.LocationManager
+import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.sync.RefreshManager
@@ -46,14 +47,7 @@ class WeatherWidgetWorker @AssistedInject constructor(
                 "isCurrentLocation=${firstCity?.isCurrentLocation}")
 
             if (firstCity != null) {
-                // 优先使用缓存中的定位名
-                val displayName = if (firstCity.isCurrentLocation) {
-                    locationManager.getCachedLocation()?.name
-                        ?: firstCity.name.takeIf { it != "当前定位" }
-                        ?: "定位中..."
-                } else {
-                    firstCity.name
-                }
+                val displayName = resolveDisplayName(firstCity)
                 FileLogger.i(TAG, "doWork: displayName=$displayName")
 
                 // 2. 从 Room 读取缓存并立即渲染
@@ -84,13 +78,7 @@ class WeatherWidgetWorker @AssistedInject constructor(
 
                 // 5. 同步完成后重新读取并渲染
                 val freshWeather = repository.getWeatherFromCache(firstCity.id)
-                val freshName = if (firstCity.isCurrentLocation) {
-                    locationManager.getCachedLocation()?.name
-                        ?: firstCity.name.takeIf { it != "当前定位" }
-                        ?: "定位中..."
-                } else {
-                    firstCity.name
-                }
+                val freshName = resolveDisplayName(firstCity)
                 val dataChanged = cached?.result?.realtime?.temperature !=
                     freshWeather?.result?.realtime?.temperature
                 FileLogger.i(TAG, "doWork: [步骤4] 同步后读取完成, " +
@@ -125,5 +113,24 @@ class WeatherWidgetWorker @AssistedInject constructor(
 
     companion object {
         private const val TAG = "WidgetWorker"
+    }
+
+    /**
+     * 解析小组件显示的城市名。
+     * 过滤"未知位置"和"定位中..."等无效名称，始终返回用户可读的名称。
+     */
+    private fun resolveDisplayName(city: City): String {
+        if (!city.isCurrentLocation) return city.name
+        val cachedName = locationManager.getCachedLocation()?.name
+        // 优先用缓存中的定位名（过滤无效值）
+        if (cachedName != null && cachedName != "未知位置" && cachedName != "当前定位") {
+            return cachedName
+        }
+        // 其次用 Room 中的城市名（过滤无效值）
+        if (city.name != "未知位置" && city.name != "当前定位") {
+            return city.name
+        }
+        // 兜底：Room 中的名字（即使是"当前定位"，也比"未知位置"好）
+        return city.name
     }
 }

@@ -105,8 +105,16 @@ class WeatherSyncManager @Inject constructor(
             val lat = amapLocation.latitude
             val locationName = locationManager.resolveLocationName(amapLocation)
             Log.i(TAG, "GPS 成功: lon=$lon, lat=$lat, name=$locationName")
-            locationManager.saveCachedLocation(locationName, lon, lat)
-            updateCurrentLocationCity(locationName, lon, lat)
+            if (locationName == "未知位置") {
+                // 地址解析失败（AMAP 反向地理编码未完成），只更新坐标，保留旧城市名
+                Log.w(TAG, "GPS 成功但地址为空，保留旧城市名, lon=$lon, lat=$lat")
+                val oldCachedName = locationManager.getCachedLocation()?.name
+                locationManager.saveCachedLocation(oldCachedName ?: locationName, lon, lat)
+                updateCurrentLocationCityCoordsOnly(lon, lat)
+            } else {
+                locationManager.saveCachedLocation(locationName, lon, lat)
+                updateCurrentLocationCity(locationName, lon, lat)
+            }
 
             val currentCity = getCurrentLocationCity()
             Log.i(TAG, "getCurrentLocationCity: ${currentCity?.id}, name=${currentCity?.name}")
@@ -237,6 +245,14 @@ class WeatherSyncManager @Inject constructor(
         val currentCity = cityRepository.getCurrentLocationCity()
         if (currentCity != null) {
             cityRepository.updateCity(currentCity.copy(name = name, longitude = lon, latitude = lat))
+        }
+    }
+
+    /** 只更新坐标，不改名。用于地址解析失败时保留旧城市名。 */
+    private suspend fun updateCurrentLocationCityCoordsOnly(lon: Double, lat: Double) {
+        val currentCity = cityRepository.getCurrentLocationCity()
+        if (currentCity != null) {
+            cityRepository.updateCity(currentCity.copy(longitude = lon, latitude = lat))
         }
     }
 
