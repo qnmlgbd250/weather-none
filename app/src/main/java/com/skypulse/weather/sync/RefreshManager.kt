@@ -29,8 +29,8 @@ class RefreshManager @Inject constructor(
         /** 全局最小同步间隔：60 秒内不重复同步 */
         private const val GLOBAL_SYNC_INTERVAL_MS = 60_000L
 
-        /** 天气缓存 TTL：10 分钟过期则需要刷新 */
-        private const val WEATHER_TTL_MS = 10 * 60 * 1000L
+        /** 天气缓存 TTL：5 分钟过期则需要刷新 */
+        private const val WEATHER_TTL_MS = 5 * 60 * 1000L
     }
 
     /** 同步执行锁：确保同一时间只有一个同步任务 */
