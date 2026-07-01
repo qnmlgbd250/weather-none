@@ -463,7 +463,11 @@ class WeatherViewModel @Inject constructor(
     private fun fetchWeatherForCitySilent(city: City) {
         viewModelScope.launch {
             if (refreshWeatherUseCase.isRecentlyFetched(city.id)) return@launch
+            _refreshPhase.value = RefreshPhase.Refreshing
+            val startTime = System.currentTimeMillis()
             val result = refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < 1000) delay(1000 - elapsed)
             val response = result.getOrNull()
             if (response != null) {
                 if (_selectedCityId.value == city.id) {
@@ -473,7 +477,10 @@ class WeatherViewModel @Inject constructor(
                     )
                 }
                 updateWeatherMap(city.id, CityWeatherData(weather = response))
+                _refreshPhase.value = RefreshPhase.Success
+                delay(1000)
             }
+            _refreshPhase.value = RefreshPhase.Idle
         }
     }
 
@@ -485,12 +492,19 @@ class WeatherViewModel @Inject constructor(
                 refreshingCityIds.add(city.id)
             }
             try {
+                _refreshPhase.value = RefreshPhase.Refreshing
+                val startTime = System.currentTimeMillis()
                 if (city.isCurrentLocation) {
                     refreshCurrentLocation(silent = true)
                 } else {
                     val result = refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
                     handleSyncResult(result, city, silent = true)
                 }
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed < 1000) delay(1000 - elapsed)
+                _refreshPhase.value = RefreshPhase.Success
+                delay(1000)
+                _refreshPhase.value = RefreshPhase.Idle
             } finally {
                 refreshingCityIdsMutex.withLock {
                     refreshingCityIds.remove(city.id)
@@ -614,10 +628,10 @@ class WeatherViewModel @Inject constructor(
                 refreshSelectedWeather(refreshCity)
             }
             val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed < 1500) delay(1500 - elapsed)
+            if (elapsed < 1000) delay(1000 - elapsed)
             _isRefreshing.value = false
             _refreshPhase.value = RefreshPhase.Success
-            delay(2000)
+            delay(1000)
             _refreshPhase.value = RefreshPhase.Idle
         }
     }
@@ -643,12 +657,16 @@ class WeatherViewModel @Inject constructor(
             }
             val refreshCity = selectedCityForRefresh()
             if (refreshWeatherUseCase.isRecentlyFetched(refreshCity?.id)) return@launch
+            _refreshPhase.value = RefreshPhase.Refreshing
+            val startTime = System.currentTimeMillis()
             val refreshed = refreshSelectedWeather(refreshCity, silent = true)
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < 1000) delay(1000 - elapsed)
             if (refreshed) {
                 _refreshPhase.value = RefreshPhase.Success
-                delay(2000)
-                _refreshPhase.value = RefreshPhase.Idle
+                delay(1000)
             }
+            _refreshPhase.value = RefreshPhase.Idle
         }
     }
 
@@ -656,12 +674,16 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
             if (refreshWeatherUseCase.isRecentlyFetched(refreshCity?.id)) return@launch
+            _refreshPhase.value = RefreshPhase.Refreshing
+            val startTime = System.currentTimeMillis()
             val refreshed = refreshSelectedWeather(refreshCity, silent = true)
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < 1000) delay(1000 - elapsed)
             if (refreshed) {
                 _refreshPhase.value = RefreshPhase.Success
-                delay(2000)
-                _refreshPhase.value = RefreshPhase.Idle
+                delay(1000)
             }
+            _refreshPhase.value = RefreshPhase.Idle
         }
     }
 
