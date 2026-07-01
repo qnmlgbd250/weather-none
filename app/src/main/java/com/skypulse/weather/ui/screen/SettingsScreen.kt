@@ -58,6 +58,9 @@ fun SettingsScreen(
     var showHourlyUv by remember { mutableStateOf(prefs.getBoolean("show_hourly_uv", true)) }
     var showHourlyWind by remember { mutableStateOf(prefs.getBoolean("show_hourly_wind", true)) }
     var showHourlyWindGust by remember { mutableStateOf(prefs.getBoolean("show_hourly_wind_gust", false)) }
+    // Card display toggles
+    var showCardDetail by remember { mutableStateOf(prefs.getBoolean("show_card_detail", true)) }
+    var showCardSunriseSunset by remember { mutableStateOf(prefs.getBoolean("show_card_sunrise_sunset", true)) }
     fun updateAlertPreference(key: String, enabled: Boolean) {
         prefs.edit().putBoolean(key, enabled).apply()
         WeatherNotificationScheduler.scheduleIfNeeded(context.applicationContext)
@@ -170,6 +173,20 @@ fun SettingsScreen(
                     IosDivider()
                     ToggleItem("阵风", showHourlyWindGust) {
                         showHourlyWindGust = it; prefs.edit().putBoolean("show_hourly_wind_gust", it).apply()
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Card display settings
+                SectionHeader("卡片显示")
+                IosCard {
+                    ToggleItem("气象详情", showCardDetail) {
+                        showCardDetail = it; prefs.edit().putBoolean("show_card_detail", it).apply()
+                    }
+                    IosDivider()
+                    ToggleItem("日出日落", showCardSunriseSunset) {
+                        showCardSunriseSunset = it; prefs.edit().putBoolean("show_card_sunrise_sunset", it).apply()
                     }
                 }
 

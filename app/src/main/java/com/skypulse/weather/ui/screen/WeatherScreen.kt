@@ -458,6 +458,11 @@ private fun WeatherContentBody(
 
     val haptic = LocalHapticFeedback.current
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = context.getSharedPreferences("notification_prefs", android.content.Context.MODE_PRIVATE)
+    val showDetailCard = prefs.getBoolean("show_card_detail", true)
+    val showSunriseSunset = prefs.getBoolean("show_card_sunrise_sunset", true)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -527,10 +532,22 @@ private fun WeatherContentBody(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        WeatherDetailCards(
-            realtime = realtime,
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (showDetailCard) {
+            WeatherDetailCards(
+                realtime = realtime,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (showSunriseSunset) {
+            SunriseSunsetCard(
+                astro = result?.daily?.astro,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+        }
 
         Text(
             text = "\u6570\u636e\u6765\u6e90\uff1a\u5f69\u4e91\u5929\u6c14 \u00b7 \u5b9a\u4f4d\u670d\u52a1\uff1a\u9ad8\u5fb7\u5730\u56fe",
