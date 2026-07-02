@@ -39,6 +39,13 @@ val xiaomiSign = providers.gradleProperty("XIAOMI_SIGN")
     .get()
 val escapedXiaomiSign = xiaomiSign.replace("\\", "\\\\").replace("\"", "\\\"")
 
+val weatherBaseUrl = providers.gradleProperty("WEATHER_BASE_URL")
+    .orElse(localProperties.getProperty("WEATHER_BASE_URL", "https://wrapper.cyapi.cn/"))
+    .get()
+val alertBaseUrl = providers.gradleProperty("ALERT_BASE_URL")
+    .orElse(localProperties.getProperty("ALERT_BASE_URL", "https://starplucker.cyapi.cn/"))
+    .get()
+
 android {
     namespace = "com.skypulse.weather"
     compileSdk = 34
@@ -47,8 +54,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 646
-        versionName = "3.0.74"
+        versionCode = 652
+        versionName = "3.0.80"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -60,6 +67,8 @@ android {
         buildConfigField("String", "T_MAP_KEY", "\"$escapedTMapKey\"")
         buildConfigField("String", "XIAOMI_APP_KEY", "\"$escapedXiaomiAppKey\"")
         buildConfigField("String", "XIAOMI_SIGN", "\"$escapedXiaomiSign\"")
+        buildConfigField("String", "WEATHER_BASE_URL", "\"${weatherBaseUrl.replace("\"", "\\\"")}\"")
+        buildConfigField("String", "ALERT_BASE_URL", "\"${alertBaseUrl.replace("\"", "\\\"")}\"")
     }
 
     signingConfigs {

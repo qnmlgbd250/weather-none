@@ -7,9 +7,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.work.*
 import com.skypulse.weather.model.WeatherResponse
-import com.skypulse.weather.util.CityFileCache
 import com.skypulse.weather.util.FileLogger
-import com.skypulse.weather.util.WeatherFileCache
 import java.util.concurrent.TimeUnit
 
 class WeatherWidgetProvider : AppWidgetProvider() {
@@ -33,37 +31,10 @@ class WeatherWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         FileLogger.i(TAG, "onUpdate: 系统触发, widgetIds=${appWidgetIds.toList()}, count=${appWidgetIds.size}")
-        // 立即用缓存数据刷新 UI（从文件缓存读取）
-        var hasWeatherData = false
-        try {
-            val cities = CityFileCache.load(context)
-            FileLogger.i(TAG, "onUpdate: 城市列表加载完成, count=${cities.size}, " +
-                "currentLocation=${cities.firstOrNull { it.isCurrentLocation }?.name ?: "无"}, " +
-                "first=${cities.firstOrNull()?.name ?: "无"}")
-            val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
-            val weather = city?.let { WeatherFileCache.load(context, it.id) }
-            hasWeatherData = weather != null
-            if (weather != null) {
-                val skycon = weather.result?.realtime?.skycon
-                val temp = weather.result?.realtime?.temperature
-                FileLogger.i(TAG, "onUpdate: 缓存数据可用, city=${city?.name}, " +
-                    "cityId=${city?.id}, skycon=$skycon, temp=$temp")
-            } else {
-                FileLogger.w(TAG, "onUpdate: 缓存数据为空, city=${city?.name}, cityId=${city?.id}")
-            }
-            WeatherWidgetUpdater.updateAll(context, weather, city?.name)
-            FileLogger.i(TAG, "onUpdate: UI 渲染完成")
-        } catch (e: Exception) {
-            FileLogger.e(TAG, "onUpdate: 读取缓存或渲染异常", e)
-            WeatherWidgetUpdater.updateAll(context, null, null)
-        }
         // 确保 periodic worker 已注册（10 分钟周期刷新）
         enqueueWorker(context)
-        // 缓存为空时（首次创建 Widget），触发一次同步
-        if (!hasWeatherData) {
-            FileLogger.i(TAG, "onUpdate: 缓存为空，触发 onetime worker 进行首次同步")
-            enqueueOneTimeWorker(context, trigger = "onetime")
-        }
+        // 触发一次一次性工作，通过协程在后台异步读取 Room 数据库并更新小组件
+        enqueueOneTimeWorker(context, trigger = "onetime")
     }
 
     override fun onEnabled(context: Context) {
@@ -114,29 +85,12 @@ class WeatherWidgetProvider : AppWidgetProvider() {
                 val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
                 FileLogger.i(TAG, "refresh: 当前活跃 widgetIds=${ids.toList()}, count=${ids.size}")
                 if (ids.isNotEmpty()) {
-                    val cities = CityFileCache.load(context)
-                    val firstCity = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
-                    FileLogger.i(TAG, "refresh: 解析到 firstCity=${firstCity?.name}, " +
-                        "cityId=${firstCity?.id}, isCurrentLocation=${firstCity?.isCurrentLocation}")
-
-                    if (firstCity != null) {
-                        val isFirstCityWeather = weather != null && cityName == firstCity.name
-                        val finalWeather = if (isFirstCityWeather) {
-                            FileLogger.d(TAG, "refresh: 使用传入的天气数据 (匹配首个城市)")
-                            weather
-                        } else {
-                            val cached = WeatherFileCache.load(context, firstCity.id)
-                            FileLogger.d(TAG, "refresh: 从文件缓存读取, " +
-                                "有数据=${cached != null}, skycon=${cached?.result?.realtime?.skycon}")
-                            cached
-                        }
-                        val finalCityName = firstCity.name
-
-                        WeatherWidgetUpdater.updateAll(context, finalWeather, finalCityName)
-                        FileLogger.i(TAG, "refresh: UI 渲染完成, city=$finalCityName")
+                    if (weather != null && cityName != null) {
+                        FileLogger.d(TAG, "refresh: 使用传入的天气和城市数据直接更新 Widget")
+                        WeatherWidgetUpdater.updateAll(context, weather, cityName)
                     } else {
-                        FileLogger.w(TAG, "refresh: 无城市数据，渲染空状态")
-                        WeatherWidgetUpdater.updateAll(context, null, null)
+                        FileLogger.d(TAG, "refresh: 启动一次性 Worker 来异步读取并渲染 Widget")
+                        enqueueOneTimeWorker(context, trigger = "refresh")
                     }
                 } else {
                     FileLogger.w(TAG, "refresh: 无活跃 widget，跳过渲染")

@@ -3,6 +3,7 @@ package com.skypulse.weather.domain
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.model.City
 import com.skypulse.weather.repository.CityRepository
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,6 +20,10 @@ class ManageCityUseCase @Inject constructor(
 
     suspend fun getCities(): List<City> {
         return cityRepository.getCities()
+    }
+
+    fun observeCities(): Flow<List<City>> {
+        return cityRepository.observeCities()
     }
 
     suspend fun addCity(name: String, longitude: Double, latitude: Double): Pair<City, List<City>> {

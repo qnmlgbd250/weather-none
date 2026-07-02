@@ -10,7 +10,9 @@ import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.model.HourlyWind
 import com.skypulse.weather.model.WeatherResponse
 import com.squareup.moshi.Moshi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -72,9 +74,9 @@ class WeatherRepository @Inject constructor(
     /**
      * 从 Room 读取缓存（不检查 TTL），用于立即显示。
      */
-    suspend fun getWeatherFromCache(cityId: String): WeatherResponse? {
-        val entity = weatherDao.getWeather(cityId) ?: return null
-        return try {
+    suspend fun getWeatherFromCache(cityId: String): WeatherResponse? = withContext(Dispatchers.Default) {
+        val entity = weatherDao.getWeather(cityId) ?: return@withContext null
+        try {
             moshi.adapter(WeatherResponse::class.java).fromJson(entity.responseJson)
         } catch (_: Exception) {
             null
@@ -106,7 +108,7 @@ class WeatherRepository @Inject constructor(
     /**
      * 将天气数据写入 Room 缓存。
      */
-    suspend fun saveWeatherToCache(cityId: String, weather: WeatherResponse) {
+    suspend fun saveWeatherToCache(cityId: String, weather: WeatherResponse) = withContext(Dispatchers.Default) {
         val json = moshi.adapter(WeatherResponse::class.java).toJson(weather)
         weatherDao.upsert(
             WeatherEntity(

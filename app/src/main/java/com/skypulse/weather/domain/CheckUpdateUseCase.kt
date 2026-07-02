@@ -1,13 +1,9 @@
 package com.skypulse.weather.domain
 
-import android.content.Context
 import com.skypulse.weather.BuildConfig
-import dagger.hilt.android.qualifiers.ApplicationContext
+import com.skypulse.weather.data.remote.GithubApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -19,15 +15,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class CheckUpdateUseCase @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val githubApi: GithubApi
 ) {
-
-    companion object {
-        private const val GITHUB_API_URL =
-            "https://api.github.com/repos/qnmlgbd250/weather-none/releases/latest"
-        private const val CONNECT_TIMEOUT = 10_000
-        private const val READ_TIMEOUT = 10_000
-    }
 
     sealed class Result {
         data object UpToDate : Result()
@@ -36,28 +25,19 @@ class CheckUpdateUseCase @Inject constructor(
     }
 
     suspend fun checkForUpdate(): Result {
-        return try {
-            val body = withContext(Dispatchers.IO) {
-                val url = URL(GITHUB_API_URL)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-                connection.connectTimeout = CONNECT_TIMEOUT
-                connection.readTimeout = READ_TIMEOUT
-                val response = connection.inputStream.bufferedReader().readText()
-                connection.disconnect()
-                response
+        return withContext(Dispatchers.IO) {
+            try {
+                val release = githubApi.getLatestRelease()
+                val tagName = release.tagName.removePrefix("v")
+                val current = BuildConfig.VERSION_NAME
+                if (isNewerVersion(tagName, current)) {
+                    Result.UpdateAvailable(tagName, release.htmlUrl)
+                } else {
+                    Result.UpToDate
+                }
+            } catch (e: Exception) {
+                Result.Error("检查更新失败，请稍后重试")
             }
-            val json = JSONObject(body)
-            val tagName = json.getString("tag_name").removePrefix("v")
-            val current = BuildConfig.VERSION_NAME
-            if (isNewerVersion(tagName, current)) {
-                val htmlUrl = json.getString("html_url")
-                Result.UpdateAvailable(tagName, htmlUrl)
-            } else {
-                Result.UpToDate
-            }
-        } catch (e: Exception) {
-            Result.Error("检查更新失败，请稍后重试")
         }
     }
 

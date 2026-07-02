@@ -12,7 +12,6 @@ import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.sync.RefreshManager
 import com.skypulse.weather.sync.SyncReason
 import com.skypulse.weather.util.FileLogger
-import com.skypulse.weather.util.WeatherFileCache
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -58,13 +57,7 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     "temp=${cached?.result?.realtime?.temperature}")
                 WeatherWidgetUpdater.updateAll(applicationContext, cached, displayName)
 
-                // 3. 同步写入文件缓存
-                if (cached != null) {
-                    WeatherFileCache.save(applicationContext, firstCity.id, cached)
-                    FileLogger.d(TAG, "doWork: [步骤2] 文件缓存写入完成")
-                } else {
-                    FileLogger.d(TAG, "doWork: [步骤2] Room缓存为空，跳过文件写入")
-                }
+
 
                 // 4. 通过 RefreshManager 请求同步
                 val reason = when (trigger) {
@@ -87,10 +80,7 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     "temp=${freshWeather?.result?.realtime?.temperature}, " +
                     "displayName=$freshName, 数据变化=$dataChanged")
                 WeatherWidgetUpdater.updateAll(applicationContext, freshWeather, freshName)
-                if (freshWeather != null) {
-                    WeatherFileCache.save(applicationContext, firstCity.id, freshWeather)
-                    FileLogger.d(TAG, "doWork: [步骤4] 文件缓存写入完成")
-                }
+
             } else {
                 FileLogger.w(TAG, "doWork: 无城市数据，渲染空状态")
                 WeatherWidgetUpdater.updateAll(applicationContext, null, null)

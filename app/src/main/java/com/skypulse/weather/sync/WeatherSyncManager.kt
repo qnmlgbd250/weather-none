@@ -18,7 +18,9 @@ import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.util.FileLogger
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -86,12 +88,12 @@ class WeatherSyncManager @Inject constructor(
         cityId: String,
         longitude: Double,
         latitude: Double
-    ): SyncResult {
+    ): SyncResult = withContext(Dispatchers.IO) {
         if (isRecentlyFetched(cityId)) {
             Log.i(TAG, "refreshWeather: $cityId 限流，跳过")
-            return SyncResult.RateLimited
+            return@withContext SyncResult.RateLimited
         }
-        return doRefreshWeather(cityId, longitude, latitude)
+        doRefreshWeather(cityId, longitude, latitude)
     }
 
     /**
@@ -129,14 +131,14 @@ class WeatherSyncManager @Inject constructor(
      * GPS 解析 → 更新当前城市坐标/名称 → 获取天气 → 写入 Room。
      * 用于主应用的定位城市刷新（前台，AMap GPS 可靠）。
      */
-    suspend fun refreshWeatherWithLocation(): SyncResult {
+    suspend fun refreshWeatherWithLocation(): SyncResult = withContext(Dispatchers.IO) {
         val hasLocationPermission = hasLocationPermission()
         Log.i(TAG, "refreshWeatherWithLocation: hasPermission=$hasLocationPermission")
 
         if (!hasLocationPermission) {
             // 无定位权限，使用默认坐标
             Log.i(TAG, "无定位权限，使用默认坐标")
-            return doRefreshWeather(
+            return@withContext doRefreshWeather(
                 cityId = "current_location",
                 longitude = LocationManager.DEFAULT_LONGITUDE,
                 latitude = LocationManager.DEFAULT_LATITUDE
@@ -165,7 +167,7 @@ class WeatherSyncManager @Inject constructor(
             Log.i(TAG, "getCurrentLocationCity: ${currentCity?.id}, name=${currentCity?.name}")
             if (currentCity != null) {
                 Log.i(TAG, "开始获取天气: cityId=${currentCity.id}")
-                return doRefreshWeather(currentCity.id, lon, lat)
+                return@withContext doRefreshWeather(currentCity.id, lon, lat)
             }
         }
 
@@ -176,7 +178,7 @@ class WeatherSyncManager @Inject constructor(
             val currentCity = getCurrentLocationCity()
             Log.i(TAG, "使用缓存: cityId=${currentCity?.id}")
             if (currentCity != null) {
-                return doRefreshWeather(
+                return@withContext doRefreshWeather(
                     currentCity.id,
                     cachedLocation.longitude,
                     cachedLocation.latitude
@@ -186,7 +188,7 @@ class WeatherSyncManager @Inject constructor(
 
         // 全部失败
         Log.w(TAG, "refreshWeatherWithLocation: 全部失败，返回 LocationFailed")
-        return SyncResult.LocationFailed
+        SyncResult.LocationFailed
     }
 
     /**
@@ -196,7 +198,7 @@ class WeatherSyncManager @Inject constructor(
      * 2. 不更新 Room 中的城市记录（避免污染主页的城市名显示）
      * 3. 仅更新天气缓存数据
      */
-    suspend fun refreshWeatherWithLocationForWidget(): SyncResult {
+    suspend fun refreshWeatherWithLocationForWidget(): SyncResult = withContext(Dispatchers.IO) {
         val hasLocationPermission = hasLocationPermission()
         val hasBackgroundPermission = hasBackgroundLocationPermission()
         FileLogger.i(TAG, "refreshWeatherWithLocationForWidget: hasPermission=$hasLocationPermission, " +
@@ -204,7 +206,7 @@ class WeatherSyncManager @Inject constructor(
 
         if (!hasLocationPermission) {
             FileLogger.w(TAG, "小组件: 无定位权限，使用默认坐标 (北京)")
-            return doRefreshWeather(
+            return@withContext doRefreshWeather(
                 cityId = "current_location",
                 longitude = LocationManager.DEFAULT_LONGITUDE,
                 latitude = LocationManager.DEFAULT_LATITUDE
@@ -222,7 +224,7 @@ class WeatherSyncManager @Inject constructor(
             locationManager.saveCachedLocation(
                 locationManager.resolveLocationName(amapLocation), lon, lat
             )
-            return doRefreshWeather("current_location", lon, lat)
+            return@withContext doRefreshWeather("current_location", lon, lat)
         }
 
         // 方案2: FusedLocation (GMS) + 原生 LocationManager
@@ -241,7 +243,7 @@ class WeatherSyncManager @Inject constructor(
             } catch (e: Exception) {
                 FileLogger.w(TAG, "小组件定位: 反向地理编码失败 - ${e.message}")
             }
-            return doRefreshWeather("current_location", lon, lat)
+            return@withContext doRefreshWeather("current_location", lon, lat)
         }
 
         // 方案3: 缓存坐标
@@ -249,7 +251,7 @@ class WeatherSyncManager @Inject constructor(
         FileLogger.w(TAG, "小组件定位: 后备也失败, cachedLocation=${cachedLocation?.name}, " +
             "lon=${cachedLocation?.longitude}, lat=${cachedLocation?.latitude}")
         if (cachedLocation != null) {
-            return doRefreshWeather(
+            return@withContext doRefreshWeather(
                 "current_location",
                 cachedLocation.longitude,
                 cachedLocation.latitude
@@ -257,26 +259,26 @@ class WeatherSyncManager @Inject constructor(
         }
 
         FileLogger.e(TAG, "小组件定位: 全部失败")
-        return SyncResult.LocationFailed
+        SyncResult.LocationFailed
     }
 
     /**
      * 获取天气：优先用定位城市的坐标，没有则用手动添加的城市坐标，最后兜底北京。
      */
-    suspend fun refreshWeatherDefault(): SyncResult {
+    suspend fun refreshWeatherDefault(): SyncResult = withContext(Dispatchers.IO) {
         val currentCity = getCurrentLocationCity()
         if (currentCity != null) {
             // 有定位城市（含缓存坐标），用其坐标获取天气
-            return doRefreshWeather(currentCity.id, currentCity.longitude, currentCity.latitude)
+            return@withContext doRefreshWeather(currentCity.id, currentCity.longitude, currentCity.latitude)
         }
         // 无定位城市，用手动添加的第一个城市的坐标
         val allCities = cityRepository.getCities()
         val firstCity = allCities.firstOrNull()
         if (firstCity != null) {
-            return doRefreshWeather(firstCity.id, firstCity.longitude, firstCity.latitude)
+            return@withContext doRefreshWeather(firstCity.id, firstCity.longitude, firstCity.latitude)
         }
         // 都没有，兜底北京
-        return doRefreshWeather(
+        doRefreshWeather(
             cityId = "current_location",
             longitude = LocationManager.DEFAULT_LONGITUDE,
             latitude = LocationManager.DEFAULT_LATITUDE

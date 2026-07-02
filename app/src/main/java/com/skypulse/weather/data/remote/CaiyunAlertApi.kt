@@ -11,7 +11,6 @@ import retrofit2.http.Query
  */
 interface CaiyunAlertApi {
 
-    @Headers("User-Agent: weather/7.59.0 (Xiaomi:M2006C3LC; android/13)")
     @GET("v3/alert/location")
     suspend fun getAlerts(
         @Query("latitude") latitude: Double,

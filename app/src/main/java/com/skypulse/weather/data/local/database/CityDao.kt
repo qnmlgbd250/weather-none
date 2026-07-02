@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -29,4 +30,20 @@ interface CityDao {
 
     @Query("DELETE FROM cities")
     suspend fun deleteAll()
+
+    @Transaction
+    suspend fun replaceAll(cities: List<CityEntity>) {
+        deleteAll()
+        upsertAll(cities)
+    }
+
+    @Transaction
+    suspend fun deleteAndReorder(cityId: String) {
+        delete(cityId)
+        val remaining = getAll()
+        val reordered = remaining.mapIndexed { index, entity ->
+            entity.copy(sortOrder = index)
+        }
+        upsertAll(reordered)
+    }
 }

@@ -5,7 +5,6 @@ import android.util.Log
 import com.skypulse.weather.data.local.database.CityDao
 import com.skypulse.weather.data.local.database.CityEntity
 import com.skypulse.weather.model.City
-import com.skypulse.weather.util.CityFileCache
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -14,8 +13,6 @@ import javax.inject.Singleton
 
 /**
  * 城市数据的唯一入口（SSOT = Room）。
- *
- * 所有写操作自动同步 FileCache，确保 Widget 读到最新数据。
  */
 @Singleton
 class CityRepository @Inject constructor(
@@ -42,49 +39,24 @@ class CityRepository @Inject constructor(
     // ============ Write ============
 
     suspend fun saveCities(cities: List<City>) {
-        cityDao.deleteAll()
-        cityDao.upsertAll(cities.mapIndexed { index, city -> city.toEntity(index) })
-        syncFileCache()
+        cityDao.replaceAll(cities.mapIndexed { index, city -> city.toEntity(index) })
     }
 
     suspend fun addCity(city: City) {
-        val current = cityDao.getAll().toMutableList()
+        val current = cityDao.getAll()
         if (current.any { it.id == city.id }) return
-        current.add(city.toEntity(current.size))
-        cityDao.deleteAll()
-        cityDao.upsertAll(current)
-        syncFileCache()
+        cityDao.upsert(city.toEntity(current.size))
     }
 
     suspend fun removeCity(cityId: String) {
-        val current = cityDao.getAll().toMutableList()
-        current.removeAll { it.id == cityId && !it.isCurrentLocation }
-        cityDao.deleteAll()
-        cityDao.upsertAll(current)
-        syncFileCache()
+        cityDao.deleteAndReorder(cityId)
     }
 
     suspend fun updateCity(city: City) {
-        val current = cityDao.getAll().toMutableList()
-        val index = current.indexOfFirst { it.id == city.id }
-        if (index >= 0) {
-            current[index] = city.toEntity(index)
-            cityDao.deleteAll()
-            cityDao.upsertAll(current)
-            syncFileCache()
-        }
-    }
-
-    /**
-     * 从 Room 读取最新城市列表并写入 FileCache。
-     * 确保 Widget（读 FileCache）与 Room 数据一致。
-     */
-    private suspend fun syncFileCache() {
-        try {
-            val cities = cityDao.getAll().map { it.toDomain() }
-            CityFileCache.save(context, cities)
-        } catch (e: Exception) {
-            Log.w("CityRepo", "syncFileCache failed", e)
+        val current = cityDao.getAll()
+        val existing = current.find { it.id == city.id }
+        if (existing != null) {
+            cityDao.upsert(city.toEntity(existing.sortOrder))
         }
     }
 

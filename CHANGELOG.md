@@ -150,3 +150,27 @@
 ## [3.0.67] - 2026-07-02
 
 - 删除 scripts/bump-version.ps1，解决每次修改代码版本号重复跳跃的问题；仅保留 release.ps1 统一管理 bump+构建+上传
+
+## [3.0.75] - 2026-07-02
+
+- 架构重构：移除了文件缓存，ViewModel 响应式流化，小组件异步后台刷新
+
+## [3.0.76] - 2026-07-02
+
+- 修复首次安装因定位城市未同步导致骨架屏加载无限卡死的问题
+
+## [3.0.77] - 2026-07-02
+
+- 优化：彻底移除天地图逆地理编码，规范化 Geocoder/SyncManager 异步分发至 Dispatchers.IO，以及 Repository 序列化分发至 Dispatchers.Default
+
+## [3.0.78] - 2026-07-02
+
+- 优化：引入 Room 事务注解解决 CityRepository 频繁删除重写导致的 UI 闪烁和数据库开销问题
+
+## [3.0.79] - 2026-07-02
+
+- 重构：将 GitHub 更新检查与小米城市搜索接口统一为 Retrofit 配合 Moshi 序列化解析，消除工程网络和 JSON 解析库不一致风险
+
+## [3.0.80] - 2026-07-02
+
+- 重构：通过 OkHttp 拦截器实现 User-Agent 动态化拼装，并将 Base URL 收拢至 gradle BuildConfig 管理

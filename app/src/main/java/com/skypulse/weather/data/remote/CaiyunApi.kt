@@ -8,7 +8,6 @@ import retrofit2.http.Query
 
 interface CaiyunApi {
 
-    @Headers("User-Agent: weather/7.59.0 (Xiaomi:M2006C3LC; android/13)")
     @GET("v2.7/{token}/{lon},{lat}/weather")
     suspend fun getWeather(
         @Path("token") token: String,
