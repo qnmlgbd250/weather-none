@@ -557,11 +557,17 @@ class WeatherViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
-            if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
             _isRefreshing.value = true
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
-            refreshSelectedWeather(refreshCity)
+
+            val isLimited = refreshCity != null && shouldSkipRefresh(refreshCity)
+            if (!isLimited) {
+                refreshSelectedWeather(refreshCity)
+            } else {
+                Log.d(TAG, "refresh(): skip actual refresh due to rate limiting/fresh cache, but show animation")
+            }
+
             val elapsed = System.currentTimeMillis() - startTime
             if (elapsed < 1000) delay(1000 - elapsed)
             _isRefreshing.value = false

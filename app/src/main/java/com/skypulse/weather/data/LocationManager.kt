@@ -195,40 +195,137 @@ class LocationManager @Inject constructor(
                 return null
             }
 
+            // 1. 优先检查并复用近期有效的高精度 LastKnownLocation
+            val gpsLastKnown = try {
+                nativeLocManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+            } catch (_: SecurityException) { null }
+            if (gpsLastKnown != null && (System.currentTimeMillis() - gpsLastKnown.time) < 10 * 60 * 1000) {
+                Log.i(TAG, "NativeLocation: 使用近期的 GPS lastKnown: lat=${gpsLastKnown.latitude}, lon=${gpsLastKnown.longitude}")
+                return gpsLastKnown
+            }
+
+            val netLastKnown = try {
+                nativeLocManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
+            } catch (_: SecurityException) { null }
+            if (netLastKnown != null && (System.currentTimeMillis() - netLastKnown.time) < 5 * 60 * 1000) {
+                Log.i(TAG, "NativeLocation: 使用近期的 Network lastKnown: lat=${netLastKnown.latitude}, lon=${netLastKnown.longitude}")
+                return netLastKnown
+            }
+
             val providers = nativeLocManager.getProviders(true)
-            val provider = when {
-                providers.contains(android.location.LocationManager.NETWORK_PROVIDER) ->
-                    android.location.LocationManager.NETWORK_PROVIDER
-                providers.contains(android.location.LocationManager.PASSIVE_PROVIDER) ->
-                    android.location.LocationManager.PASSIVE_PROVIDER
-                providers.contains(android.location.LocationManager.GPS_PROVIDER) ->
-                    android.location.LocationManager.GPS_PROVIDER
-                else -> {
-                    Log.w(TAG, "NativeLocation: 无可用 provider")
-                    return null
+            if (providers.isEmpty()) {
+                Log.w(TAG, "NativeLocation: 无任何可用的 Location Provider")
+                return null
+            }
+
+            // 2. 双通道并行定位策略 (GPS 与 Network 同时开启监听，取最快返回的有效位置)
+            Log.i(TAG, "NativeLocation: 启动 GPS & Network 双通道并行定位, 超时=${timeoutMillis}ms")
+            val activeLoc = requestParallelLocation(nativeLocManager, providers, timeoutMillis)
+            if (activeLoc != null) {
+                Log.i(TAG, "NativeLocation: 并行定位成功: provider=${activeLoc.provider}, lat=${activeLoc.latitude}, lon=${activeLoc.longitude}")
+                return activeLoc
+            }
+
+            // 3. 尝试 Passive 定位作为最后原生兜底
+            if (providers.contains(android.location.LocationManager.PASSIVE_PROVIDER)) {
+                Log.i(TAG, "NativeLocation: 并行定位均超时或失败，尝试 Passive 定位...")
+                val passiveLoc = requestSingleProviderLocation(nativeLocManager, android.location.LocationManager.PASSIVE_PROVIDER, 2000L)
+                if (passiveLoc != null) {
+                    Log.i(TAG, "NativeLocation: Passive 定位成功")
+                    return passiveLoc
                 }
             }
 
-            val lastKnown = try {
-                nativeLocManager.getLastKnownLocation(provider)
-            } catch (_: SecurityException) {
-                null
-            }
-            if (lastKnown != null) {
-                val age = System.currentTimeMillis() - lastKnown.time
-                if (age < 15 * 60 * 1000) {
-                    Log.i(TAG, "NativeLocation: 使用近期的 lastKnown: lat=${lastKnown.latitude}, lon=${lastKnown.longitude}")
-                    return lastKnown
+            Log.w(TAG, "NativeLocation: 所有并行及兜底定位方式均已失败")
+            null
+        } catch (e: Exception) {
+            Log.e(TAG, "NativeLocation 发生异常", e)
+            null
+        }
+    }
+
+    private suspend fun requestParallelLocation(
+        nativeLocManager: android.location.LocationManager,
+        providers: List<String>,
+        timeoutMillis: Long
+    ): Location? {
+        return try {
+            kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
+                suspendCancellableCoroutine<Location?> { cont ->
+                    val listener = object : android.location.LocationListener {
+                        @Volatile
+                        private var hasResumed = false
+
+                        override fun onLocationChanged(loc: Location) {
+                            synchronized(this) {
+                                if (!hasResumed) {
+                                    hasResumed = true
+                                    Log.i(TAG, "ParallelLocation: 收到定位数据来自 ${loc.provider}, lat=${loc.latitude}, lon=${loc.longitude}")
+                                    if (cont.isActive) cont.resume(loc)
+                                    try {
+                                        nativeLocManager.removeUpdates(this)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                        }
+                        @Deprecated("Deprecated in API")
+                        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+                        override fun onProviderEnabled(provider: String) {}
+                        override fun onProviderDisabled(provider: String) {}
+                    }
+
+                    cont.invokeOnCancellation {
+                        try {
+                            nativeLocManager.removeUpdates(listener)
+                        } catch (_: Exception) {}
+                    }
+
+                    try {
+                        var registeredAny = false
+                        if (providers.contains(android.location.LocationManager.GPS_PROVIDER)) {
+                            nativeLocManager.requestLocationUpdates(
+                                android.location.LocationManager.GPS_PROVIDER,
+                                0L, 0f, listener, android.os.Looper.getMainLooper()
+                            )
+                            registeredAny = true
+                        }
+                        if (providers.contains(android.location.LocationManager.NETWORK_PROVIDER)) {
+                            nativeLocManager.requestLocationUpdates(
+                                android.location.LocationManager.NETWORK_PROVIDER,
+                                0L, 0f, listener, android.os.Looper.getMainLooper()
+                            )
+                            registeredAny = true
+                        }
+
+                        if (!registeredAny) {
+                            if (cont.isActive) cont.resume(null)
+                        }
+                    } catch (e: SecurityException) {
+                        Log.e(TAG, "requestParallelLocation SecurityException", e)
+                        if (cont.isActive) cont.resume(null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "requestParallelLocation Exception", e)
+                        if (cont.isActive) cont.resume(null)
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "requestParallelLocation error", e)
+            null
+        }
+    }
 
-            Log.i(TAG, "NativeLocation: 请求 $provider 定位, timeout=${timeoutMillis}ms")
+    private suspend fun requestSingleProviderLocation(
+        nativeLocManager: android.location.LocationManager,
+        provider: String,
+        timeoutMillis: Long
+    ): Location? {
+        return try {
             kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
                 suspendCancellableCoroutine<Location?> { cont ->
                     try {
                         val listener = object : android.location.LocationListener {
                             override fun onLocationChanged(loc: Location) {
-                                Log.i(TAG, "NativeLocation 定位成功: lat=${loc.latitude}, lon=${loc.longitude}")
                                 if (cont.isActive) cont.resume(loc)
                                 try {
                                     nativeLocManager.removeUpdates(this)
@@ -254,16 +351,16 @@ class LocationManager @Inject constructor(
                             android.os.Looper.getMainLooper()
                         )
                     } catch (e: SecurityException) {
-                        Log.e(TAG, "NativeLocation SecurityException", e)
+                        Log.e(TAG, "requestSingleProviderLocation SecurityException", e)
                         if (cont.isActive) cont.resume(null)
                     } catch (e: Exception) {
-                        Log.e(TAG, "NativeLocation 异常", e)
+                        Log.e(TAG, "requestSingleProviderLocation Exception", e)
                         if (cont.isActive) cont.resume(null)
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "NativeLocation 发生异常", e)
+            Log.e(TAG, "requestSingleProviderLocation error", e)
             null
         }
     }
@@ -371,6 +468,14 @@ class LocationManager @Inject constructor(
     // ============ Location Name Resolution (Geocoder fallback) ============
 
     suspend fun reverseGeocode(lat: Double, lon: Double): String = withContext(Dispatchers.IO) {
+        val cached = getCachedLocation()
+        if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
+            val dist = distanceBetween(lat, lon, cached.latitude, cached.longitude)
+            if (dist < 200f) {
+                Log.i(TAG, "reverseGeocode: 距离上次缓存位置仅为 ${dist}米，复用缓存位置名称: ${cached.name}")
+                return@withContext cached.name
+            }
+        }
         try {
             kotlinx.coroutines.withTimeoutOrNull(5000L) {
                 geocoderFallback(lat, lon)
@@ -391,8 +496,8 @@ class LocationManager @Inject constructor(
                 val district = normalizeLocationPart(addr.subLocality)
                     ?.takeIf { it != city }
                 val detail = listOfNotNull(
-                    normalizeFineLocationPart(addr.featureName),
                     normalizeFineLocationPart(addr.thoroughfare),
+                    normalizeFineLocationPart(addr.featureName),
                     normalizeFineLocationPart(addr.getAddressLine(0))
                 )
                     .distinct()

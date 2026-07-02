@@ -17,6 +17,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.DailyAstro
@@ -31,73 +33,89 @@ fun SunriseSunsetCard(
     astro: List<DailyAstro>?,
     modifier: Modifier = Modifier
 ) {
-    // 解析天象数据，判断是否已过今天的日落时间
-    val cardState = remember(astro) {
-        val now = Calendar.getInstance()
-        val todayStr = String.format(
-            Locale.US, "%04d-%02d-%02d",
-            now.get(Calendar.YEAR),
-            now.get(Calendar.MONTH) + 1,
-            now.get(Calendar.DAY_OF_MONTH)
+    val now = Calendar.getInstance()
+    val todayStr = String.format(
+        Locale.US, "%04d-%02d-%02d",
+        now.get(Calendar.YEAR),
+        now.get(Calendar.MONTH) + 1,
+        now.get(Calendar.DAY_OF_MONTH)
+    )
+
+    val todayAstro = astro?.find { entry ->
+        val d = entry.date ?: return@find false
+        val datePart = if (d.contains("T")) d.substringBefore('T') else d
+        datePart == todayStr
+    } ?: astro?.firstOrNull()
+
+    val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 1) }
+    val tomorrowStr = String.format(
+        Locale.US, "%04d-%02d-%02d",
+        tomorrow.get(Calendar.YEAR),
+        tomorrow.get(Calendar.MONTH) + 1,
+        tomorrow.get(Calendar.DAY_OF_MONTH)
+    )
+    val tomorrowAstro = astro?.find { entry ->
+        val d = entry.date ?: return@find false
+        val datePart = if (d.contains("T")) d.substringBefore('T') else d
+        datePart == tomorrowStr
+    } ?: astro?.getOrNull(1)
+
+    val todaySunriseTime = todayAstro?.sunrise?.time ?: "06:00"
+    val todaySunsetTime = todayAstro?.sunset?.time ?: "18:00"
+    val tomorrowSunriseTime = tomorrowAstro?.sunrise?.time ?: "06:00"
+
+    val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+
+    val todaySunriseParts = todaySunriseTime.split(":")
+    val todaySunriseMinutes = todaySunriseParts.getOrNull(0)?.toIntOrNull() ?: 6
+    val todaySunriseMin = todaySunriseParts.getOrNull(1)?.toIntOrNull() ?: 0
+    val todaySunriseTotal = todaySunriseMinutes * 60 + todaySunriseMin
+
+    val todaySunsetParts = todaySunsetTime.split(":")
+    val todaySunsetMinutes = todaySunsetParts.getOrNull(0)?.toIntOrNull() ?: 18
+    val todaySunsetMin = todaySunsetParts.getOrNull(1)?.toIntOrNull() ?: 0
+    val todaySunsetTotal = todaySunsetMinutes * 60 + todaySunsetMin
+
+    // 判断当前时间是否是白天 (日出之后 且 日落之前)
+    val isDaytime = currentMinutes in todaySunriseTotal..todaySunsetTotal
+
+    val cardState = if (isDaytime) {
+        // 白天：显示今天的日出到日落，正常布局
+        SunriseSunsetCardState(
+            leftTime = todayAstro?.sunrise?.time ?: "--:--",
+            rightTime = todayAstro?.sunset?.time ?: "--:--",
+            leftLabel = "日出",
+            rightLabel = "日落",
+            showMoon = false,
+            progress = calculateSunProgress(todaySunriseTime, todaySunsetTime)
         )
-
-        val todayAstro = astro?.find { entry ->
-            val d = entry.date ?: return@find false
-            val datePart = if (d.contains("T")) d.substringBefore('T') else d
-            datePart == todayStr
-        }
-
-        val todaySunsetTime = todayAstro?.sunset?.time
-        val isAfterSunset = if (todaySunsetTime != null && todaySunsetTime.contains(":")) {
-            val parts = todaySunsetTime.split(":")
-            val sunsetMinutes = parts[0].toInt() * 60 + parts[1].toInt()
-            val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-            currentMinutes > sunsetMinutes
-        } else {
-            false
-        }
-
-        if (isAfterSunset) {
-            // 已过日落：显示明天的日出日落，位置互换
-            val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 1) }
-            val tomorrowStr = String.format(
-                Locale.US, "%04d-%02d-%02d",
-                tomorrow.get(Calendar.YEAR),
-                tomorrow.get(Calendar.MONTH) + 1,
-                tomorrow.get(Calendar.DAY_OF_MONTH)
-            )
-            val tomorrowAstro = astro?.find { entry ->
-                val d = entry.date ?: return@find false
-                val datePart = if (d.contains("T")) d.substringBefore('T') else d
-                datePart == tomorrowStr
-            }
-
+    } else {
+        // 夜晚：显示日落到日出，位置互换
+        val isBeforeSunrise = currentMinutes < todaySunriseTotal
+        if (isBeforeSunrise) {
+            // 午夜到日出之前：左边是昨天的日落（用今天日落近似），右边是今天的日出
             SunriseSunsetCardState(
-                leftTime = tomorrowAstro?.sunset?.time ?: "--:--",
+                leftTime = todayAstro?.sunset?.time ?: "--:--",
+                rightTime = todayAstro?.sunrise?.time ?: "--:--",
+                leftLabel = "日落",
+                rightLabel = "日出",
+                showMoon = true,
+                progress = calculateNightProgress(todaySunsetTime, todaySunriseTime)
+            )
+        } else {
+            // 日落之后到午夜：左边是今天的日落，右边是明天的日出
+            SunriseSunsetCardState(
+                leftTime = todayAstro?.sunset?.time ?: "--:--",
                 rightTime = tomorrowAstro?.sunrise?.time ?: "--:--",
                 leftLabel = "日落",
                 rightLabel = "日出",
                 showMoon = true,
-                progress = calculateNightProgress(
-                    todaySunsetTime ?: "18:00",
-                    tomorrowAstro?.sunrise?.time ?: "06:00"
-                )
-            )
-        } else {
-            // 日落前：显示今天的日出日落，正常布局
-            SunriseSunsetCardState(
-                leftTime = todayAstro?.sunrise?.time ?: "--:--",
-                rightTime = todayAstro?.sunset?.time ?: "--:--",
-                leftLabel = "日出",
-                rightLabel = "日落",
-                showMoon = false,
-                progress = calculateSunProgress(
-                    todayAstro?.sunrise?.time ?: "06:00",
-                    todayAstro?.sunset?.time ?: "18:00"
-                )
+                progress = calculateNightProgress(todaySunsetTime, tomorrowSunriseTime)
             )
         }
     }
+
+    android.util.Log.d("SunriseSunsetCard", "Card: sunrise=$todaySunriseTime, sunset=$todaySunsetTime, currentMinutes=$currentMinutes, isDaytime=$isDaytime, progress=${cardState.progress}, astroListSize=${astro?.size ?: 0}")
 
     GlassCard(modifier = modifier) {
         Column(
@@ -209,12 +227,8 @@ private fun HorizontalSunProgress(
     modifier: Modifier = Modifier
 ) {
     val clampedProgress = progress.coerceIn(0f, 1f)
-    val theme = LocalWeatherTheme.current
-    val moonCutoutColor = if (theme.isDay) {
-        Color(0xFF34577A)
-    } else {
-        theme.backgroundGradient.firstOrNull() ?: Color(0xFF1D2842)
-    }
+    val sunPainter = rememberVectorPainter(image = Icons.Outlined.WbSunny)
+    val moonPainter = rememberVectorPainter(image = Icons.Outlined.DarkMode)
 
     Canvas(modifier = modifier) {
         val barY = size.height / 2
@@ -223,7 +237,7 @@ private fun HorizontalSunProgress(
         val barWidth = size.width
         val indicatorX = barWidth * clampedProgress
 
-        val gapRadius = if (showMoon) 15.dp.toPx() else 14.dp.toPx()
+        val gapRadius = 14.dp.toPx()
         val leftLineEnd = (indicatorX - gapRadius).coerceAtLeast(0f)
         val rightLineStart = (indicatorX + gapRadius).coerceAtMost(barWidth)
 
@@ -247,69 +261,24 @@ private fun HorizontalSunProgress(
             )
         }
 
-        // Indicator (sun or moon)
-        val indicatorRadius = if (showMoon) 6.dp.toPx() else 5.dp.toPx()
+        // Vector Icon Size
+        val iconSizePx = 18.dp.toPx()
+        val iconOffset = Offset(indicatorX - iconSizePx / 2, barY - iconSizePx / 2)
 
         // Outer glow
         drawCircle(
-            color = Color.White.copy(alpha = 0.2f),
-            radius = indicatorRadius * 2.2f,
+            color = Color.White.copy(alpha = 0.15f),
+            radius = iconSizePx * 0.7f,
             center = Offset(indicatorX, barY)
         )
 
-        if (showMoon) {
-            // Moon: use a solid cutout color so the crescent remains readable on glass backgrounds.
-            drawCircle(
-                color = Color.White,
-                radius = indicatorRadius,
-                center = Offset(indicatorX, barY)
-            )
-            drawCircle(
-                color = moonCutoutColor.copy(alpha = 0.92f),
-                radius = indicatorRadius * 0.88f,
-                center = Offset(indicatorX + indicatorRadius * 0.42f, barY - indicatorRadius * 0.12f)
-            )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.75f),
-                radius = 1.dp.toPx(),
-                center = Offset(
-                    (indicatorX - 13.dp.toPx()).coerceAtLeast(1.dp.toPx()),
-                    barY - 6.dp.toPx()
-                )
-            )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.55f),
-                radius = 0.8.dp.toPx(),
-                center = Offset(
-                    (indicatorX + 13.dp.toPx()).coerceAtMost(size.width - 1.dp.toPx()),
-                    barY + 6.dp.toPx()
-                )
-            )
-        } else {
-            // Sun body
-            drawCircle(
-                color = Color.White,
-                radius = indicatorRadius,
-                center = Offset(indicatorX, barY)
-            )
-
-            // Short rays
-            val rayInner = indicatorRadius + 1.5.dp.toPx()
-            val rayOuter = indicatorRadius + 4.dp.toPx()
-            for (i in 0 until 8) {
-                val angle = Math.toRadians((i * 45.0))
-                drawLine(
-                    color = Color.White,
-                    start = Offset(
-                        indicatorX + (rayInner * kotlin.math.cos(angle)).toFloat(),
-                        barY + (rayInner * kotlin.math.sin(angle)).toFloat()
-                    ),
-                    end = Offset(
-                        indicatorX + (rayOuter * kotlin.math.cos(angle)).toFloat(),
-                        barY + (rayOuter * kotlin.math.sin(angle)).toFloat()
-                    ),
-                    strokeWidth = 1.2.dp.toPx(),
-                    cap = StrokeCap.Round
+        // Draw the vector icon (tilted or default)
+        val painter = if (showMoon) moonPainter else sunPainter
+        translate(left = iconOffset.x, top = iconOffset.y) {
+            with(painter) {
+                draw(
+                    size = Size(iconSizePx, iconSizePx),
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White)
                 )
             }
         }
