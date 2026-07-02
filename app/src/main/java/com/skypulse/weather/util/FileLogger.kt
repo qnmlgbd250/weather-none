@@ -10,20 +10,38 @@ import java.util.Locale
 
 /**
  * 文件日志工具
- * 日志存储路径: /storage/emulated/0/Android/data/com.skypulse.weather/files/skypulselog/
+ *
+ * 日志按功能分文件存储：
+ * - log_YYYY-MM-DD.txt    → 主页/通用日志
+ * - widget_YYYY-MM-DD.txt → 小组件日志
+ * - notif_YYYY-MM-DD.txt  → 通知日志
+ *
+ * 日志最多保留 3 天，超期自动清理。
+ * 存储路径: /storage/emulated/0/Android/data/com.skypulse.weather/files/skypulselog/
  */
 object FileLogger {
 
     private const val LOG_DIR = "skypulselog"
+    private const val KEEP_DAYS = 3
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
 
     private var logDir: File? = null
     private var appVersion: String = "unknown"
 
+    /** 小组件相关 TAG */
+    private val widgetTags = setOf(
+        "WidgetProvider", "WidgetWorker", "WidgetUpdater", "WidgetRefreshPolicy"
+    )
+
+    /** 通知相关 TAG */
+    private val notifTags = setOf(
+        "UrgentNotifWorker", "WeatherNotifWorker", "WeatherNotifScheduler",
+        "NotificationDedup"
+    )
+
     /**
      * 初始化日志目录（需在 Application 中调用）
-     * 使用应用专属目录，无需额外权限
      */
     fun init(context: Context) {
         try {
@@ -33,6 +51,8 @@ object FileLogger {
                 context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "unknown"
             } catch (_: Exception) { "unknown" }
             android.util.Log.i("FileLogger", "日志目录: ${logDir?.absolutePath}")
+            // 启动时清理旧日志
+            cleanOldLogs()
         } catch (e: Exception) {
             android.util.Log.e("FileLogger", "初始化失败: ${e.message}")
         }
@@ -62,7 +82,6 @@ object FileLogger {
                     appendLine()
                     appendLine("=== Stack Trace ===")
                     appendLine(throwable.stackTraceToString())
-                    // 链式异常
                     var cause = throwable.cause
                     var depth = 0
                     while (cause != null && depth < 5) {
@@ -76,15 +95,22 @@ object FileLogger {
                 FileWriter(crashFile, true).use { it.append(deviceInfo) }
                 android.util.Log.e("FileLogger", "崩溃已记录: ${crashFile.absolutePath}")
             } catch (_: Exception) {}
-            // 交给系统默认处理（弹窗 / 杀进程）
             defaultHandler?.uncaughtException(thread, throwable)
         }
     }
 
-    private fun getLogFile(): File {
+    /**
+     * 根据 TAG 判断日志分类，返回对应文件
+     */
+    private fun getLogFile(tag: String): File {
         val dir = logDir ?: return File("/dev/null")
         val dateStr = dateFormat.format(Date())
-        return File(dir, "log_$dateStr.txt")
+        val prefix = when {
+            widgetTags.contains(tag) -> "widget"
+            notifTags.contains(tag) -> "notif"
+            else -> "log"
+        }
+        return File(dir, "${prefix}_$dateStr.txt")
     }
 
     /**
@@ -98,7 +124,7 @@ object FileLogger {
             val timeStr = timeFormat.format(Date())
             val logLine = "[$timeStr] [$level] [$tag] $message\n"
 
-            val logFile = getLogFile()
+            val logFile = getLogFile(tag)
             FileWriter(logFile, true).use { writer ->
                 writer.append(logLine)
             }
@@ -114,19 +140,24 @@ object FileLogger {
     fun e(tag: String, message: String, throwable: Throwable) = log(tag, "E", "$message\n${throwable.stackTraceToString()}")
 
     /**
-     * 清理指定天数之前的日志文件
+     * 清理超过 keepDays 天的日志文件（所有类型：log_ widget_ notif_ crash_）
      */
-    fun cleanOldLogs(keepDays: Int = 7) {
-        val dir = logDir ?: return
-
+    fun cleanOldLogs(keepDays: Int = KEEP_DAYS) {
         try {
+            val dir = logDir ?: return
             if (!dir.exists()) return
 
             val cutoff = System.currentTimeMillis() - (keepDays * 24 * 60 * 60 * 1000L)
+            val prefixes = listOf("log_", "widget_", "notif_", "crash_")
+            var deletedCount = 0
             dir.listFiles()?.forEach { file ->
-                if (file.isFile && file.name.startsWith("log_") && file.lastModified() < cutoff) {
+                if (file.isFile && prefixes.any { file.name.startsWith(it) } && file.lastModified() < cutoff) {
                     file.delete()
+                    deletedCount++
                 }
+            }
+            if (deletedCount > 0) {
+                android.util.Log.i("FileLogger", "清理了 $deletedCount 个过期日志文件")
             }
         } catch (e: Exception) {
             android.util.Log.e("FileLogger", "清理日志失败: ${e.message}")

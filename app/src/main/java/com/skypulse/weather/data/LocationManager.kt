@@ -8,6 +8,7 @@ import android.location.Location
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.skypulse.weather.util.FileLogger
 import com.amap.api.location.AMapLocation
 import com.amap.api.location.AMapLocationClient
 import com.amap.api.location.AMapLocationClientOption
@@ -163,9 +164,14 @@ class LocationManager @Inject constructor(
                     if (cont.isActive) {
                         if (location != null && location.errorCode == 0) {
                             Log.i(TAG, "AMap 定位成功: ${location.latitude}, ${location.longitude}")
+                            FileLogger.i(TAG, "AMap 定位成功: lat=${location.latitude}, lon=${location.longitude}, " +
+                                "city=${location.city}, district=${location.district}, " +
+                                "aoi=${location.aoiName}, street=${location.street}")
                             cont.resume(location)
                         } else {
                             Log.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, errorDetail=${location?.locationDetail}")
+                            FileLogger.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, " +
+                                "errorDetail=${location?.locationDetail}")
                             cont.resume(null)
                         }
                     }

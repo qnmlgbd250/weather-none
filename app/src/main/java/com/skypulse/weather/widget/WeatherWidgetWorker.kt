@@ -72,8 +72,8 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     "onetime" -> SyncReason.WIDGET_CREATED
                     else -> SyncReason.PERIODIC
                 }
-                FileLogger.i(TAG, "doWork: [步骤3] 请求同步, reason=$reason")
-                refreshManager.requestSync(reason)
+                FileLogger.i(TAG, "doWork: [步骤3] 请求同步, reason=$reason, forWidget=true")
+                refreshManager.requestSync(reason, forWidget = true)
                 FileLogger.i(TAG, "doWork: [步骤3] 同步请求完成")
 
                 // 5. 同步完成后重新读取并渲染

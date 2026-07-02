@@ -17,10 +17,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.DailyAstro
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
@@ -32,26 +30,72 @@ fun SunriseSunsetCard(
     astro: List<DailyAstro>?,
     modifier: Modifier = Modifier
 ) {
-    val todayAstro = remember(astro) {
+    // 解析天象数据，判断是否已过今天的日落时间
+    val cardState = remember(astro) {
+        val now = Calendar.getInstance()
         val todayStr = String.format(
             Locale.US, "%04d-%02d-%02d",
-            Calendar.getInstance().get(Calendar.YEAR),
-            Calendar.getInstance().get(Calendar.MONTH) + 1,
-            Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH) + 1,
+            now.get(Calendar.DAY_OF_MONTH)
         )
-        astro?.find { entry ->
+
+        val todayAstro = astro?.find { entry ->
             val d = entry.date ?: return@find false
-            // API date format: "2026-07-01T00:00+08:00" — extract the date part before 'T'
             val datePart = if (d.contains("T")) d.substringBefore('T') else d
             datePart == todayStr
         }
-    }
 
-    val sunriseTime = todayAstro?.sunrise?.time ?: "--:--"
-    val sunsetTime = todayAstro?.sunset?.time ?: "--:--"
+        val todaySunsetTime = todayAstro?.sunset?.time
+        val isAfterSunset = if (todaySunsetTime != null && todaySunsetTime.contains(":")) {
+            val parts = todaySunsetTime.split(":")
+            val sunsetMinutes = parts[0].toInt() * 60 + parts[1].toInt()
+            val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+            currentMinutes > sunsetMinutes
+        } else {
+            false
+        }
 
-    val progress = remember(sunriseTime, sunsetTime) {
-        calculateSunProgress(sunriseTime, sunsetTime)
+        if (isAfterSunset) {
+            // 已过日落：显示明天的日出日落，位置互换
+            val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 1) }
+            val tomorrowStr = String.format(
+                Locale.US, "%04d-%02d-%02d",
+                tomorrow.get(Calendar.YEAR),
+                tomorrow.get(Calendar.MONTH) + 1,
+                tomorrow.get(Calendar.DAY_OF_MONTH)
+            )
+            val tomorrowAstro = astro?.find { entry ->
+                val d = entry.date ?: return@find false
+                val datePart = if (d.contains("T")) d.substringBefore('T') else d
+                datePart == tomorrowStr
+            }
+
+            SunriseSunsetCardState(
+                leftTime = tomorrowAstro?.sunset?.time ?: "--:--",
+                rightTime = tomorrowAstro?.sunrise?.time ?: "--:--",
+                leftLabel = "日落",
+                rightLabel = "日出",
+                showMoon = true,
+                progress = calculateNightProgress(
+                    todaySunsetTime ?: "18:00",
+                    tomorrowAstro?.sunrise?.time ?: "06:00"
+                )
+            )
+        } else {
+            // 日落前：显示今天的日出日落，正常布局
+            SunriseSunsetCardState(
+                leftTime = todayAstro?.sunrise?.time ?: "--:--",
+                rightTime = todayAstro?.sunset?.time ?: "--:--",
+                leftLabel = "日出",
+                rightLabel = "日落",
+                showMoon = false,
+                progress = calculateSunProgress(
+                    todayAstro?.sunrise?.time ?: "06:00",
+                    todayAstro?.sunset?.time ?: "18:00"
+                )
+            )
+        }
     }
 
     GlassCard(modifier = modifier) {
@@ -60,41 +104,41 @@ fun SunriseSunsetCard(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
-            // Top row: sunrise icon + label on left, sunset icon + label on right
+            // Top row: left label + icon, right label + icon
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Sunrise: sun icon
+                // Left side
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.WbSunny,
+                        imageVector = if (cardState.showMoon) Icons.Outlined.DarkMode else Icons.Outlined.WbSunny,
                         contentDescription = null,
                         tint = TextSecondary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "日出",
+                        text = cardState.leftLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
                 }
-                // Sunset: moon icon
+                // Right side
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "日落",
+                        text = cardState.rightLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
                     Icon(
-                        imageVector = Icons.Outlined.DarkMode,
+                        imageVector = if (cardState.showMoon) Icons.Outlined.WbSunny else Icons.Outlined.DarkMode,
                         contentDescription = null,
                         tint = TextSecondary,
                         modifier = Modifier.size(20.dp)
@@ -104,14 +148,15 @@ fun SunriseSunsetCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Horizontal progress bar with sun indicator
+            // Horizontal progress bar with sun/moon indicator
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(20.dp)
             ) {
                 HorizontalSunProgress(
-                    progress = progress,
+                    progress = cardState.progress,
+                    showMoon = cardState.showMoon,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(20.dp)
@@ -120,20 +165,20 @@ fun SunriseSunsetCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Bottom row: sunrise time + sunset time
+            // Bottom row: left time + right time
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = sunriseTime,
+                    text = cardState.leftTime,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Medium
                     ),
                     color = TextPrimary
                 )
                 Text(
-                    text = sunsetTime,
+                    text = cardState.rightTime,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Medium
                     ),
@@ -144,9 +189,22 @@ fun SunriseSunsetCard(
     }
 }
 
+/**
+ * 日出日落卡片状态
+ */
+private data class SunriseSunsetCardState(
+    val leftTime: String,
+    val rightTime: String,
+    val leftLabel: String,
+    val rightLabel: String,
+    val showMoon: Boolean,
+    val progress: Float
+)
+
 @Composable
 private fun HorizontalSunProgress(
     progress: Float,
+    showMoon: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val clampedProgress = progress.coerceIn(0f, 1f)
@@ -156,63 +214,80 @@ private fun HorizontalSunProgress(
         val barHeight = 3.dp.toPx()
         val cornerRadius = barHeight / 2
         val barWidth = size.width
-        val sunX = barWidth * clampedProgress
+        val indicatorX = barWidth * clampedProgress
 
-        // Before current time: dark (elapsed daylight, already passed)
+        // Before current time: dark (elapsed, already passed)
         if (clampedProgress > 0f) {
             drawRoundRect(
                 color = Color.White.copy(alpha = 0.3f),
                 topLeft = Offset(0f, barY - barHeight / 2),
-                size = Size(sunX, barHeight),
+                size = Size(indicatorX, barHeight),
                 cornerRadius = CornerRadius(cornerRadius)
             )
         }
 
-        // After current time: bright (remaining daylight)
+        // After current time: bright (remaining)
         if (clampedProgress < 1f) {
             drawRoundRect(
                 color = Color.White,
-                topLeft = Offset(sunX, barY - barHeight / 2),
-                size = Size(barWidth - sunX, barHeight),
+                topLeft = Offset(indicatorX, barY - barHeight / 2),
+                size = Size(barWidth - indicatorX, barHeight),
                 cornerRadius = CornerRadius(cornerRadius)
             )
         }
 
-        // Sun indicator on the progress bar
-        val sunRadius = 5.dp.toPx()
+        // Indicator (sun or moon)
+        val indicatorRadius = 5.dp.toPx()
 
         // Outer glow
         drawCircle(
             color = Color.White.copy(alpha = 0.2f),
-            radius = sunRadius * 2.2f,
-            center = Offset(sunX, barY)
+            radius = indicatorRadius * 2.2f,
+            center = Offset(indicatorX, barY)
         )
 
-        // Sun body
-        drawCircle(
-            color = Color.White,
-            radius = sunRadius,
-            center = Offset(sunX, barY)
-        )
-
-        // Short rays
-        val rayInner = sunRadius + 1.5.dp.toPx()
-        val rayOuter = sunRadius + 4.dp.toPx()
-        for (i in 0 until 8) {
-            val angle = Math.toRadians((i * 45.0))
-            drawLine(
-                color = Color.White,
-                start = Offset(
-                    sunX + (rayInner * kotlin.math.cos(angle)).toFloat(),
-                    barY + (rayInner * kotlin.math.sin(angle)).toFloat()
-                ),
-                end = Offset(
-                    sunX + (rayOuter * kotlin.math.cos(angle)).toFloat(),
-                    barY + (rayOuter * kotlin.math.sin(angle)).toFloat()
-                ),
-                strokeWidth = 1.2.dp.toPx(),
-                cap = StrokeCap.Round
+        if (showMoon) {
+            // Moon: draw a crescent by overlapping two circles
+            val moonColor = Color.White
+            // Full moon circle
+            drawCircle(
+                color = moonColor,
+                radius = indicatorRadius,
+                center = Offset(indicatorX, barY)
             )
+            // Shadow circle to create crescent effect (offset to the right)
+            drawCircle(
+                color = Color(0x99FFFFFF), // semi-transparent to blend with the background
+                radius = indicatorRadius * 0.8f,
+                center = Offset(indicatorX + indicatorRadius * 0.5f, barY - indicatorRadius * 0.2f)
+            )
+        } else {
+            // Sun body
+            drawCircle(
+                color = Color.White,
+                radius = indicatorRadius,
+                center = Offset(indicatorX, barY)
+            )
+
+            // Short rays
+            val rayInner = indicatorRadius + 1.5.dp.toPx()
+            val rayOuter = indicatorRadius + 4.dp.toPx()
+            for (i in 0 until 8) {
+                val angle = Math.toRadians((i * 45.0))
+                drawLine(
+                    color = Color.White,
+                    start = Offset(
+                        indicatorX + (rayInner * kotlin.math.cos(angle)).toFloat(),
+                        barY + (rayInner * kotlin.math.sin(angle)).toFloat()
+                    ),
+                    end = Offset(
+                        indicatorX + (rayOuter * kotlin.math.cos(angle)).toFloat(),
+                        barY + (rayOuter * kotlin.math.sin(angle)).toFloat()
+                    ),
+                    strokeWidth = 1.2.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
         }
     }
 }
@@ -233,6 +308,41 @@ private fun calculateSunProgress(sunriseTime: String, sunsetTime: String): Float
 
         val elapsed = currentMinutes - sunriseMinutes
         (elapsed.toFloat() / totalDaylight).coerceIn(0f, 1f)
+    } catch (e: Exception) {
+        0.5f
+    }
+}
+
+/**
+ * 计算夜间进度：从今天的日落到明天的日出
+ * @param todaySunsetTime 今天的日落时间 (HH:mm)
+ * @param tomorrowSunriseTime 明天的日出时间 (HH:mm)
+ * @return 0.0 ~ 1.0 的进度值
+ */
+private fun calculateNightProgress(todaySunsetTime: String, tomorrowSunriseTime: String): Float {
+    return try {
+        val now = Calendar.getInstance()
+        val currentMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+
+        val sunsetParts = todaySunsetTime.split(":")
+        val sunsetMinutes = sunsetParts[0].toInt() * 60 + sunsetParts[1].toInt()
+
+        val sunriseParts = tomorrowSunriseTime.split(":")
+        val sunriseMinutes = sunriseParts[0].toInt() * 60 + sunriseParts[1].toInt()
+
+        // 夜晚总时长：从日落到第二天日出（跨天，需要加24小时）
+        val totalNight = (24 * 60 - sunsetMinutes) + sunriseMinutes
+        if (totalNight <= 0) return 0f
+
+        // 已过时长：从日落到当前时间
+        val elapsed = if (currentMinutes >= sunsetMinutes) {
+            currentMinutes - sunsetMinutes
+        } else {
+            // 跨过午夜的情况
+            (24 * 60 - sunsetMinutes) + currentMinutes
+        }
+
+        (elapsed.toFloat() / totalNight).coerceIn(0f, 1f)
     } catch (e: Exception) {
         0.5f
     }

@@ -16,6 +16,7 @@ import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.sync.RefreshManager
 import com.skypulse.weather.sync.SyncReason
+import com.skypulse.weather.util.FileLogger
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
@@ -43,17 +44,19 @@ class UrgentNotificationWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             val context = applicationContext
+            FileLogger.i(TAG, "doWork: 开始执行")
             if (!WeatherNotificationScheduler.hasAnyAlertEnabled(context)) {
+                FileLogger.i(TAG, "doWork: 所有通知已关闭，跳过")
                 return Result.success()
             }
             if (!WeatherNotificationScheduler.canPostNotifications(context)) {
-                Log.w(TAG, "Notification permission disabled, skipping weather alerts")
+                FileLogger.w(TAG, "doWork: 通知权限未授予，跳过")
                 return Result.success()
             }
             val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             createChannel(nm)
             if (!isAlertChannelEnabled(nm)) {
-                Log.w(TAG, "Weather alert channel disabled, skipping weather alerts")
+                FileLogger.w(TAG, "doWork: 通知渠道已禁用，跳过")
                 return Result.success()
             }
 
@@ -63,18 +66,23 @@ class UrgentNotificationWorker @AssistedInject constructor(
 
             // 检查数据是否过期（Repository 决定缓存策略）
             val isCacheStale = repository.isCacheStale(city.id, CACHE_TTL_MS)
+            FileLogger.i(TAG, "doWork: 缓存过期=$isCacheStale, city=${city.name}")
 
             if (isCacheStale) {
                 // 数据过期，通过 RefreshManager 请求同步
                 try {
                     refreshManager.requestSync(SyncReason.PERIODIC)
                 } catch (e: Exception) {
-                    Log.w(TAG, "Sync failed", e)
+                    FileLogger.w(TAG, "doWork: 同步失败 - ${e.message}")
                 }
             }
 
             // 从 Room 读取天气数据
-            val weather = repository.getWeatherFromCache(city.id) ?: return Result.success()
+            val weather = repository.getWeatherFromCache(city.id)
+            if (weather == null) {
+                FileLogger.w(TAG, "doWork: Room 无天气数据，跳过")
+                return Result.success()
+            }
 
             // Initialize deduplicator and clean up expired records
             val dedup = NotificationDeduplicator(context)
@@ -82,6 +90,8 @@ class UrgentNotificationWorker @AssistedInject constructor(
 
             val realtime = weather.result?.realtime
             val alerts = weather.result?.alert?.content
+            FileLogger.i(TAG, "doWork: alerts.size=${alerts?.size ?: 0}, " +
+                "titles=${alerts?.map { it.title }}")
 
             val minutely = weather.result?.minutely
             val minutelyDesc = minutely?.description ?: ""
@@ -121,21 +131,11 @@ class UrgentNotificationWorker @AssistedInject constructor(
                 }
             }
 
-            // Weather warning alert — skip blue level, dedup by title
+            // Weather warning alert — dedup by title
             if (context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, Context.MODE_PRIVATE)
                     .getBoolean("warning_alert", true)) {
                 alerts?.forEach { alert ->
-                    val level = alert.level ?: ""
                     val title = alert.title ?: ""
-
-                    val isBlueLevel = level.contains("蓝") ||
-                                     level.contains("蓝色") ||
-                                     title.contains("蓝色") ||
-                                     title.contains("蓝级")
-
-                    if (isBlueLevel) {
-                        return@forEach
-                    }
 
                     val cleanTitle = title
                         .replace(Regex("\\[.*?\\]"), "")
@@ -143,21 +143,26 @@ class UrgentNotificationWorker @AssistedInject constructor(
                         .replace(Regex("预警.*$"), "预警")
                         .trim()
                     if (cleanTitle.isNotBlank()) {
-                        if (dedup.shouldNotifyWarning(cleanTitle)) {
+                        val shouldNotify = dedup.shouldNotifyWarning(cleanTitle)
+                        FileLogger.i(TAG, "doWork: 预警 cleanTitle=$cleanTitle, shouldNotify=$shouldNotify")
+                        if (shouldNotify) {
                             val description = alert.description ?: ""
                             val body = if (!description.isNullOrBlank()) {
                                 truncateToTwoLines(description)
                             } else {
                                 cleanTitle
                             }
+                            FileLogger.i(TAG, "doWork: 发送预警通知 title=$cleanTitle")
                             sendNotification(nm, 2, cleanTitle, body)
                         }
                     }
                 }
             }
 
+            FileLogger.i(TAG, "doWork: 执行完成")
             Result.success()
         } catch (e: Exception) {
+            FileLogger.e(TAG, "doWork: 异常 - ${e.message}", e)
             Log.w(TAG, "Urgent notification check failed", e)
             Result.retry()
         }

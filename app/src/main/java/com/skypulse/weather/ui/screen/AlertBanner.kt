@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.skypulse.weather.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
 @Composable
@@ -36,7 +37,6 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
     var currentAlertIndex by remember { mutableIntStateOf(0) }
     val safeAlertIndex = currentAlertIndex.coerceIn(alerts.indices)
     val currentAlert = alerts[safeAlertIndex]
-    val currentAlertColor = alertLevelColor(currentAlert.level, currentAlert.title)
     val itemHeightDp = 20.dp
 
     val rawPainter = rememberVectorPainter(Icons.Outlined.Notifications)
@@ -74,7 +74,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                 painter = croppedPainter,
                 contentDescription = "预警",
                 modifier = Modifier.size(iconSizeDp).offset(y = (-1).dp),
-                colorFilter = ColorFilter.tint(currentAlertColor)
+                colorFilter = ColorFilter.tint(TextSecondary)
             )
             Spacer(modifier = Modifier.width(4.dp))
 
@@ -82,7 +82,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                 Text(
                     text = alerts[0].title,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = currentAlertColor,
+                    color = TextSecondary,
                     modifier = Modifier.offset(y = (-1).dp).clickable { onClick(0) }
                 )
             } else {
@@ -113,7 +113,7 @@ internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
                     Text(
                         text = alert.title,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = alertLevelColor(alert.level, alert.title),
+                        color = TextSecondary,
                         modifier = Modifier.offset(y = 1.dp)
                     )
                 }

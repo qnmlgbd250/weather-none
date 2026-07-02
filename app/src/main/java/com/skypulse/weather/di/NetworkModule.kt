@@ -1,6 +1,7 @@
 package com.skypulse.weather.di
 
 import com.skypulse.weather.BuildConfig
+import com.skypulse.weather.data.remote.CaiyunAlertApi
 import com.skypulse.weather.data.remote.CaiyunApi
 import com.skypulse.weather.data.remote.WeatherApiService
 import com.squareup.moshi.Moshi
@@ -21,6 +22,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     private const val BASE_URL = "https://wrapper.cyapi.cn/"
+    private const val ALERT_BASE_URL = "https://starplucker.cyapi.cn/"
 
     @Provides
     @Singleton
@@ -55,6 +57,16 @@ object NetworkModule {
     @Singleton
     fun provideCaiyunApi(retrofit: Retrofit): CaiyunApi =
         retrofit.create(CaiyunApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideCaiyunAlertApi(client: OkHttpClient, moshi: Moshi): CaiyunAlertApi =
+        Retrofit.Builder()
+            .baseUrl(ALERT_BASE_URL)
+            .client(client)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(CaiyunAlertApi::class.java)
 }
 
 /**

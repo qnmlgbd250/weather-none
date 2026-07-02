@@ -53,10 +53,11 @@ class RefreshManager @Inject constructor(
      *
      * @param reason 触发来源
      * @param force 是否跳过限流（如用户手动刷新）
+     * @param forWidget 是否使用小组件专用定位流程（3层兜底：AMap → FusedLocation → 原生 LocationManager）
      * @return SyncResult
      */
-    suspend fun requestSync(reason: SyncReason, force: Boolean = false): SyncResult {
-        FileLogger.i(TAG, "requestSync($reason): ★ 请求开始, force=$force, isSyncing=$isSyncing")
+    suspend fun requestSync(reason: SyncReason, force: Boolean = false, forWidget: Boolean = false): SyncResult {
+        FileLogger.i(TAG, "requestSync($reason): ★ 请求开始, force=$force, forWidget=$forWidget, isSyncing=$isSyncing")
         val startTime = System.currentTimeMillis()
 
         // 1. 并发控制：已有同步任务在执行中
@@ -101,9 +102,13 @@ class RefreshManager @Inject constructor(
             // 4. 执行同步
             isSyncing = true
             try {
-                FileLogger.i(TAG, "requestSync($reason): [步骤4] 开始执行同步")
+                FileLogger.i(TAG, "requestSync($reason): [步骤4] 开始执行同步, forWidget=$forWidget")
                 Log.i(TAG, "requestSync($reason): 开始同步")
-                val result = syncManager.refreshWeatherWithLocation()
+                val result = if (forWidget) {
+                    syncManager.refreshWeatherWithLocationForWidget()
+                } else {
+                    syncManager.refreshWeatherWithLocation()
+                }
                 val elapsed = System.currentTimeMillis() - startTime
                 if (result is SyncResult.Success) {
                     lastSyncTime = System.currentTimeMillis()

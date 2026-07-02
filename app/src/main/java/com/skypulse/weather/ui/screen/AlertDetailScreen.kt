@@ -22,7 +22,6 @@ import com.skypulse.weather.ui.theme.IosSettingsBg
 import com.skypulse.weather.ui.theme.IosTextPrimary
 import com.skypulse.weather.ui.theme.IosTextSecondary
 import com.skypulse.weather.ui.theme.IosBackArrow
-import com.skypulse.weather.ui.theme.AlertOrange
 import com.skypulse.weather.ui.theme.IosDividerColor
 import com.skypulse.weather.ui.theme.SetLightStatusBarEffect
 
@@ -81,7 +80,6 @@ internal fun AlertDetailScreen(
                         ?.replace(Regex("预警.*$"), "预警")
                         ?.trim()
                         ?.ifBlank { null }
-                    val levelColor = alertLevelColor(alert.level, title ?: alert.title, AlertOrange)
 
                     // Glass-style card matching main page GlassCard
                     Box(
@@ -96,7 +94,7 @@ internal fun AlertDetailScreen(
                                 Text(
                                     text = title,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = levelColor
+                                    color = IosTextPrimary
                                 )
                             }
 

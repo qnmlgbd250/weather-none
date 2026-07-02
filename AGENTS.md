@@ -19,16 +19,14 @@
 
 ## 版本管理
 - **版本号位置**: `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`
-- **改动后构建**: 每次代码修改完成后，默认自动执行构建验证；
+- **版本号升级**: 由 `scripts\release.ps1` 自动完成（patch +1, versionCode +1），无需手动执行单独的 bump 脚本
 
 ## 发版规则
-- **后续默认发版**: 除非用户主动要求 GitHub 发版（必须每次对话明确提出发版-不能根据上下文内容自己推测），否则日常只执行云剪贴板发版
-- **默认发版**: 只执行 `scripts\release.ps1` 发布到云剪贴板
+- **默认发版**: 每次代码改动完成并验证后，执行 `scripts\release.ps1` 发布到云剪贴板（内含 bump 版本 → 构建 → 上传）；除非用户明确要求暂不发版
 - **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release（直接发布，非 draft）
 - **GitHub Token**: GitHub 发版必须从 `local.properties` 读取 GitHub token，不得硬编码到源码、脚本输出或 Release 描述中
 - **GitHub 包体完整性**: GitHub 发版上传 APK 前必须记录本地 APK 文件大小和 SHA-256；上传后必须从 GitHub Release 下载该 APK 资产并重新计算文件大小和 SHA-256，二者完全一致才算发版成功；如不一致，删除损坏资产后重新上传并再次校验
 - **GitHub Release 描述**: GitHub 发版描述只写一条中文描述：`修复已知问题`
-- **改动后发版**: 每次代码改动完成并验证后，默认自动执行云剪贴板发版；除非用户明确要求暂不发版
 - 发版前必须清理 build.gradle.kts 和 CHANGELOG.md 的 UTF-8 BOM
 
 ## Git 操作规范
