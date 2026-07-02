@@ -1,14 +1,15 @@
 package com.skypulse.weather.ui.screen
 
-import android.Manifest
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -20,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
@@ -28,34 +28,24 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
-import com.skypulse.weather.ui.components.*
-import com.skypulse.weather.ui.screen.PermissionOnboardingScreen
-import com.skypulse.weather.ui.theme.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ErrorOutline
 import com.skypulse.weather.util.WeatherUtils
-import com.skypulse.weather.viewmodel.CityWeatherData
+import com.skypulse.weather.ui.components.*
+import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.AppScreen
+import com.skypulse.weather.viewmodel.CitySearchViewModel
 import com.skypulse.weather.viewmodel.RefreshPhase
 import com.skypulse.weather.viewmodel.WeatherUiState
-import com.skypulse.weather.viewmodel.CitySearchViewModel
 import com.skypulse.weather.viewmodel.WeatherViewModel
 import kotlinx.coroutines.delay
-import kotlin.math.abs
 
 val LocalSkipCardAnimation = compositionLocalOf { false }
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
     searchViewModel: CitySearchViewModel = hiltViewModel()
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     val refreshPhase by viewModel.refreshPhase.collectAsState()
     val isLocating by viewModel.isLocating.collectAsState()
@@ -68,8 +58,7 @@ fun WeatherScreen(
     val updateState by viewModel.updateState.collectAsState()
     val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
     val selectedCityId by viewModel.selectedCityId.collectAsState()
-    val swipeDirection by viewModel.swipeDirection.collectAsState()
-
+    val onboardingReady by viewModel.onboardingReady.collectAsState()
     val currentCityIndex by remember {
         derivedStateOf {
             val cities = savedCities
@@ -80,11 +69,6 @@ fun WeatherScreen(
                 cities.indexOfFirst { it.id == selId }.coerceAtLeast(0)
             }
         }
-    }
-
-    val contentScrollState = rememberScrollState()
-    val isScrolled by remember {
-        derivedStateOf { contentScrollState.value > 0 }
     }
 
     var previousScreen by remember { mutableStateOf(currentScreen) }
@@ -98,21 +82,10 @@ fun WeatherScreen(
         previousScreen = currentScreen
     }
 
-    val notificationPermission = if (android.os.Build.VERSION.SDK_INT >= 33) {
-        rememberPermissionState(android.Manifest.permission.POST_NOTIFICATIONS)
-    } else null
-    val locationPermissions = rememberMultiplePermissionsState(
-        permissions = listOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        )
-    )
-    val hasLocationPermission = locationPermissions.permissions.any { it.status.isGranted }
-    var useDefaultLocation by rememberSaveable { mutableStateOf(false) }
-
     val showOnboarding by viewModel.showOnboarding.collectAsState()
     var allPermissionsHandled by rememberSaveable { mutableStateOf(false) }
     var locationSkipped by rememberSaveable { mutableStateOf(false) }
+    var homeBootstrapStarted by rememberSaveable { mutableStateOf(false) }
 
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -133,20 +106,15 @@ fun WeatherScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(hasLocationPermission, allPermissionsHandled, showOnboarding) {
-        // 直接查询系统权限状态，不依赖 Accompanist（引导页通过 ActivityResult 请求权限后，Accompanist 状态可能尚未同步）
-        val locationGranted = androidx.core.content.ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-        androidx.core.content.ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (locationGranted) {
-            // 先确保定位城市存在（挂起等待完成），再刷新天气，避免竞态覆盖城市名
-            viewModel.ensureCurrentLocationCitySync()
-            viewModel.fetchWeather()
+    LaunchedEffect(onboardingReady, allPermissionsHandled, showOnboarding, locationSkipped) {
+        if (!onboardingReady || homeBootstrapStarted || locationSkipped) return@LaunchedEffect
+        if (showOnboarding) {
+            if (!allPermissionsHandled) return@LaunchedEffect
             viewModel.completeOnboarding()
         }
+        homeBootstrapStarted = true
+        viewModel.ensureCurrentLocationCitySync()
+        viewModel.fetchWeather()
     }
 
     LaunchedEffect(locationSkipped, savedCities) {
@@ -167,6 +135,13 @@ fun WeatherScreen(
     BackHandler(enabled = currentScreen != AppScreen.CityDetail) {
         searchViewModel.clearSearchResults()
         viewModel.navigateBack()
+    }
+
+    if (!onboardingReady) {
+        LoadingShimmer(
+            modifier = Modifier.fillMaxSize().statusBarsPadding()
+        )
+        return
     }
 
     if (showOnboarding && !allPermissionsHandled && !locationSkipped) {
@@ -211,39 +186,40 @@ fun WeatherScreen(
                                 )
                             }
                             is WeatherUiState.Success -> {
-                                // Swipe state — shared between gesture and animation
-                                var swiping by remember { mutableStateOf(false) }
-                                val swipingUpdated by rememberUpdatedState(swiping)
-                                var lastTriggerTime by remember { mutableLongStateOf(0L) }
+                                val pagerState = rememberPagerState(
+                                    initialPage = currentCityIndex,
+                                    pageCount = { savedCities.size }
+                                )
 
-                                LaunchedEffect(selectedCityId) {
-                                    swiping = true
-                                    delay(350)
-                                    swiping = false
+                                // Sync from ViewModel selection to PagerState
+                                LaunchedEffect(selectedCityId, savedCities) {
+                                    val targetIndex = savedCities.indexOfFirst { it.id == selectedCityId }
+                                    if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
+                                        pagerState.scrollToPage(targetIndex)
+                                    }
+                                }
+
+                                // Sync from PagerState swiping to ViewModel
+                                LaunchedEffect(pagerState.currentPage) {
+                                    if (pagerState.currentPage < savedCities.size) {
+                                        val targetCity = savedCities[pagerState.currentPage]
+                                        if (targetCity.id != selectedCityId) {
+                                            viewModel.navigateToCityDetail(targetCity.id)
+                                        }
+                                    }
+                                }
+
+                                val scrollStates = remember { mutableStateMapOf<String, ScrollState>() }
+                                val activeCityId = savedCities.getOrNull(pagerState.currentPage)?.id ?: "current_location"
+                                val activeScrollState = scrollStates[activeCityId]
+                                val isScrolled by remember(activeScrollState) {
+                                    derivedStateOf { (activeScrollState?.value ?: 0) > 0 }
                                 }
 
                                 Column(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .statusBarsPadding()
-                                        .pointerInput(Unit) {
-                                            detectHorizontalDragGestures(
-                                                onDragEnd = {},
-                                                onDragCancel = {},
-                                                onHorizontalDrag = { change, dragAmount ->
-                                                    val now = System.currentTimeMillis()
-                                                    if (!swipingUpdated
-                                                        && abs(dragAmount) > 30f
-                                                        && (now - lastTriggerTime) > 500
-                                                    ) {
-                                                        change.consume()
-                                                        lastTriggerTime = now
-                                                        if (dragAmount < 0f) viewModel.switchToNextCity()
-                                                        else viewModel.switchToPreviousCity()
-                                                    }
-                                                }
-                                            )
-                                        }
                                 ) {
                                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -258,34 +234,42 @@ fun WeatherScreen(
                                     if (savedCities.size > 1) {
                                         CityDotBar(
                                             cityCount = savedCities.size,
-                                            currentIndex = currentCityIndex,
+                                            currentIndex = pagerState.currentPage,
                                             isScrolled = isScrolled
                                         )
                                     }
 
                                     CompositionLocalProvider(
-                                        LocalSkipCardAnimation provides (swiping || justEnteredCityDetail.value)
+                                        LocalSkipCardAnimation provides (pagerState.isScrollInProgress || justEnteredCityDetail.value)
                                     ) {
-                                        AnimatedContent(
-                                            targetState = selectedCityId ?: "current_location",
-                                            transitionSpec = {
-                                                slideInHorizontally(tween(250)) { fullWidth -> fullWidth * swipeDirection } togetherWith
-                                                    slideOutHorizontally(tween(250)) { fullWidth -> -fullWidth * swipeDirection }
-                                            },
-                                            label = "city_switch"
-                                        ) { targetCityId ->
-                                            val contentState = weatherStateForCityKey(
-                                                cityKey = targetCityId,
-                                                cities = savedCities,
-                                                cityWeatherMap = cityWeatherMap,
-                                                fallback = state
-                                            )
-                                            WeatherContentBody(
-                                                state = contentState,
-                                                scrollState = contentScrollState,
-                                                onRefresh = { viewModel.refresh() },
-                                                onAlertClick = { viewModel.navigateToAlertDetail(0) }
-                                            )
+                                        HorizontalPager(
+                                            state = pagerState,
+                                            modifier = Modifier.fillMaxSize(),
+                                            key = { page -> savedCities.getOrNull(page)?.id ?: page.toString() }
+                                        ) { page ->
+                                            val city = savedCities.getOrNull(page)
+                                            val contentState = remember(city, cityWeatherMap, state.locationName) {
+                                                val weather = city?.let { cityWeatherMap[it.id]?.weather }
+                                                if (city != null && weather != null) {
+                                                    WeatherUiState.Success(
+                                                        weather = weather,
+                                                        locationName = if (city.isCurrentLocation) state.locationName else city.name
+                                                    )
+                                                } else {
+                                                    null
+                                                }
+                                            }
+                                            val pageScrollState = scrollStates.getOrPut(city?.id ?: "current_location") { ScrollState(0) }
+                                            if (contentState != null) {
+                                                WeatherContentBody(
+                                                    state = contentState,
+                                                    scrollState = pageScrollState,
+                                                    onRefresh = { viewModel.refresh() },
+                                                    onAlertClick = { viewModel.navigateToAlertDetail(0) }
+                                                )
+                                            } else {
+                                                LoadingShimmer(modifier = Modifier.fillMaxSize())
+                                            }
                                         }
                                     }
                                 }
@@ -350,22 +334,6 @@ fun WeatherScreen(
             }
         }
     }
-}
-
-private fun weatherStateForCityKey(
-    cityKey: String,
-    cities: List<com.skypulse.weather.model.City>,
-    cityWeatherMap: Map<String, CityWeatherData>,
-    fallback: WeatherUiState.Success
-): WeatherUiState.Success {
-    val city = if (cityKey == "current_location") {
-        cities.find { it.isCurrentLocation }
-    } else {
-        cities.find { it.id == cityKey }
-    } ?: return fallback
-
-    val weather = cityWeatherMap[city.id]?.weather ?: return fallback
-    return WeatherUiState.Success(weather = weather, locationName = city.name)
 }
 
 // ==================== Helper Composables ====================

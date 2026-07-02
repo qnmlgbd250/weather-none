@@ -4,7 +4,6 @@ import android.app.Application
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import com.amap.api.location.AMapLocationClient
 import com.skypulse.weather.notification.WeatherNotificationScheduler
 import com.skypulse.weather.util.FileLogger
 import com.skypulse.weather.widget.WeatherWidgetProvider
@@ -26,12 +25,6 @@ class SkyPulseApp : Application(), Configuration.Provider {
         super.onCreate()
         FileLogger.init(this)
         FileLogger.initCrashHandler()
-
-        // 提前告知 AMap SDK 隐私协议已同意，避免首次定位时 SDK 因隐私未生效而直接报错
-        try {
-            AMapLocationClient.updatePrivacyShow(this, true, true)
-            AMapLocationClient.updatePrivacyAgree(this, true)
-        } catch (_: Exception) {}
 
         WeatherNotificationScheduler.scheduleIfNeeded(this)
         WeatherWidgetProvider.enqueueWorker(this)

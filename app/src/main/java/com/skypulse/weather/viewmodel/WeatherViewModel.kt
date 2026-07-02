@@ -94,6 +94,9 @@ class WeatherViewModel @Inject constructor(
     private val _showOnboarding = MutableStateFlow(false)
     val showOnboarding: StateFlow<Boolean> = _showOnboarding.asStateFlow()
 
+    private val _onboardingReady = MutableStateFlow(false)
+    val onboardingReady: StateFlow<Boolean> = _onboardingReady.asStateFlow()
+
     // --- Saved cities ---
     private val _savedCities = MutableStateFlow<List<City>>(emptyList())
     val savedCities: StateFlow<List<City>> = _savedCities.asStateFlow()
@@ -199,6 +202,7 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             val completed = permissionDataStore.isOnboardingCompleted()
             _showOnboarding.value = !completed
+            _onboardingReady.value = true
         }
 
         // Observe saved cities from use case reactively
@@ -221,17 +225,11 @@ class WeatherViewModel @Inject constructor(
             }
 
             val cities = manageCityUseCase.getCities()
-            // If onboarding completed but no cities, go to city list to add one
-            if (cities.isEmpty() && permissionDataStore.isOnboardingCompleted()) {
-                _currentScreen.value = AppScreen.CityList
-            }
-
             // Initialize detail screen selected city
             val initialCity = cities.find { it.isCurrentLocation } ?: cities.firstOrNull()
             if (initialCity != null) {
                 _selectedCityId.value = initialCity.id
-                // Refresh initial city's data in background
-                refreshCityAfterSwitch(initialCity)
+                // 不在 init 中触发天气请求，由 LaunchedEffect/onResume 统一负责
             }
         }
 
@@ -278,7 +276,7 @@ class WeatherViewModel @Inject constructor(
         _currentScreen.value = AppScreen.CityDetail
         val city = _savedCities.value.find { it.id == cityId }
         if (city != null) {
-            fetchWeatherForCity(city)
+            refreshCityAfterSwitch(city)
         }
     }
 
@@ -415,6 +413,15 @@ class WeatherViewModel @Inject constructor(
         _savedCities.value = freshCities
         val updatedCities = manageCityUseCase.ensureCurrentLocationCity()
         _savedCities.value = updatedCities
+        val currentCity = updatedCities.find { it.isCurrentLocation }
+        if (currentCity != null) {
+            if (_selectedCityId.value == null) {
+                _selectedCityId.value = currentCity.id
+            }
+            if (currentCity.isUnresolvedLocationPlaceholder()) {
+                repository.deleteWeatherCache(currentCity.id)
+            }
+        }
     }
 
     fun ensureCurrentLocationCity() {
@@ -440,13 +447,17 @@ class WeatherViewModel @Inject constructor(
     // ============ Multi-city Weather Loading ============
 
     private suspend fun loadWeatherForCity(city: City) {
-        if (refreshWeatherUseCase.isRecentlyFetched(city.id)) return
-        refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
+        if (shouldSkipRefresh(city)) return
+        if (city.isCurrentLocation) {
+            refreshWeatherUseCase.refreshWithLocation()
+        } else {
+            refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
+        }
     }
 
     private fun refreshCityAfterSwitch(city: City) {
-        if (refreshWeatherUseCase.isRecentlyFetched(city.id)) return
         viewModelScope.launch {
+            if (shouldSkipRefresh(city)) return@launch
             refreshingCityIdsMutex.withLock {
                 if (refreshingCityIds.contains(city.id)) return@launch
                 refreshingCityIds.add(city.id)
@@ -475,11 +486,15 @@ class WeatherViewModel @Inject constructor(
 
     private fun fetchWeatherForCity(city: City) {
         viewModelScope.launch {
-            if (refreshWeatherUseCase.isRecentlyFetched(city.id)) return@launch
+            if (shouldSkipRefresh(city)) return@launch
             if (repository.getWeatherFromCache(city.id) == null) {
                 transientError.value = null
             }
-            val result = refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
+            val result = if (city.isCurrentLocation) {
+                refreshWeatherUseCase.refreshWithLocation()
+            } else {
+                refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
+            }
             result.onFailure { e ->
                 if (repository.getWeatherFromCache(city.id) == null) {
                     transientError.value = e.message ?: "获取天气数据失败"
@@ -494,7 +509,6 @@ class WeatherViewModel @Inject constructor(
     fun relocateAndRefresh() {
         viewModelScope.launch {
             val currentCity = _savedCities.value.find { it.isCurrentLocation }
-            if (currentCity != null && refreshWeatherUseCase.isRecentlyFetched(currentCity.id)) return@launch
             _isLocating.value = true
             transientError.value = null
             try {
@@ -523,7 +537,7 @@ class WeatherViewModel @Inject constructor(
     fun fetchWeather() {
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
-            if (refreshCity != null && refreshWeatherUseCase.isRecentlyFetched(refreshCity.id)) return@launch
+            if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
             refreshCurrentLocation()
         }
     }
@@ -542,13 +556,12 @@ class WeatherViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
+            val refreshCity = selectedCityForRefresh()
+            if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
             _isRefreshing.value = true
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
-            val refreshCity = selectedCityForRefresh()
-            if (refreshCity == null || !refreshWeatherUseCase.isRecentlyFetched(refreshCity.id)) {
-                refreshSelectedWeather(refreshCity)
-            }
+            refreshSelectedWeather(refreshCity)
             val elapsed = System.currentTimeMillis() - startTime
             if (elapsed < 1000) delay(1000 - elapsed)
             _isRefreshing.value = false
@@ -567,7 +580,7 @@ class WeatherViewModel @Inject constructor(
                 _selectedCityId.value = gpsCity.id
             }
             val refreshCity = selectedCityForRefresh()
-            if (refreshCity != null && refreshWeatherUseCase.isRecentlyFetched(refreshCity.id)) return@launch
+            if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
             val refreshed = refreshSelectedWeather(refreshCity, silent = true)
@@ -584,7 +597,7 @@ class WeatherViewModel @Inject constructor(
     fun silentRefresh() {
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
-            if (refreshCity != null && refreshWeatherUseCase.isRecentlyFetched(refreshCity.id)) return@launch
+            if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
             val refreshed = refreshSelectedWeather(refreshCity, silent = true)
@@ -655,6 +668,19 @@ class WeatherViewModel @Inject constructor(
         } else {
             _savedCities.value.find { it.id == selectedId }
         }
+    }
+
+    private fun City.isUnresolvedLocationPlaceholder(): Boolean {
+        if (!isCurrentLocation) return false
+        if (locationManager.getCachedLocation() != null) return false
+        return kotlin.math.abs(longitude - LocationManager.DEFAULT_LONGITUDE) < 0.0001 &&
+            kotlin.math.abs(latitude - LocationManager.DEFAULT_LATITUDE) < 0.0001
+    }
+
+    private suspend fun shouldSkipRefresh(city: City): Boolean {
+        if (city.isUnresolvedLocationPlaceholder()) return false
+        if (repository.getWeatherFromCache(city.id) == null) return false
+        return refreshWeatherUseCase.isFreshEnough(city.id)
     }
 
     // ============ Update Check ============

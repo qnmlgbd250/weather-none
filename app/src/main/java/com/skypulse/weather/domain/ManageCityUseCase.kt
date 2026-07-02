@@ -57,7 +57,9 @@ class ManageCityUseCase @Inject constructor(
         val currentCity = cities.find { it.isCurrentLocation }
         if (currentCity != null) return cities
 
+        // 只用本地缓存创建占位城市，不做阻塞式网络定位；占位坐标不可直接用于天气请求。
         val cachedLocation = locationManager.getCachedLocation()
+
         val currentLocationCity = City(
             id = "current_location",
             name = cachedLocation?.name ?: "定位中...",

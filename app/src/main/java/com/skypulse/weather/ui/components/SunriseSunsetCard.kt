@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.DailyAstro
+import com.skypulse.weather.ui.theme.LocalWeatherTheme
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import java.util.Calendar
@@ -208,6 +209,12 @@ private fun HorizontalSunProgress(
     modifier: Modifier = Modifier
 ) {
     val clampedProgress = progress.coerceIn(0f, 1f)
+    val theme = LocalWeatherTheme.current
+    val moonCutoutColor = if (theme.isDay) {
+        Color(0xFF34577A)
+    } else {
+        theme.backgroundGradient.firstOrNull() ?: Color(0xFF1D2842)
+    }
 
     Canvas(modifier = modifier) {
         val barY = size.height / 2
@@ -216,28 +223,32 @@ private fun HorizontalSunProgress(
         val barWidth = size.width
         val indicatorX = barWidth * clampedProgress
 
-        // Before current time: dark (elapsed, already passed)
-        if (clampedProgress > 0f) {
+        val gapRadius = if (showMoon) 15.dp.toPx() else 14.dp.toPx()
+        val leftLineEnd = (indicatorX - gapRadius).coerceAtLeast(0f)
+        val rightLineStart = (indicatorX + gapRadius).coerceAtMost(barWidth)
+
+        // Before current time: dark (elapsed, already passed) - with gap
+        if (leftLineEnd > 0f) {
             drawRoundRect(
                 color = Color.White.copy(alpha = 0.3f),
                 topLeft = Offset(0f, barY - barHeight / 2),
-                size = Size(indicatorX, barHeight),
+                size = Size(leftLineEnd, barHeight),
                 cornerRadius = CornerRadius(cornerRadius)
             )
         }
 
-        // After current time: bright (remaining)
-        if (clampedProgress < 1f) {
+        // After current time: bright (remaining) - with gap
+        if (rightLineStart < barWidth) {
             drawRoundRect(
                 color = Color.White,
-                topLeft = Offset(indicatorX, barY - barHeight / 2),
-                size = Size(barWidth - indicatorX, barHeight),
+                topLeft = Offset(rightLineStart, barY - barHeight / 2),
+                size = Size(barWidth - rightLineStart, barHeight),
                 cornerRadius = CornerRadius(cornerRadius)
             )
         }
 
         // Indicator (sun or moon)
-        val indicatorRadius = 5.dp.toPx()
+        val indicatorRadius = if (showMoon) 6.dp.toPx() else 5.dp.toPx()
 
         // Outer glow
         drawCircle(
@@ -247,19 +258,32 @@ private fun HorizontalSunProgress(
         )
 
         if (showMoon) {
-            // Moon: draw a crescent by overlapping two circles
-            val moonColor = Color.White
-            // Full moon circle
+            // Moon: use a solid cutout color so the crescent remains readable on glass backgrounds.
             drawCircle(
-                color = moonColor,
+                color = Color.White,
                 radius = indicatorRadius,
                 center = Offset(indicatorX, barY)
             )
-            // Shadow circle to create crescent effect (offset to the right)
             drawCircle(
-                color = Color(0x99FFFFFF), // semi-transparent to blend with the background
-                radius = indicatorRadius * 0.8f,
-                center = Offset(indicatorX + indicatorRadius * 0.5f, barY - indicatorRadius * 0.2f)
+                color = moonCutoutColor.copy(alpha = 0.92f),
+                radius = indicatorRadius * 0.88f,
+                center = Offset(indicatorX + indicatorRadius * 0.42f, barY - indicatorRadius * 0.12f)
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.75f),
+                radius = 1.dp.toPx(),
+                center = Offset(
+                    (indicatorX - 13.dp.toPx()).coerceAtLeast(1.dp.toPx()),
+                    barY - 6.dp.toPx()
+                )
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.55f),
+                radius = 0.8.dp.toPx(),
+                center = Offset(
+                    (indicatorX + 13.dp.toPx()).coerceAtMost(size.width - 1.dp.toPx()),
+                    barY + 6.dp.toPx()
+                )
             )
         } else {
             // Sun body

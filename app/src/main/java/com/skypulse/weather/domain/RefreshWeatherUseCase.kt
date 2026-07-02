@@ -25,8 +25,8 @@ class RefreshWeatherUseCase @Inject constructor(
     }
 
     /**
-     * 使用默认坐标（北京）获取天气。
-     * 用于首次安装无定位权限时的兜底。
+     * 使用已有的真实定位缓存或第一个手动城市获取天气。
+     * 不再用北京作为当前定位的隐式兜底，避免污染 current_location 缓存。
      */
     suspend fun refreshDefault(): SyncResult {
         return syncManager.refreshWeatherDefault()
@@ -44,5 +44,9 @@ class RefreshWeatherUseCase @Inject constructor(
      */
     fun isRecentlyFetched(cityId: String?): Boolean {
         return syncManager.isRecentlyFetched(cityId)
+    }
+
+    suspend fun isFreshEnough(cityId: String?): Boolean {
+        return syncManager.isFreshEnough(cityId)
     }
 }

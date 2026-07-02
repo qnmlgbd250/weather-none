@@ -91,10 +91,13 @@ internal fun AlertDetailScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             if (!title.isNullOrBlank()) {
+                                val alertColor = remember(alert) {
+                                    alertLevelColor(alert.level, alert.title, fallback = IosTextPrimary)
+                                }
                                 Text(
                                     text = title,
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = IosTextPrimary
+                                    color = alertColor
                                 )
                             }
 

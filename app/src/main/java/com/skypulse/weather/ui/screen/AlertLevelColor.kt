@@ -20,6 +20,7 @@ internal fun alertLevelColor(
         signal.contains("橙") || signal.contains("orange") -> AlertOrange
         signal.contains("黄") || signal.contains("yellow") -> AlertYellow
         signal.contains("蓝") || signal.contains("blue") -> AlertBlue
+        signal.contains("白") || signal.contains("white") -> Color.Black
         else -> fallback
     }
 }
