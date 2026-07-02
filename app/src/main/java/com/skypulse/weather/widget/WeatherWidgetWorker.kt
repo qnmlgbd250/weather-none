@@ -88,6 +88,9 @@ class WeatherWidgetWorker @AssistedInject constructor(
             val elapsed = System.currentTimeMillis() - startTime
             FileLogger.i(TAG, "doWork: ★ 执行完成, 耗时=${elapsed}ms, trigger=$trigger")
             Result.success()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            FileLogger.i(TAG, "doWork: 协程被取消, trigger=$trigger")
+            throw e
         } catch (e: Exception) {
             val elapsed = System.currentTimeMillis() - startTime
             FileLogger.e(TAG, "doWork: ★ 执行异常, 耗时=${elapsed}ms, trigger=$trigger", e)

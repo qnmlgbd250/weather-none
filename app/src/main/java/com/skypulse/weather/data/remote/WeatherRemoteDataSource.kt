@@ -66,6 +66,8 @@ class WeatherRemoteDataSource @Inject constructor(
                 FileLogger.i(TAG, "预警API: 成功, 获取到 ${alertContents.size} 条预警, " +
                     "alerts=${alertContents.map { "${it.title}(level=${it.level})" }}")
                 Alert(status = "ok", content = alertContents)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 FileLogger.e(TAG, "预警API请求失败: ${e.javaClass.simpleName}: ${e.message}", e)
                 // 预警请求失败不影响天气数据
@@ -77,6 +79,8 @@ class WeatherRemoteDataSource @Inject constructor(
                 result = response.result?.copy(alert = alertResponse)
             )
             Result.success(merged)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

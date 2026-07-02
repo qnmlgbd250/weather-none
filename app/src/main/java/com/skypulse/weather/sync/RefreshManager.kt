@@ -119,6 +119,8 @@ class RefreshManager @Inject constructor(
                     Log.w(TAG, "requestSync($reason): 同步失败 - $result")
                 }
                 result
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 val elapsed = System.currentTimeMillis() - startTime
                 FileLogger.e(TAG, "requestSync($reason): [步骤4] 同步异常, 耗时=${elapsed}ms", e)

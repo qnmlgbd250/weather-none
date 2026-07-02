@@ -240,6 +240,8 @@ class WeatherSyncManager @Inject constructor(
                 if (name != "未知位置") {
                     locationManager.saveCachedLocation(name, lon, lat)
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 FileLogger.w(TAG, "小组件定位: 反向地理编码失败 - ${e.message}")
             }
@@ -450,6 +452,8 @@ class WeatherSyncManager @Inject constructor(
                 }
             }
             location
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             FileLogger.e(TAG, "FusedLocation: 异常 - ${e.message}")
             null
@@ -553,6 +557,8 @@ class WeatherSyncManager @Inject constructor(
                 FileLogger.w(TAG, "NativeLocation: 定位超时或失败")
             }
             location
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             FileLogger.e(TAG, "NativeLocation: 异常 - ${e.message}")
             null
