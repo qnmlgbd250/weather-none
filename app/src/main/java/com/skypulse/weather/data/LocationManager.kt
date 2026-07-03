@@ -38,12 +38,6 @@ class LocationManager @Inject constructor(
         val name: String
     )
 
-    data class IpGeoResult(
-        val province: String?,
-        val city: String?,
-        val region: String?
-    )
-
     companion object {
         private const val TAG = "LocationManager"
         const val DEFAULT_LONGITUDE = 116.4074
@@ -470,78 +464,7 @@ class LocationManager @Inject constructor(
         }
     }
 
-    // ============ IP Geolocation Positioning ============
-
-    suspend fun requestIpLocation(): CachedLocation? {
-        Log.i(TAG, "开始获取 IP 地址定位...")
-        val geo = fetchIpGeo() ?: fetchIpGeoFallback()
-        if (geo == null) {
-            Log.w(TAG, "IP 定位获取归属地数据失败")
-            return null
-        }
-
-        // 按精度高低依次匹配经纬度坐标
-        val searchQueries = listOfNotNull(geo.region, geo.city, geo.province)
-        for (query in searchQueries) {
-            if (query.isBlank()) continue
-            try {
-                Log.d(TAG, "尝试查询 $query 对应的经纬度...")
-                val results = geocodingService.search(query)
-                val match = results.firstOrNull()
-                if (match != null) {
-                    val displayName = geo.region ?: geo.city ?: geo.province ?: match.name
-                    Log.i(TAG, "IP 定位与地理编码成功: 归属地=$displayName, query=$query, 坐标=(${match.lon}, ${match.lat})")
-                    return CachedLocation(latitude = match.lat, longitude = match.lon, name = displayName)
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "通过 Geocoding 查询 $query 坐标异常: ${e.message}")
-            }
-        }
-        Log.w(TAG, "IP 定位所解析的归属地无法匹配到任何有效经纬度")
-        return null
-    }
-
-    private suspend fun fetchIpGeo(): IpGeoResult? = withContext(Dispatchers.IO) {
-        try {
-            val request = okhttp3.Request.Builder()
-                .url("https://whois.pconline.com.cn/ipJson.jsp?json=true")
-                .build()
-            okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
-                val bodyBytes = response.body?.bytes() ?: return@withContext null
-                val jsonString = String(bodyBytes, java.nio.charset.Charset.forName("GBK"))
-                val jsonObject = org.json.JSONObject(jsonString)
-                val pro = jsonObject.optString("pro").takeIf { !it.isNullOrBlank() && it != "None" }
-                val city = jsonObject.optString("city").takeIf { !it.isNullOrBlank() && it != "None" }
-                val region = jsonObject.optString("region").takeIf { !it.isNullOrBlank() && it != "None" }
-                return@withContext IpGeoResult(province = pro, city = city, region = region)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "PCOnline IP 解析异常: ${e.message}")
-        }
-        null
-    }
-
-    private suspend fun fetchIpGeoFallback(): IpGeoResult? = withContext(Dispatchers.IO) {
-        try {
-            val request = okhttp3.Request.Builder()
-                .url("https://ipapi.co/json/")
-                .build()
-            okHttpClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
-                val jsonString = response.body?.string() ?: return@withContext null
-                val jsonObject = org.json.JSONObject(jsonString)
-                val city = jsonObject.optString("city").takeIf { !it.isNullOrBlank() }
-                val regionName = jsonObject.optString("region").takeIf { !it.isNullOrBlank() }
-                return@withContext IpGeoResult(province = regionName, city = city, region = null)
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "ipapi.co IP 解析异常: ${e.message}")
-        }
-        null
-    }
-
-    // ============ Unified Entrance for Positioning (System -> IP) ============
+    // ============ Unified Entrance for Positioning (System -> Amap) ============
 
     private fun applyAntiJitter(lat: Double, lon: Double, name: String): CachedLocation {
         val cached = getCachedLocation()
@@ -556,61 +479,38 @@ class LocationManager @Inject constructor(
     }
 
     suspend fun requestSystemOrIpLocation(): CachedLocation? {
-        Log.i(TAG, "定位总入口被调用...")
+        Log.i(TAG, "定位总入口被调用（系统自带优先+高德兜底，已剔除IP定位）...")
 
-        // 1. 尝试系统定位服务 (需要位置权限)
         if (hasLocationPermission()) {
-            // 首选尝试高德定位 SDK，增加重试机制（尝试 3 次，每次间隔 1 秒）以应对刚授予权限后的冷启动延迟
-            var amapLoc: AMapLocation? = null
+            // 1. 优先尝试手机自带的系统定位服务（GMS Fused / 原生 LocationManager），增加 3 次重试机制以提高冷启动成功率
+            var sysLoc: Location? = null
             for (attempt in 1..3) {
-                amapLoc = requestAmapLocation()
-                if (amapLoc != null) break
+                sysLoc = requestSystemLocation()
+                if (sysLoc != null) break
                 if (attempt < 3) {
-                    Log.w(TAG, "高德定位第 ${attempt} 次失败，等待 1 秒后重试...")
+                    Log.w(TAG, "系统自带定位第 ${attempt} 次失败，等待 1 秒后重试...")
                     kotlinx.coroutines.delay(1000L)
                 }
             }
-            if (amapLoc != null) {
-                val name = resolveLocationName(amapLoc)
-                Log.i(TAG, "高德定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
-                val finalLoc = applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name)
-                return finalLoc
-            }
-            Log.w(TAG, "高德定位失败或超时，降级尝试 GMS/系统原生定位服务...")
 
-            // 降级尝试 GMS FusedLocation / 系统原生定位服务
-            val sysLoc = requestSystemLocation()
             if (sysLoc != null) {
                 val name = reverseGeocode(sysLoc.latitude, sysLoc.longitude)
-                Log.i(TAG, "系统定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name")
-                val finalLoc = applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name)
-                return finalLoc
+                Log.i(TAG, "系统自带定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name")
+                return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name)
             }
-            Log.w(TAG, "系统定位及高德定位均未获取到有效坐标，降级使用 IP 定位...")
+            Log.w(TAG, "系统自带定位失败或超时，降级尝试高德定位服务作为最终兜底...")
+
+            // 2. 降级尝试高德定位 SDK 作为兜底
+            val amapLoc = requestAmapLocation()
+            if (amapLoc != null) {
+                val name = resolveLocationName(amapLoc)
+                Log.i(TAG, "高德兜底定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
+                return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name)
+            }
+            Log.w(TAG, "系统自带定位与高德兜底定位均已失败，已剔除IP定位，直接返回null")
         } else {
-            Log.i(TAG, "无定位权限，直接跳过系统定位及高德定位，进入 IP 定位...")
+            Log.w(TAG, "无定位权限，且已剔除IP定位，拒绝自动定位")
         }
-
-        // 2. 降级使用 IP 定位 (无需位置权限)
-        val ipLoc = requestIpLocation()
-        if (ipLoc != null) {
-            Log.i(TAG, "IP 定位成功: lat=${ipLoc.latitude}, lon=${ipLoc.longitude}, name=${ipLoc.name}")
-            // IP 定位精度低，需要更保守的防跳变策略：
-            // 如果已有缓存位置（来自上次 GPS），且 IP 定位结果偏差超过 50km，
-            // 说明 IP 归属地可能不准（VPN/代理/运营商 NAT），沿用缓存位置。
-            val cached = getCachedLocation()
-            if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
-                val dist = distanceBetween(ipLoc.latitude, ipLoc.longitude, cached.latitude, cached.longitude)
-                if (dist > 50_000f) {
-                    Log.w(TAG, "IP 定位防跳变：IP 结果(${ipLoc.name})距缓存(${cached.name}) ${dist/1000}km，" +
-                        "偏差过大，沿用缓存位置")
-                    return cached
-                }
-            }
-            return CachedLocation(latitude = ipLoc.latitude, longitude = ipLoc.longitude, name = ipLoc.name)
-        }
-
-        Log.w(TAG, "所有自动定位策略均已宣告失败")
         return null
     }
 

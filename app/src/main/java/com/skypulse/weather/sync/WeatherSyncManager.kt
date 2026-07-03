@@ -142,8 +142,8 @@ class WeatherSyncManager @Inject constructor(
             }
 
             val location = if (!hasLocationPermission) {
-                Log.i(TAG, "无定位权限，尝试使用 IP 定位")
-                locationManager.requestIpLocation()
+                Log.i(TAG, "无定位权限，IP定位已剔除，直接跳过定位")
+                null
             } else {
                 locationManager.requestSystemOrIpLocation()
             }
@@ -210,11 +210,9 @@ class WeatherSyncManager @Inject constructor(
             }
 
             val location = if (!hasLocationPermission) {
-                // 无定位权限，尝试使用 IP 定位
-                FileLogger.i(TAG, "小组件: 无定位权限，尝试使用 IP 定位...")
-                locationManager.requestIpLocation()
+                FileLogger.i(TAG, "小组件: 无定位权限，IP定位已剔除，直接跳过定位")
+                null
             } else {
-                // 有定位权限，尝试系统或 IP 定位
                 locationManager.requestSystemOrIpLocation()
             }
 
