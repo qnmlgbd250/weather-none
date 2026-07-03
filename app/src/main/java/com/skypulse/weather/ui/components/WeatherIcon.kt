@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.graphicsLayer
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -40,10 +41,16 @@ fun WeatherIcon(
         composition = composition,
         iterations = if (animated) LottieConstants.IterateForever else 1
     )
+    // clear-day 的 Lottie 动画视觉填充率比其他图标高，缩放 85% 使其视觉大小一致
+    val iconModifier = if (iconType == "clear-day") {
+        modifier.size(size).graphicsLayer(scaleX = 0.85f, scaleY = 0.85f)
+    } else {
+        modifier.size(size)
+    }
     LottieAnimation(
         composition = composition,
         progress = { if (animated) progress else 0.5f },
-        modifier = modifier.size(size)
+        modifier = iconModifier
     )
 }
 

@@ -1,7 +1,7 @@
 package com.skypulse.weather.widget
 
 object WidgetRefreshPolicy {
-    const val PERIODIC_REFRESH_MINUTES = 10L
+    const val PERIODIC_REFRESH_MINUTES = 15L
     const val MOVEMENT_THRESHOLD_METERS = 1_000f
     const val WEATHER_TTL_MILLIS = 30 * 60 * 1000L
 

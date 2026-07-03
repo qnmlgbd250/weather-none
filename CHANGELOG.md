@@ -231,3 +231,7 @@
 ## [3.0.97] - 2026-07-03
 
 - 将防跳变判定距离统一对齐为 200m，恢复为 3.0.81 之前的防跳变标准
+
+## [3.0.99] - 2026-07-03
+
+- Change widget update interval to 15m, add donor, scale clear-day icon
