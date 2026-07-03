@@ -29,7 +29,7 @@ import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
 import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
-private const val DAY_WIDTH = 56
+private const val DAY_WIDTH = 64
 
 @Composable
 fun DailyForecastCard(
@@ -129,12 +129,12 @@ private fun DailyColumn(
         // --- Date + Weekday ---
         Text(
             text = weekday,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 14.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 15.sp),
             color = TextPrimary
         )
         Text(
             text = dateLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
             color = TextTertiary
         )
 
@@ -181,7 +181,7 @@ private fun DailyColumn(
         TempText(
             value = maxTemp,
             color = TextPrimary,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp)
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 15.sp)
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -203,7 +203,7 @@ private fun DailyColumn(
         TempText(
             value = minTemp,
             color = TextPrimary,
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp)
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 15.sp)
         )
     }
 }

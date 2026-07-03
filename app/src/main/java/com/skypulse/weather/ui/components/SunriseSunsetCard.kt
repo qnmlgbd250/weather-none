@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.DailyAstro
 import com.skypulse.weather.ui.theme.LocalWeatherTheme
 import com.skypulse.weather.ui.theme.TextPrimary
@@ -142,7 +143,7 @@ fun SunriseSunsetCard(
                     )
                     Text(
                         text = cardState.leftLabel,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.5.sp),
                         color = TextSecondary
                     )
                 }
@@ -153,7 +154,7 @@ fun SunriseSunsetCard(
                 ) {
                     Text(
                         text = cardState.rightLabel,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.5.sp),
                         color = TextSecondary
                     )
                     Icon(
@@ -192,6 +193,7 @@ fun SunriseSunsetCard(
                 Text(
                     text = cardState.leftTime,
                     style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Medium
                     ),
                     color = TextPrimary
@@ -199,6 +201,7 @@ fun SunriseSunsetCard(
                 Text(
                     text = cardState.rightTime,
                     style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Medium
                     ),
                     color = TextPrimary

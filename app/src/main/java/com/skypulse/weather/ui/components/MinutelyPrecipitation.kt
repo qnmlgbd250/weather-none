@@ -16,6 +16,7 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import com.skypulse.weather.model.MinutelyForecast
@@ -188,20 +189,20 @@ private fun MinutelyBarChart(
         Box(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = t0,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextTertiary,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
+                color = TextSecondary,
                 modifier = Modifier.align(BiasAlignment(-1f, 0f))
             )
             Text(
                 text = t1,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextTertiary,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
+                color = TextSecondary,
                 modifier = Modifier.align(BiasAlignment(0f, 0f))
             )
             Text(
                 text = t2,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextTertiary,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 13.sp),
+                color = TextSecondary,
                 modifier = Modifier.align(BiasAlignment(1f, 0f))
             )
         }

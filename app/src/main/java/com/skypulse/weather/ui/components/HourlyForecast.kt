@@ -29,7 +29,7 @@ import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
 import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
-private const val HOUR_WIDTH = 56
+private const val HOUR_WIDTH = 64
 private val SIDE_PADDING = 12
 
 // ============ Hourly Parameter Colors (低饱和度，兼容毛玻璃主题) ============
@@ -422,7 +422,7 @@ private fun HourlyTemperatureChart(
             Spacer(modifier = Modifier.height(6.dp))
         }
 
-        val tagWidth = 48.dp
+        val tagWidth = 56.dp
 
         // AQI Row
         if (showAqi) {
@@ -433,18 +433,29 @@ private fun HourlyTemperatureChart(
                     val color = aqiColor(aqi, isBrightBg)
                     Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                         if (label.isNotEmpty()) {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = color,
-                                textAlign = TextAlign.Center,
-                                maxLines = 1,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
                                 modifier = Modifier
                                     .width(tagWidth)
                                     .clip(ParamTagShape)
                                     .background(Color.White.copy(alpha = 0.25f))
-                                    .padding(vertical = 1.dp)
-                            )
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(color)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                    color = TextSecondary,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
@@ -461,18 +472,29 @@ private fun HourlyTemperatureChart(
                     val color = uvColor(uvIndex, isBrightBg)
                     Box(modifier = Modifier.width(itemWidthDp), contentAlignment = Alignment.Center) {
                         if (label.isNotEmpty()) {
-                            Text(
-                                text = label,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = color,
-                                textAlign = TextAlign.Center,
-                                maxLines = 1,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
                                 modifier = Modifier
                                     .width(tagWidth)
                                     .clip(ParamTagShape)
                                     .background(Color.White.copy(alpha = 0.25f))
-                                    .padding(vertical = 1.dp)
-                            )
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(color)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                    color = TextSecondary,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }

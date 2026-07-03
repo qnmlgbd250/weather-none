@@ -251,3 +251,11 @@
 ## [3.1.2] - 2026-07-03
 
 - Update versioning policy rules and clean up sync interval
+
+## [3.1.3] - 2026-07-03
+
+- Resize hourly/daily columns to 64dp and implement micro color state dots
+
+## [3.1.4] - 2026-07-03
+
+- Fine tune font sizes for minutely, daily and Astro cards
