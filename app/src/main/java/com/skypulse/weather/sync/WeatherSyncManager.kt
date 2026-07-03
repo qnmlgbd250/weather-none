@@ -155,9 +155,12 @@ class WeatherSyncManager @Inject constructor(
                 Log.i(TAG, "定位成功: lon=$lon, lat=$lat, name=$locationName")
                 val currentCity = if (locationName == UNKNOWN_LOCATION) {
                     Log.w(TAG, "定位成功但地址为空，保留旧城市名, lon=$lon, lat=$lat")
-                    val oldName = locationManager.getCachedLocation()?.name
+                    var oldName = locationManager.getCachedLocation()?.name
                         ?: getCurrentLocationCity()?.name
-                        ?: LOCATING_NAME
+                        ?: "当前位置"
+                    if (oldName == LOCATING_NAME || oldName.isBlank()) {
+                        oldName = "当前位置"
+                    }
                     locationManager.saveCachedLocation(oldName, lon, lat)
                     upsertCurrentLocationCity(oldName, lon, lat)
                 } else {
