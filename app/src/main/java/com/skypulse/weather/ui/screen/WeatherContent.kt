@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
@@ -91,16 +92,14 @@ internal fun WeatherContent(
         )
 
         // City switch bar (divider when scrolled, dots when at top)
-        if (cityCount > 1) {
-            CitySwitchBar(
-                cityCount = cityCount,
-                currentIndex = currentCityIndex,
-                isScrolled = isScrolled,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 4.dp)
-            )
-        }
+        CitySwitchBar(
+            cityCount = cityCount,
+            currentIndex = currentCityIndex,
+            isScrolled = isScrolled,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 4.dp)
+        )
 
         Column(
             modifier = Modifier
@@ -187,13 +186,13 @@ internal fun WeatherContent(
             )
 
             Text(
-                text = "\u3010\u6570\u636e\u6765\u6e90\uff1a\u5f69\u4e91\u5929\u6c14\u3011",
+                text = "\u6c14\u8c61\u6570\u636e\u6765\u81ea\u5f69\u4e91\u5929\u6c14",
                 style = MaterialTheme.typography.bodySmall,
                 color = TextSecondary.copy(alpha = 0.4f),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 22.dp, bottom = 22.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(8.dp))
         }

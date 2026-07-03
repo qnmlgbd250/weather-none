@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -231,13 +233,11 @@ fun WeatherScreen(
                                         onSettingsClick = { viewModel.navigateToSettings() }
                                     )
 
-                                    if (savedCities.size > 1) {
-                                        CityDotBar(
-                                            cityCount = savedCities.size,
-                                            currentIndex = pagerState.currentPage,
-                                            isScrolled = isScrolled
-                                        )
-                                    }
+                                    CityDotBar(
+                                        cityCount = savedCities.size,
+                                        currentIndex = pagerState.currentPage,
+                                        isScrolled = isScrolled
+                                    )
 
                                     CompositionLocalProvider(
                                         LocalSkipCardAnimation provides (pagerState.isScrollInProgress || justEnteredCityDetail.value)
@@ -518,13 +518,13 @@ private fun WeatherContentBody(
         }
 
         Text(
-            text = "\u6570\u636e\u6765\u6e90\uff1a\u5f69\u4e91\u5929\u6c14 \u00b7 \u5b9a\u4f4d\u670d\u52a1\uff1a\u9ad8\u5fb7\u5730\u56fe",
+            text = "\u6c14\u8c61\u6570\u636e\u6765\u81ea\u5f69\u4e91\u5929\u6c14",
             style = MaterialTheme.typography.bodySmall,
             color = TextSecondary.copy(alpha = 0.4f),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 22.dp, bottom = 22.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
     }
