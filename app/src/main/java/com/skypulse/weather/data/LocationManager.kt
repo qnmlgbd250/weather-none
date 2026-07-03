@@ -496,6 +496,20 @@ class LocationManager @Inject constructor(
             if (sysLoc != null) {
                 val name = reverseGeocode(sysLoc.latitude, sysLoc.longitude)
                 Log.i(TAG, "系统自带定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name")
+                
+                // 若系统定位拿到了经纬度，但地名解析失败，则启动高德定位进行地名补全与二次校准
+                if (name == "未知位置" || name.isBlank()) {
+                    Log.w(TAG, "系统定位成功但地址解析为未知，降级启动高德定位以补全位置名...")
+                    val amapLoc = requestAmapLocation()
+                    if (amapLoc != null) {
+                        val amapName = resolveLocationName(amapLoc)
+                        if (amapName != "未知位置" && amapName.isNotBlank()) {
+                            Log.i(TAG, "高德辅助解析成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$amapName")
+                            return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, amapName)
+                        }
+                    }
+                }
+                
                 return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name)
             }
             Log.w(TAG, "系统自带定位失败或超时，降级尝试高德定位服务作为最终兜底...")
