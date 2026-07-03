@@ -106,7 +106,7 @@ fun WeatherScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(onboardingReady, allPermissionsHandled, showOnboarding, locationSkipped) {
+    LaunchedEffect(onboardingReady, allPermissionsHandled, locationSkipped) {
         if (!onboardingReady || homeBootstrapStarted || locationSkipped) return@LaunchedEffect
         if (showOnboarding) {
             if (!allPermissionsHandled) return@LaunchedEffect

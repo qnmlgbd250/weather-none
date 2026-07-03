@@ -578,6 +578,10 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun onResume() {
+        if (!_onboardingReady.value || _showOnboarding.value) {
+            Log.i(TAG, "onResume: 引导页尚未就绪或显示中，跳过生命周期自动同步")
+            return
+        }
         viewModelScope.launch {
             val cities = manageCityUseCase.getCities()
             _savedCities.value = cities
@@ -592,6 +596,10 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun silentRefresh() {
+        if (!_onboardingReady.value || _showOnboarding.value) {
+            Log.i(TAG, "silentRefresh: 引导页尚未就绪或显示中，跳过后台自动同步")
+            return
+        }
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
             if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch

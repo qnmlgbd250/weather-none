@@ -560,9 +560,16 @@ class LocationManager @Inject constructor(
 
         // 1. 尝试系统定位服务 (需要位置权限)
         if (hasLocationPermission()) {
-            // 首选尝试高德定位 SDK
-            Log.i(TAG, "有定位权限，首选尝试高德定位 SDK...")
-            val amapLoc = requestAmapLocation()
+            // 首选尝试高德定位 SDK，增加重试机制（尝试 3 次，每次间隔 1 秒）以应对刚授予权限后的冷启动延迟
+            var amapLoc: AMapLocation? = null
+            for (attempt in 1..3) {
+                amapLoc = requestAmapLocation()
+                if (amapLoc != null) break
+                if (attempt < 3) {
+                    Log.w(TAG, "高德定位第 ${attempt} 次失败，等待 1 秒后重试...")
+                    kotlinx.coroutines.delay(1000L)
+                }
+            }
             if (amapLoc != null) {
                 val name = resolveLocationName(amapLoc)
                 Log.i(TAG, "高德定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
