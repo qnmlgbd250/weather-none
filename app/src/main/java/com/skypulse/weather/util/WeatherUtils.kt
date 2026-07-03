@@ -25,57 +25,88 @@ object WeatherUtils {
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
 
-        // Card base: night deep navy, cloudy day subtle dark tint, other day transparent
-        val cardTintColor = if (!isDay) {
-            Color(0xFF050D33).copy(alpha = 0.60f)
-        } else if (skycon != null && skycon.contains("CLOUDY") && !skycon.contains("PARTLY_CLOUDY")) {
-            Color(0xFF2C3E50).copy(alpha = 0.08f)
+        // --- Card Colors & Alphas Refactoring ---
+        val cardTintColor: Color
+        val cardFrostColor: Color
+        val topAlpha: Float
+        val midAlpha: Float
+        val bottomAlpha: Float
+
+        if (isDay) {
+            // Bright Day Scenarios
+            when {
+                skycon == null || skycon.contains("CLEAR") || skycon.contains("PARTLY_CLOUDY") -> {
+                    // Sunny / Partly Cloudy: Deep ocean blue-gray underlay mask to offset white text on bright skies
+                    cardTintColor = Color(0xFF0A2240).copy(alpha = 0.22f)
+                    cardFrostColor = Color.White
+                    topAlpha = 0.18f
+                    midAlpha = 0.12f
+                    bottomAlpha = 0.06f
+                }
+                skycon.contains("CLOUDY") || skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> {
+                    // Cloudy / Haze / Fog: Muted slate-charcoal underlay mask
+                    cardTintColor = Color(0xFF1E2833).copy(alpha = 0.20f)
+                    cardFrostColor = Color.White
+                    topAlpha = 0.18f
+                    midAlpha = 0.12f
+                    bottomAlpha = 0.06f
+                }
+                skycon.contains("RAIN") || skycon.contains("STORM") -> {
+                    // Rainy / Stormy: Heavy charcoal-blue underlay
+                    cardTintColor = Color(0xFF162029).copy(alpha = 0.22f)
+                    cardFrostColor = Color.White
+                    topAlpha = 0.15f
+                    midAlpha = 0.10f
+                    bottomAlpha = 0.05f
+                }
+                skycon.contains("SNOW") -> {
+                    // Snowy: Bright white snow background requires the highest contrast mask to keep white text readable
+                    cardTintColor = Color(0xFF283A4A).copy(alpha = 0.32f)
+                    cardFrostColor = Color.White
+                    topAlpha = 0.15f
+                    midAlpha = 0.10f
+                    bottomAlpha = 0.05f
+                }
+                skycon == "WIND" -> {
+                    // Windy: Fresh dark teal underlay
+                    cardTintColor = Color(0xFF0F2B28).copy(alpha = 0.22f)
+                    cardFrostColor = Color.White
+                    topAlpha = 0.15f
+                    midAlpha = 0.10f
+                    bottomAlpha = 0.05f
+                }
+                else -> {
+                    cardTintColor = Color(0xFF0A2240).copy(alpha = 0.22f)
+                    cardFrostColor = Color.White
+                    topAlpha = 0.18f
+                    midAlpha = 0.12f
+                    bottomAlpha = 0.06f
+                }
+            }
         } else {
-            Color.Transparent
+            // Night Scenarios: Highly transparent frost glass that naturally shines with deep background gradients
+            cardTintColor = Color(0xFF0C1424).copy(alpha = 0.18f)
+            cardFrostColor = Color(0xFFE2E8F0) // Cool Moon-white frost
+            topAlpha = 0.14f
+            midAlpha = 0.08f
+            bottomAlpha = 0.04f
         }
 
-        // Frost tint: night uses cool blue, day blends 12% gradient accent into white
-        val cardFrostColor = if (!isDay) {
-            Color(0.90f, 0.92f, 1.0f) // cool blue-white for night
-        } else {
-            val accent = background[2]
-            val frostMix = 0.12f
-            Color(
-                red = (1f - frostMix) + accent.red * frostMix,
-                green = (1f - frostMix) + accent.green * frostMix,
-                blue = (1f - frostMix) + accent.blue * frostMix
-            )
-        }
-
-        // --- Card Styling: frost layer alpha (day: standalone; night: on dark base) ---
-        val (topAlpha, midAlpha, bottomAlpha) = if (!isDay) {
-            Triple(0.18f, 0.12f, 0.06f)
-        } else when {
-            skycon == null ||
-            skycon.contains("CLEAR") -> Triple(0.30f, 0.22f, 0.14f)
-            skycon.contains("PARTLY_CLOUDY") -> Triple(0.32f, 0.24f, 0.16f)
-            skycon.contains("CLOUDY") -> Triple(0.28f, 0.20f, 0.14f)
-            skycon.contains("RAIN") ||
-            skycon.contains("STORM") -> Triple(0.20f, 0.14f, 0.10f)
-            skycon.contains("SNOW") -> Triple(0.42f, 0.32f, 0.24f)
-            skycon.contains("HAZE") ||
-            skycon == "FOG" ||
-            skycon == "DUST" ||
-            skycon == "SAND" -> Triple(0.38f, 0.28f, 0.20f)
-            skycon == "WIND" -> Triple(0.25f, 0.18f, 0.14f)
-            else -> Triple(0.30f, 0.22f, 0.14f)
-        }
-
-        // Border brightness scales with card opacity
-        val baseTop = 0.28f
-        val borderScale = (topAlpha / baseTop).coerceIn(0.6f, 1.8f)
-
+        // --- Custom Diagonal Glowing Border Brush ---
         val borderBrush = androidx.compose.ui.graphics.Brush.linearGradient(
-            colors = listOf(
-                androidx.compose.ui.graphics.Color.White.copy(alpha = (0.65f * borderScale).coerceAtMost(1f)),
-                androidx.compose.ui.graphics.Color.White.copy(alpha = (0.15f * borderScale).coerceAtMost(1f)),
-                androidx.compose.ui.graphics.Color.White.copy(alpha = (0.35f * borderScale).coerceAtMost(1f))
-            ),
+            colors = if (isDay) {
+                listOf(
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.28f),
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.06f),
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.15f)
+                )
+            } else {
+                listOf(
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.22f),
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.03f),
+                    androidx.compose.ui.graphics.Color.White.copy(alpha = 0.10f)
+                )
+            },
             start = androidx.compose.ui.geometry.Offset(0f, 0f),
             end = androidx.compose.ui.geometry.Offset.Infinite
         )

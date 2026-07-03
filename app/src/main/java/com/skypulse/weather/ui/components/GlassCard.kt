@@ -1,6 +1,7 @@
 package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,7 +38,12 @@ fun GlassCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(theme.cardTintColor)
-            .background(theme.cardFrostColor.copy(alpha = theme.cardMidAlpha)),
+            .background(theme.cardFrostColor.copy(alpha = theme.cardMidAlpha))
+            .border(
+                width = 1.dp,
+                brush = theme.cardBorderBrush,
+                shape = RoundedCornerShape(20.dp)
+            ),
         content = content
     )
 }
