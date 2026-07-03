@@ -26,6 +26,12 @@ class SkyPulseApp : Application(), Configuration.Provider {
         FileLogger.init(this)
         FileLogger.initCrashHandler()
 
+        // 提前告知 AMap SDK 隐私协议已同意，避免首次定位时 SDK 因隐私未生效而直接报错
+        try {
+            com.amap.api.location.AMapLocationClient.updatePrivacyShow(this, true, true)
+            com.amap.api.location.AMapLocationClient.updatePrivacyAgree(this, true)
+        } catch (_: Exception) {}
+
         WeatherNotificationScheduler.scheduleIfNeeded(this)
         WeatherWidgetProvider.enqueueWorker(this)
     }

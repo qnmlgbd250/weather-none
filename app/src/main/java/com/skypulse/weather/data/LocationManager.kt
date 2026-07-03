@@ -14,7 +14,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import com.amap.api.location.AMapLocation
+import com.amap.api.location.AMapLocationClient
+import com.amap.api.location.AMapLocationClientOption
+import com.skypulse.weather.util.FileLogger
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -49,10 +55,14 @@ class LocationManager @Inject constructor(
 
         private var privacyAgreed = false
 
-        @Suppress("UNUSED_PARAMETER")
         fun ensurePrivacyAgreed(context: Context) {
-            // AMap is removed, this is a dummy no-op method for compatibility
-            privacyAgreed = true
+            if (!privacyAgreed) {
+                try {
+                    AMapLocationClient.updatePrivacyShow(context, true, true)
+                    AMapLocationClient.updatePrivacyAgree(context, true)
+                    privacyAgreed = true
+                } catch (_: Exception) {}
+            }
         }
     }
 
@@ -105,6 +115,94 @@ class LocationManager @Inject constructor(
         return results[0]
     }
 
+    // ============ AMAP GPS Positioning ============
+
+    suspend fun requestAmapLocation(): AMapLocation? {
+        return requestAmapLocation(AMapLocationClientOption.AMapLocationMode.Hight_Accuracy, 8000L)
+    }
+
+    private suspend fun requestAmapLocation(
+        mode: AMapLocationClientOption.AMapLocationMode,
+        timeoutMillis: Long
+    ): AMapLocation? {
+        ensurePrivacyAgreed(context)
+        return try {
+            val client = AMapLocationClient(context)
+            val option = AMapLocationClientOption().apply {
+                isOnceLocation = true
+                isNeedAddress = true
+                locationMode = mode
+                httpTimeOut = timeoutMillis
+            }
+            client.setLocationOption(option)
+
+            suspendCancellableCoroutine { cont ->
+                client.setLocationListener { location ->
+                    if (cont.isActive) {
+                        if (location != null && location.errorCode == 0) {
+                            Log.i(TAG, "AMap 定位成功: ${location.latitude}, ${location.longitude}")
+                            FileLogger.i(TAG, "AMap 定位成功: lat=${location.latitude}, lon=${location.longitude}, " +
+                                "city=${location.city}, district=${location.district}, " +
+                                "aoi=${location.aoiName}, street=${location.street}")
+                            cont.resume(location)
+                        } else {
+                            Log.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, errorDetail=${location?.locationDetail}")
+                            FileLogger.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, " +
+                                "errorDetail=${location?.locationDetail}")
+                            cont.resume(null)
+                        }
+                    }
+                    client.stopLocation()
+                    client.onDestroy()
+                }
+                client.startLocation()
+                cont.invokeOnCancellation {
+                    client.stopLocation()
+                    client.onDestroy()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "AMap location failed", e)
+            null
+        }
+    }
+
+    // ============ Location Name Resolution ============
+
+    fun resolveLocationName(location: AMapLocation): String {
+        val city = location.city?.takeIf { it.isNotBlank() }
+        val district = location.district?.takeIf { it.isNotBlank() && it != city }
+        val aoi = location.aoiName?.takeIf { it.isNotBlank() }
+        val street = location.street?.takeIf { it.isNotBlank() }
+        val streetNum = location.streetNum?.takeIf { it.isNotBlank() }
+        val address = location.address?.takeIf { it.isNotBlank() }
+
+        val result = buildString {
+            when {
+                district != null -> append(district)
+                city != null -> append(city)
+            }
+            when {
+                aoi != null -> append(" $aoi")
+                street != null -> {
+                    if (isNotEmpty()) append(" ")
+                    append(street)
+                    streetNum?.let { append(it) }
+                }
+            }
+            if (isEmpty()) {
+                address?.let { append(it) }
+            }
+        }
+
+        if (result.isBlank()) {
+            if (city != null) return city
+            return "未知位置"
+        }
+
+        return result
+    }
+
     // ============ System Positioning (FusedLocation & Native LocationManager) ============
 
     suspend fun requestSystemLocation(timeoutMillis: Long = 8000L): Location? = withContext(Dispatchers.IO) {
@@ -124,12 +222,19 @@ class LocationManager @Inject constructor(
 
         if (hasGms) {
             Log.i(TAG, "尝试 GMS FusedLocation...")
-            val fused = requestFusedLocation(timeoutMillis)
+            val fused = try {
+                kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
+                    requestFusedLocation(timeoutMillis)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "GMS FusedLocation timeout or exception: ${e.message}")
+                null
+            }
             if (fused != null) {
                 Log.i(TAG, "GMS FusedLocation 定位成功: lat=${fused.latitude}, lon=${fused.longitude}")
                 return@withContext fused
             }
-            Log.w(TAG, "GMS FusedLocation 失败，降级尝试原生 LocationManager...")
+            Log.w(TAG, "GMS FusedLocation 失败或超时，降级尝试原生 LocationManager...")
         }
 
         // 2. 尝试原生 LocationManager
@@ -438,20 +543,45 @@ class LocationManager @Inject constructor(
 
     // ============ Unified Entrance for Positioning (System -> IP) ============
 
+    private fun applyAntiJitter(lat: Double, lon: Double, name: String): CachedLocation {
+        val cached = getCachedLocation()
+        if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
+            val dist = distanceBetween(lat, lon, cached.latitude, cached.longitude)
+            if (dist < 200f) {
+                Log.i(TAG, "防跳变机制触发：新位置距离上次缓存仅 ${dist}米（< 200m），复用缓存坐标与地名: (${cached.latitude}, ${cached.longitude}) - ${cached.name}")
+                return cached
+            }
+        }
+        return CachedLocation(latitude = lat, longitude = lon, name = name)
+    }
+
     suspend fun requestSystemOrIpLocation(): CachedLocation? {
         Log.i(TAG, "定位总入口被调用...")
-        
-        // 1. 尝试系统自带定位服务 (需要位置权限)
+
+        // 1. 尝试系统定位服务 (需要位置权限)
         if (hasLocationPermission()) {
+            // 首选尝试高德定位 SDK
+            Log.i(TAG, "有定位权限，首选尝试高德定位 SDK...")
+            val amapLoc = requestAmapLocation()
+            if (amapLoc != null) {
+                val name = resolveLocationName(amapLoc)
+                Log.i(TAG, "高德定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
+                val finalLoc = applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name)
+                return finalLoc
+            }
+            Log.w(TAG, "高德定位失败或超时，降级尝试 GMS/系统原生定位服务...")
+
+            // 降级尝试 GMS FusedLocation / 系统原生定位服务
             val sysLoc = requestSystemLocation()
             if (sysLoc != null) {
                 val name = reverseGeocode(sysLoc.latitude, sysLoc.longitude)
                 Log.i(TAG, "系统定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name")
-                return CachedLocation(latitude = sysLoc.latitude, longitude = sysLoc.longitude, name = name)
+                val finalLoc = applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name)
+                return finalLoc
             }
-            Log.w(TAG, "系统定位未获取到有效坐标，降级使用 IP 定位...")
+            Log.w(TAG, "系统定位及高德定位均未获取到有效坐标，降级使用 IP 定位...")
         } else {
-            Log.i(TAG, "无定位权限，直接跳过系统定位进入 IP 定位...")
+            Log.i(TAG, "无定位权限，直接跳过系统定位及高德定位，进入 IP 定位...")
         }
 
         // 2. 降级使用 IP 定位 (无需位置权限)
@@ -461,7 +591,7 @@ class LocationManager @Inject constructor(
             return ipLoc
         }
 
-        Log.w(TAG, "所有自动定位策略（系统定位 & IP 定位）均已宣告失败")
+        Log.w(TAG, "所有自动定位策略均已宣告失败")
         return null
     }
 
@@ -476,13 +606,37 @@ class LocationManager @Inject constructor(
                 return@withContext cached.name
             }
         }
-        try {
-            kotlinx.coroutines.withTimeoutOrNull(5000L) {
+
+        val systemResult = try {
+            kotlinx.coroutines.withTimeoutOrNull(4000L) {
                 geocoderFallback(lat, lon)
-            } ?: "未知位置"
-        } catch (_: Exception) {
-            "未知位置"
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "reverseGeocode: 系统 Geocoder 抛出异常", e)
+            null
         }
+
+        if (systemResult != null && systemResult != "未知位置" && systemResult.isNotBlank()) {
+            return@withContext systemResult
+        }
+
+        // 系统 Geocoder 失败，尝试 BigDataCloud Web 逆地理编码 (中国大陆友好，无 Key 免费方案)
+        Log.i(TAG, "reverseGeocode: 系统 Geocoder 失败，尝试 BigDataCloud Web 逆地理编码...")
+        val bdcResult = queryBigDataCloud(lat, lon)
+        if (bdcResult != null && bdcResult != "未知位置" && bdcResult.isNotBlank()) {
+            Log.i(TAG, "reverseGeocode: BigDataCloud 解析成功: $bdcResult")
+            return@withContext bdcResult
+        }
+
+        // 尝试 Nominatim Web 逆地理编码 (与 Breezy Weather 对齐的备用方案)
+        Log.i(TAG, "reverseGeocode: BigDataCloud 失败，尝试 Nominatim Web 逆地理编码...")
+        val osmResult = queryNominatim(lat, lon)
+        if (osmResult != null && osmResult != "未知位置" && osmResult.isNotBlank()) {
+            Log.i(TAG, "reverseGeocode: Nominatim 解析成功: $osmResult")
+            return@withContext osmResult
+        }
+
+        "未知位置"
     }
 
     @Suppress("DEPRECATION")
@@ -560,5 +714,106 @@ class LocationManager @Inject constructor(
             .replace(Regex("\\d+弄.*$"), "")
             .replace(Regex("\\d+栋.*$"), "")
             .replace(Regex("\\d+幢.*$"), "")
+    }
+
+    private suspend fun queryBigDataCloud(lat: Double, lon: Double): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=$lat&longitude=$lon&localityLanguage=zh"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "SkyPulseWeatherApp/1.0 (com.skypulse.weather)")
+                    .build()
+
+                val shortTimeoutClient = okHttpClient.newBuilder()
+                    .connectTimeout(3, TimeUnit.SECONDS)
+                    .readTimeout(3, TimeUnit.SECONDS)
+                    .build()
+
+                shortTimeoutClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "BigDataCloud API error: ${response.code}")
+                        return@withContext null
+                    }
+                    val bodyStr = response.body?.string() ?: return@withContext null
+                    val json = org.json.JSONObject(bodyStr)
+
+                    val localityInfo = json.optJSONObject("localityInfo")
+                    val adminList = localityInfo?.optJSONArray("administrative")
+                    if (adminList != null && adminList.length() > 0) {
+                        for (i in adminList.length() - 1 downTo 0) {
+                            val item = adminList.optJSONObject(i)
+                            val name = item?.optString("name")
+                            if (!name.isNullOrBlank() && name != "中华人民共和国" && !name.endsWith("省")) {
+                                val cleaned = normalizeFineLocationPart(name)
+                                if (cleaned != null) return@withContext cleaned
+                            }
+                        }
+                    }
+
+                    val city = json.optString("city").takeIf { it.isNotBlank() }
+                    val locality = json.optString("locality").takeIf { it.isNotBlank() }
+                    val fallback = locality ?: city
+                    fallback?.let { normalizeFineLocationPart(it) }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "BigDataCloud query failed", e)
+                null
+            }
+        }
+    }
+
+    private suspend fun queryNominatim(lat: Double, lon: Double): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lon&format=json&accept-language=zh"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "SkyPulseWeatherApp/1.0 (com.skypulse.weather)")
+                    .build()
+
+                val shortTimeoutClient = okHttpClient.newBuilder()
+                    .connectTimeout(3, TimeUnit.SECONDS)
+                    .readTimeout(3, TimeUnit.SECONDS)
+                    .build()
+
+                shortTimeoutClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        Log.w(TAG, "Nominatim API error: ${response.code}")
+                        return@withContext null
+                    }
+                    val bodyStr = response.body?.string() ?: return@withContext null
+                    val json = org.json.JSONObject(bodyStr)
+
+                    val address = json.optJSONObject("address")
+                    val road = address?.optString("road")?.takeIf { it.isNotBlank() }
+                        ?: address?.optString("pedestrian")?.takeIf { it.isNotBlank() }
+                        ?: address?.optString("suburb")?.takeIf { it.isNotBlank() }
+                        ?: address?.optString("quarter")?.takeIf { it.isNotBlank() }
+
+                    if (road != null) {
+                        val cleaned = normalizeFineLocationPart(road)
+                        if (cleaned != null) return@withContext cleaned
+                    }
+
+                    val displayName = json.optString("display_name")
+                    if (!displayName.isNullOrBlank()) {
+                        val firstPart = displayName.split(",").firstOrNull()?.trim()
+                        if (!firstPart.isNullOrBlank() && firstPart != "中国") {
+                            val cleaned = normalizeFineLocationPart(firstPart)
+                            if (cleaned != null) return@withContext cleaned
+                        }
+                    }
+
+                    val city = address?.optString("city")?.takeIf { it.isNotBlank() }
+                        ?: address?.optString("town")?.takeIf { it.isNotBlank() }
+                        ?: address?.optString("village")?.takeIf { it.isNotBlank() }
+                    city?.let { normalizeLocationPart(it) }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Nominatim query failed", e)
+                null
+            }
+        }
     }
 }

@@ -11,7 +11,6 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-
     <application
         android:name=".SkyPulseApp"
         android:allowBackup="true"
@@ -21,7 +20,11 @@
         android:theme="@style/Theme.SkyPulse"
         android:networkSecurityConfig="@xml/network_security_config">
 
+        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="${AMAP_API_KEY}" />
 
+        <service android:name="com.amap.api.location.APSService" />
 
         <activity
             android:name=".MainActivity"

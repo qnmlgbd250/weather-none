@@ -357,7 +357,7 @@ class WeatherSyncManager @Inject constructor(
             record.longitude,
             latitude,
             longitude
-        ) < 300f
+        ) < 200f
     }
 }
 
