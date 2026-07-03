@@ -588,7 +588,19 @@ class LocationManager @Inject constructor(
         val ipLoc = requestIpLocation()
         if (ipLoc != null) {
             Log.i(TAG, "IP 定位成功: lat=${ipLoc.latitude}, lon=${ipLoc.longitude}, name=${ipLoc.name}")
-            return ipLoc
+            // IP 定位精度低，需要更保守的防跳变策略：
+            // 如果已有缓存位置（来自上次 GPS），且 IP 定位结果偏差超过 50km，
+            // 说明 IP 归属地可能不准（VPN/代理/运营商 NAT），沿用缓存位置。
+            val cached = getCachedLocation()
+            if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
+                val dist = distanceBetween(ipLoc.latitude, ipLoc.longitude, cached.latitude, cached.longitude)
+                if (dist > 50_000f) {
+                    Log.w(TAG, "IP 定位防跳变：IP 结果(${ipLoc.name})距缓存(${cached.name}) ${dist/1000}km，" +
+                        "偏差过大，沿用缓存位置")
+                    return cached
+                }
+            }
+            return CachedLocation(latitude = ipLoc.latitude, longitude = ipLoc.longitude, name = ipLoc.name)
         }
 
         Log.w(TAG, "所有自动定位策略均已宣告失败")
