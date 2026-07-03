@@ -19,7 +19,7 @@
 
 ## 版本管理
 - **版本号位置**: `app/build.gradle.kts` 中的 `versionCode` 和 `versionName`
-- **版本号升级**: 由 `scripts\release.ps1` 自动完成（patch +1, versionCode +1），无需手动执行单独的 bump 脚本
+- **版本号升级**: 由 `scripts\release.ps1` 自动完成（patch +1, versionCode +1），无需手动执行单独的 bump 脚本。当小版本号（patch）超过 100 之后自动进位并迭代一次中版本号（minor），例如：`3.0.100` 之后的下一个版本就是 `3.1.0`。
 
 ## 发版规则
 - **默认发版**: 每次代码改动完成并验证后，执行 `scripts\release.ps1` 发布到云剪贴板（内含 bump 版本 → 构建 → 上传）；除非用户明确要求暂不发版

@@ -538,7 +538,7 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
             if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
-            refreshCurrentLocation()
+            performRefreshWithAnimation(refreshCity)
         }
     }
 
@@ -587,16 +587,7 @@ class WeatherViewModel @Inject constructor(
             }
             val refreshCity = selectedCityForRefresh()
             if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
-            _refreshPhase.value = RefreshPhase.Refreshing
-            val startTime = System.currentTimeMillis()
-            val refreshed = refreshSelectedWeather(refreshCity, silent = true)
-            val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed < 500) delay(500 - elapsed)
-            if (refreshed) {
-                _refreshPhase.value = RefreshPhase.Success
-                delay(300)
-            }
-            _refreshPhase.value = RefreshPhase.Idle
+            performRefreshWithAnimation(refreshCity)
         }
     }
 
@@ -604,17 +595,25 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
             if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
-            _refreshPhase.value = RefreshPhase.Refreshing
-            val startTime = System.currentTimeMillis()
-            val refreshed = refreshSelectedWeather(refreshCity, silent = true)
-            val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed < 1000) delay(1000 - elapsed)
-            if (refreshed) {
-                _refreshPhase.value = RefreshPhase.Success
-                delay(1000)
-            }
-            _refreshPhase.value = RefreshPhase.Idle
+            performRefreshWithAnimation(refreshCity, minElapsedMs = 1000L, successDelayMs = 1000L)
         }
+    }
+
+    private suspend fun performRefreshWithAnimation(
+        city: City?,
+        minElapsedMs: Long = 500L,
+        successDelayMs: Long = 300L
+    ) {
+        _refreshPhase.value = RefreshPhase.Refreshing
+        val startTime = System.currentTimeMillis()
+        val refreshed = refreshSelectedWeather(city, silent = true)
+        val elapsed = System.currentTimeMillis() - startTime
+        if (elapsed < minElapsedMs) delay(minElapsedMs - elapsed)
+        if (refreshed) {
+            _refreshPhase.value = RefreshPhase.Success
+            delay(successDelayMs)
+        }
+        _refreshPhase.value = RefreshPhase.Idle
     }
 
     private suspend fun refreshSelectedWeather(

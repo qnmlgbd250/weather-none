@@ -11,6 +11,8 @@ import com.skypulse.weather.util.FileLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,7 +38,7 @@ class WeatherSyncManager @Inject constructor(
         private const val CURRENT_LOCATION_ID = "current_location"
         private const val LOCATING_NAME = "定位中..."
         private const val UNKNOWN_LOCATION = "未知位置"
-        private const val RATE_LIMIT_MS = 60_000L // 60s per city
+        private const val RATE_LIMIT_MS = 120_000L // 120s per city
         private const val MAX_RETRIES = 2
     }
 
@@ -47,6 +49,9 @@ class WeatherSyncManager @Inject constructor(
     )
 
     private val lastFetchRecordsByCityId = ConcurrentHashMap<String, FetchRecord>()
+    private val locationMutex = Mutex()
+    private val cityMutexes = ConcurrentHashMap<String, Mutex>()
+    private fun getMutexForCity(cityId: String) = cityMutexes.computeIfAbsent(cityId) { Mutex() }
 
     // ============ Public API ============
 
@@ -78,36 +83,40 @@ class WeatherSyncManager @Inject constructor(
         longitude: Double,
         latitude: Double
     ): SyncResult {
-        // 只对同一城市、同一坐标的短时间重复请求做去重；定位坐标变化时必须刷新。
-        val lastFetch = lastFetchRecordsByCityId[cityId]
-        if (
-            lastFetch != null &&
-            System.currentTimeMillis() - lastFetch.timeMillis < 5000L &&
-            isSameCoordinate(lastFetch, longitude, latitude)
-        ) {
-            Log.i(TAG, "doRefreshWeather: $cityId 5秒内同坐标已获取，跳过重复请求")
-            val cached = repository.getWeatherFromCache(cityId)
-            if (cached != null) return SyncResult.Success(cached)
-        }
-        FileLogger.i(TAG, "doRefreshWeather: cityId=$cityId, lon=$longitude, lat=$latitude")
-        Log.i(TAG, "refreshWeather: $cityId 开始网络请求 lon=$longitude lat=$latitude")
-        val result = fetchWithRetry(longitude, latitude)
-        FileLogger.i(TAG, "doRefreshWeather: 网络请求完成, success=${result.isSuccess}")
-        Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
-        return result.fold(
-            onSuccess = { response ->
-                markFetched(cityId, longitude, latitude)
-                repository.saveWeatherToCache(cityId, response)
-                FileLogger.i(TAG, "doRefreshWeather: 天气数据已写入 Room, cityId=$cityId, " +
-                    "temp=${response.result?.realtime?.temperature}, " +
-                    "skycon=${response.result?.realtime?.skycon}")
-                SyncResult.Success(response)
-            },
-            onFailure = { e ->
-                FileLogger.e(TAG, "doRefreshWeather: 网络请求失败 - ${mapError(e)}")
-                SyncResult.Error(mapError(e))
+        val mutex = getMutexForCity(cityId)
+        return mutex.withLock {
+            // 只对同一城市、同一坐标的短时间重复请求做去重；定位坐标变化时必须刷新。
+            // 获锁后进行二次检查：防止在排队等待期间，前一个请求已经成功刷新了天气，当前请求可直接复用缓存。
+            val lastFetch = lastFetchRecordsByCityId[cityId]
+            if (
+                lastFetch != null &&
+                System.currentTimeMillis() - lastFetch.timeMillis < 5000L &&
+                isSameCoordinate(lastFetch, longitude, latitude)
+            ) {
+                Log.i(TAG, "doRefreshWeather: $cityId 排队后检查：5秒内同坐标已获取，跳过重复请求")
+                val cached = repository.getWeatherFromCache(cityId)
+                if (cached != null) return@withLock SyncResult.Success(cached)
             }
-        )
+            FileLogger.i(TAG, "doRefreshWeather: cityId=$cityId, lon=$longitude, lat=$latitude")
+            Log.i(TAG, "refreshWeather: $cityId 开始网络请求 lon=$longitude lat=$latitude")
+            val result = fetchWithRetry(longitude, latitude)
+            FileLogger.i(TAG, "doRefreshWeather: 网络请求完成, success=${result.isSuccess}")
+            Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
+            result.fold(
+                onSuccess = { response ->
+                    markFetched(cityId, longitude, latitude)
+                    repository.saveWeatherToCache(cityId, response)
+                    FileLogger.i(TAG, "doRefreshWeather: 天气数据已写入 Room, cityId=$cityId, " +
+                        "temp=${response.result?.realtime?.temperature}, " +
+                        "skycon=${response.result?.realtime?.skycon}")
+                    SyncResult.Success(response)
+                },
+                onFailure = { e ->
+                    FileLogger.e(TAG, "doRefreshWeather: 网络请求失败 - ${mapError(e)}")
+                    SyncResult.Error(mapError(e))
+                }
+            )
+        }
     }
 
     /**
@@ -116,64 +125,68 @@ class WeatherSyncManager @Inject constructor(
      * 用于主应用的定位城市刷新（前台）。
      */
     suspend fun refreshWeatherWithLocation(): SyncResult = withContext(Dispatchers.IO) {
-        val hasLocationPermission = locationManager.hasLocationPermission()
-        Log.i(TAG, "refreshWeatherWithLocation: hasPermission=$hasLocationPermission")
+        locationMutex.withLock {
+            val hasLocationPermission = locationManager.hasLocationPermission()
+            Log.i(TAG, "refreshWeatherWithLocation: hasPermission=$hasLocationPermission")
 
-        val currentBeforeLocation = getCurrentLocationCity()
-        if (
-            currentBeforeLocation != null &&
-            !currentBeforeLocation.isUnresolvedCurrentLocation() &&
-            isFreshEnough(currentBeforeLocation.id)
-        ) {
-            Log.i(TAG, "refreshWeatherWithLocation: current_location 60秒内已刷新，跳过")
-            return@withContext SyncResult.RateLimited
-        }
-
-        val location = if (!hasLocationPermission) {
-            Log.i(TAG, "无定位权限，尝试使用 IP 定位")
-            locationManager.requestIpLocation()
-        } else {
-            locationManager.requestSystemOrIpLocation()
-        }
-
-        if (location != null) {
-            val lon = location.longitude
-            val lat = location.latitude
-            val locationName = location.name
-            Log.i(TAG, "定位成功: lon=$lon, lat=$lat, name=$locationName")
-            val currentCity = if (locationName == UNKNOWN_LOCATION) {
-                Log.w(TAG, "定位成功但地址为空，保留旧城市名, lon=$lon, lat=$lat")
-                val oldName = locationManager.getCachedLocation()?.name
-                    ?: getCurrentLocationCity()?.name
-                    ?: LOCATING_NAME
-                locationManager.saveCachedLocation(oldName, lon, lat)
-                upsertCurrentLocationCity(oldName, lon, lat)
-            } else {
-                locationManager.saveCachedLocation(locationName, lon, lat)
-                upsertCurrentLocationCity(locationName, lon, lat)
+            // 加锁后再次读取 Room 中定位城市信息做新鲜度校验（双重检查）
+            val currentBeforeLocation = getCurrentLocationCity()
+            if (
+                currentBeforeLocation != null &&
+                !currentBeforeLocation.isUnresolvedCurrentLocation() &&
+                isFreshEnough(currentBeforeLocation.id)
+            ) {
+                Log.i(TAG, "refreshWeatherWithLocation: current_location 120秒内已刷新，跳过")
+                val cached = repository.getWeatherFromCache(currentBeforeLocation.id)
+                return@withLock if (cached != null) SyncResult.Success(cached) else SyncResult.RateLimited
             }
 
-            Log.i(TAG, "开始获取天气: cityId=${currentCity.id}, name=${currentCity.name}")
-            return@withContext doRefreshWeather(currentCity.id, lon, lat)
-        }
+            val location = if (!hasLocationPermission) {
+                Log.i(TAG, "无定位权限，尝试使用 IP 定位")
+                locationManager.requestIpLocation()
+            } else {
+                locationManager.requestSystemOrIpLocation()
+            }
 
-        val cachedLoc = locationManager.getCachedLocation()
-        Log.i(TAG, "定位失败, cachedLocation=${cachedLoc?.name}")
-        if (cachedLoc != null) {
-            val currentCity = upsertCurrentLocationCity(
-                cachedLoc.name,
-                cachedLoc.longitude,
-                cachedLoc.latitude
-            )
-            return@withContext doRefreshWeather(
-                currentCity.id,
-                cachedLoc.longitude,
-                cachedLoc.latitude
-            )
-        }
+            if (location != null) {
+                val lon = location.longitude
+                val lat = location.latitude
+                val locationName = location.name
+                Log.i(TAG, "定位成功: lon=$lon, lat=$lat, name=$locationName")
+                val currentCity = if (locationName == UNKNOWN_LOCATION) {
+                    Log.w(TAG, "定位成功但地址为空，保留旧城市名, lon=$lon, lat=$lat")
+                    val oldName = locationManager.getCachedLocation()?.name
+                        ?: getCurrentLocationCity()?.name
+                        ?: LOCATING_NAME
+                    locationManager.saveCachedLocation(oldName, lon, lat)
+                    upsertCurrentLocationCity(oldName, lon, lat)
+                } else {
+                    locationManager.saveCachedLocation(locationName, lon, lat)
+                    upsertCurrentLocationCity(locationName, lon, lat)
+                }
 
-        Log.w(TAG, "refreshWeatherWithLocation: 定位和缓存均失败，不写入默认北京天气")
-        SyncResult.LocationFailed
+                Log.i(TAG, "开始获取天气: cityId=${currentCity.id}, name=${currentCity.name}")
+                return@withLock doRefreshWeather(currentCity.id, lon, lat)
+            }
+
+            val cachedLoc = locationManager.getCachedLocation()
+            Log.i(TAG, "定位失败, cachedLocation=${cachedLoc?.name}")
+            if (cachedLoc != null) {
+                val currentCity = upsertCurrentLocationCity(
+                    cachedLoc.name,
+                    cachedLoc.longitude,
+                    cachedLoc.latitude
+                )
+                return@withLock doRefreshWeather(
+                    currentCity.id,
+                    cachedLoc.longitude,
+                    cachedLoc.latitude
+                )
+            }
+
+            Log.w(TAG, "refreshWeatherWithLocation: 定位和缓存均失败，不写入默认北京天气")
+            SyncResult.LocationFailed
+        }
     }
 
     /**
@@ -183,47 +196,56 @@ class WeatherSyncManager @Inject constructor(
      * 2. 仅更新天气缓存数据
      */
     suspend fun refreshWeatherWithLocationForWidget(): SyncResult = withContext(Dispatchers.IO) {
-        val hasLocationPermission = locationManager.hasLocationPermission()
-        val hasBackgroundPermission = locationManager.hasBackgroundLocationPermission()
-        FileLogger.i(TAG, "refreshWeatherWithLocationForWidget: hasPermission=$hasLocationPermission, " +
-            "hasBackgroundPermission=$hasBackgroundPermission")
+        locationMutex.withLock {
+            val hasLocationPermission = locationManager.hasLocationPermission()
+            val hasBackgroundPermission = locationManager.hasBackgroundLocationPermission()
+            FileLogger.i(TAG, "refreshWeatherWithLocationForWidget: hasPermission=$hasLocationPermission, " +
+                "hasBackgroundPermission=$hasBackgroundPermission")
 
-        val location = if (!hasLocationPermission) {
-            // 无定位权限，尝试使用 IP 定位
-            FileLogger.i(TAG, "小组件: 无定位权限，尝试使用 IP 定位...")
-            locationManager.requestIpLocation()
-        } else {
-            // 有定位权限，尝试系统或 IP 定位
-            locationManager.requestSystemOrIpLocation()
-        }
-
-        if (location != null) {
-            val lon = location.longitude
-            val lat = location.latitude
-            FileLogger.i(TAG, "小组件定位成功: lon=$lon, lat=$lat, name=${location.name}")
-            // 只更新定位缓存，不更新 Room 城市记录
-            if (location.name != "未知位置") {
-                locationManager.saveCachedLocation(location.name, lon, lat)
-            } else {
-                val oldCachedName = locationManager.getCachedLocation()?.name
-                locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat)
+            // 加锁后再次读取定位城市信息做新鲜度校验（双重检查）
+            if (isFreshEnough(CURRENT_LOCATION_ID)) {
+                FileLogger.i(TAG, "refreshWeatherWithLocationForWidget: current_location 120秒内已刷新，跳过")
+                val cached = repository.getWeatherFromCache(CURRENT_LOCATION_ID)
+                return@withLock if (cached != null) SyncResult.Success(cached) else SyncResult.RateLimited
             }
-            return@withContext doRefreshWeather("current_location", lon, lat)
-        }
 
-        // 尝试缓存坐标
-        val cachedLocation = locationManager.getCachedLocation()
-        FileLogger.w(TAG, "小组件定位: 系统/IP定位均失败, cachedLocation=${cachedLocation?.name}")
-        if (cachedLocation != null) {
-            return@withContext doRefreshWeather(
-                "current_location",
-                cachedLocation.longitude,
-                cachedLocation.latitude
-            )
-        }
+            val location = if (!hasLocationPermission) {
+                // 无定位权限，尝试使用 IP 定位
+                FileLogger.i(TAG, "小组件: 无定位权限，尝试使用 IP 定位...")
+                locationManager.requestIpLocation()
+            } else {
+                // 有定位权限，尝试系统或 IP 定位
+                locationManager.requestSystemOrIpLocation()
+            }
 
-        FileLogger.e(TAG, "小组件定位: 全部失败")
-        SyncResult.LocationFailed
+            if (location != null) {
+                val lon = location.longitude
+                val lat = location.latitude
+                FileLogger.i(TAG, "小组件定位成功: lon=$lon, lat=$lat, name=${location.name}")
+                // 只更新定位缓存，不更新 Room 城市记录
+                if (location.name != "未知位置") {
+                    locationManager.saveCachedLocation(location.name, lon, lat)
+                } else {
+                    val oldCachedName = locationManager.getCachedLocation()?.name
+                    locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat)
+                }
+                return@withLock doRefreshWeather("current_location", lon, lat)
+            }
+
+            // 尝试缓存坐标
+            val cachedLocation = locationManager.getCachedLocation()
+            FileLogger.w(TAG, "小组件定位: 系统/IP定位均失败, cachedLocation=${cachedLocation?.name}")
+            if (cachedLocation != null) {
+                return@withLock doRefreshWeather(
+                    "current_location",
+                    cachedLocation.longitude,
+                    cachedLocation.latitude
+                )
+            }
+
+            FileLogger.e(TAG, "小组件定位: 全部失败")
+            SyncResult.LocationFailed
+        }
     }
 
     /**

@@ -51,6 +51,10 @@ $oldVersion = "$major.$minor.$patch"
 
 # 2. Bump version (patch +1, code +1)
 $patch++
+if ($patch -gt 100) {
+    $minor++
+    $patch = 0
+}
 $code++
 $newVersion = "$major.$minor.$patch"
 

@@ -29,8 +29,8 @@ class RefreshManager @Inject constructor(
     companion object {
         private const val TAG = "RefreshManager"
 
-        /** 全局最小同步间隔：60 秒内不重复同步 */
-        private const val GLOBAL_SYNC_INTERVAL_MS = 60_000L
+        /** 全局最小同步间隔：120 秒内不重复同步 */
+        private const val GLOBAL_SYNC_INTERVAL_MS = 120_000L
 
         /** 天气缓存 TTL：5 分钟过期则需要刷新 */
         private const val WEATHER_TTL_MS = 5 * 60 * 1000L
@@ -68,7 +68,7 @@ class RefreshManager @Inject constructor(
         }
 
         return syncMutex.withLock {
-            // 2. 全局限流：距离上次同步不足 60 秒
+            // 2. 全局限流：距离上次同步不足 120 秒
             if (!force) {
                 val elapsed = System.currentTimeMillis() - lastSyncTime
                 FileLogger.i(TAG, "requestSync($reason): [检查2] 距上次同步=${elapsed}ms, 限流阈值=${GLOBAL_SYNC_INTERVAL_MS}ms")

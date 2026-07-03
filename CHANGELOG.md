@@ -235,3 +235,19 @@
 ## [3.0.99] - 2026-07-03
 
 - Change widget update interval to 15m, add donor, scale clear-day icon
+
+## [3.0.100] - 2026-07-03
+
+- Consolidate refresh animation logic to cover cold start scenarios
+
+## [3.0.101] - 2026-07-03
+
+- Implement concurrency control with Mutexes in WeatherSyncManager
+
+## [3.0.102] - 2026-07-03
+
+- Increase sync rate limit interval from 60s to 120s
+
+## [3.1.2] - 2026-07-03
+
+- Update versioning policy rules and clean up sync interval
