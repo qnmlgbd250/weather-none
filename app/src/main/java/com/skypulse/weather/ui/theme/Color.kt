@@ -42,16 +42,16 @@ val CardBorderNight = Color(0x22FFFFFF)  // 13% white 鈥?subtle at night
 // ============ iOS Weather-style Background Gradients ============
 // Each gradient uses 5 stops for smooth, natural sky transitions
 
-// Sunny (Day) 鈥?clear sky blue, with a deeper top for readable white text
+// Sunny (Day) ── clear sky blue, with a deeper top for readable white text
 val SunnyGradient = listOf(
-    Color(0xFF4A9AD8),
-    Color(0xFF5FB0E5),
-    Color(0xFF6DBAE8),
-    Color(0xFF5AA0D9),
-    Color(0xFF4A90D9)
+    Color(0xFF2A75B3),  // 顶部天顶深蓝
+    Color(0xFF3B88C8),
+    Color(0xFF4C9BDC),
+    Color(0xFF6FB3EA),
+    Color(0xFF8ECDF9)   // 底部地平线浅亮蓝
 )
 
-// Sunny (Night) 鈥?deep navy to midnight blue
+// Sunny (Night) ── deep navy to midnight blue
 val SunnyNightGradient = listOf(
     Color(0xFF0B1929),
     Color(0xFF122640),
@@ -60,7 +60,7 @@ val SunnyNightGradient = listOf(
     Color(0xFF234A72)
 )
 
-// Partly Cloudy (Day) 鈥?medium blue, slightly desaturated
+// Partly Cloudy (Day) ── medium blue, slightly desaturated
 val PartialCloudGradient = listOf(
     Color(0xFF8BB8E0),
     Color(0xFF7AAFE0),
@@ -69,7 +69,7 @@ val PartialCloudGradient = listOf(
     Color(0xFF3A7CC4)
 )
 
-// Partly Cloudy (Night) 鈥?indigo to blue-violet
+// Partly Cloudy (Night) ── indigo to blue-violet
 val PartialCloudNightGradient = listOf(
     Color(0xFF141E3A),
     Color(0xFF1C2B50),
@@ -78,16 +78,16 @@ val PartialCloudNightGradient = listOf(
     Color(0xFF375590)
 )
 
-// Cloudy (Day) 鈥?blue-gray, heavy cloud, low saturation
+// Cloudy (Day) ── rich slate indigo-gray overcast sky
 val CloudyGradient = listOf(
-    Color(0xFF9BAFB8),
-    Color(0xFF90A5B0),
-    Color(0xFF8A9EAF),
-    Color(0xFF7A8E9F),
-    Color(0xFF6B7F8F)
+    Color(0xFF4B5A66),  // 深邃灰蓝
+    Color(0xFF576875),
+    Color(0xFF647685),
+    Color(0xFF738694),
+    Color(0xFF8195A3)   // 底部淡雅灰蓝
 )
 
-// Cloudy (Night) 鈥?dark blue-gray
+// Cloudy (Night) ── dark blue-gray
 val CloudyNightGradient = listOf(
     Color(0xFF1C2834),
     Color(0xFF283848),
@@ -96,16 +96,16 @@ val CloudyNightGradient = listOf(
     Color(0xFF4A6075)
 )
 
-// Rainy (Day) 鈥?deep blue-gray, darkest and heaviest
+// Rainy (Day) ── deep blue-gray, darkest and heaviest
 val RainyGradient = listOf(
-    Color(0xFF8A9AA5),
-    Color(0xFF7A8FA0),
-    Color(0xFF6A7E90),
-    Color(0xFF5E6F80),
-    Color(0xFF556070)
+    Color(0xFF3E4F5E),  // 压抑沉重的深雨云色
+    Color(0xFF495B6C),
+    Color(0xFF55697B),
+    Color(0xFF62778A),
+    Color(0xFF708799)
 )
 
-// Rainy (Night) 鈥?deep blue-black
+// Rainy (Night) ── deep blue-black
 val RainyNightGradient = listOf(
     Color(0xFF0F1A24),
     Color(0xFF182636),
@@ -114,7 +114,7 @@ val RainyNightGradient = listOf(
     Color(0xFF324A60)
 )
 
-// Snowy (Day) 鈥?cold gray-blue
+// Snowy (Day) ── cold gray-blue
 val SnowyGradient = listOf(
     Color(0xFF6E8A9E),
     Color(0xFF8BA5B5),
@@ -123,7 +123,7 @@ val SnowyGradient = listOf(
     Color(0xFFA5BBC4)
 )
 
-// Snowy (Night) 鈥?muted blue-gray
+// Snowy (Night) ── muted blue-gray
 val SnowyNightGradient = listOf(
     Color(0xFF1E2D38),
     Color(0xFF2A3D4D),
@@ -132,7 +132,7 @@ val SnowyNightGradient = listOf(
     Color(0xFF4E6D82)
 )
 
-// Haze/Fog (Day & Night) 鈥?warm brown-gray, atmospheric
+// Haze/Fog (Day) ── warm brown-gray, atmospheric
 val HazeGradient = listOf(
     Color(0xFF7A6B5E),
     Color(0xFF948578),
@@ -141,13 +141,31 @@ val HazeGradient = listOf(
     Color(0xFFAA9B90)
 )
 
-// Windy (Day & Night) 鈥?teal-blue, fresh
+// Haze/Fog (Night) ── dark purple-gray twilight haze
+val HazeNightGradient = listOf(
+    Color(0xFF161518),
+    Color(0xFF1F1D23),
+    Color(0xFF2B2830),
+    Color(0xFF38343D),
+    Color(0xFF46414C)
+)
+
+// Windy (Day) ── teal-blue, fresh
 val WindyGradient = listOf(
     Color(0xFF2A7B72),
     Color(0xFF3A968C),
     Color(0xFF45A098),
     Color(0xFF4DA8A0),
     Color(0xFF55B0A8)
+)
+
+// Windy (Night) ── dark teal night sky
+val WindyNightGradient = listOf(
+    Color(0xFF0F252C),
+    Color(0xFF142F38),
+    Color(0xFF1B3D49),
+    Color(0xFF224B5A),
+    Color(0xFF295A6C)
 )
 
 // Night Fallback 鈥?deep night sky

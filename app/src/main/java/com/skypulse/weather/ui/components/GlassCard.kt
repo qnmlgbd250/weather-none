@@ -36,7 +36,8 @@ fun GlassCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(GlassCardBg(theme)),
+            .background(theme.cardTintColor)
+            .background(theme.cardFrostColor.copy(alpha = theme.cardMidAlpha)),
         content = content
     )
 }

@@ -108,11 +108,8 @@ private fun DetailSquareCard(
 ) {
     val theme = LocalWeatherTheme.current
 
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(20.dp))
-            .background(com.skypulse.weather.ui.components.GlassCardBg(theme))
+    GlassCard(
+        modifier = modifier.aspectRatio(1f)
     ) {
         Column(
             modifier = Modifier

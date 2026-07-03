@@ -259,3 +259,15 @@
 ## [3.1.4] - 2026-07-03
 
 - Fine tune font sizes for minutely, daily and Astro cards
+
+## [3.1.5] - 2026-07-03
+
+- Implement dual-layer dynamic backgrounds and linear-gradient borders for GlassCards
+
+## [3.1.6] - 2026-07-03
+
+- Optimize background weather gradients and remove GlassCard borders
+
+## [3.1.7] - 2026-07-03
+
+- Optimize Cloudy day gradient and contrast mapping

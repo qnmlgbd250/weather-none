@@ -158,8 +158,8 @@ object WeatherUtils {
             skycon.contains("CLOUDY") -> if (isDay) CloudyGradient else CloudyNightGradient
             skycon.contains("RAIN") || skycon.contains("STORM") -> if (isDay) RainyGradient else RainyNightGradient
             skycon.contains("SNOW") -> if (isDay) SnowyGradient else SnowyNightGradient
-            skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> HazeGradient
-            skycon == "WIND" -> WindyGradient
+            skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> if (isDay) HazeGradient else HazeNightGradient
+            skycon == "WIND" -> if (isDay) WindyGradient else WindyNightGradient
             else -> if (isDay) SunnyGradient else SunnyNightGradient
         }
     }
@@ -173,8 +173,7 @@ object WeatherUtils {
         if (!isDay) return false
         return skycon == null ||
                skycon.contains("CLEAR") ||
-               skycon.contains("PARTLY_CLOUDY") ||
-               skycon.contains("CLOUDY")
+               skycon.contains("PARTLY_CLOUDY")
     }
 
     fun getTemperatureColor(temp: Double?): Color {
