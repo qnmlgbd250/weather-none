@@ -27,235 +27,85 @@ object WeatherUtils {
 
         // --- Card Colors & Alphas Refactoring ---
         val cardTintColor: Color
-        val cardFrostColor: Color
-        val topAlpha: Float
-        val midAlpha: Float
-        val bottomAlpha: Float
-        val borderColors: List<Color>
-
         if (isDay) {
-            when {
+            cardTintColor = when {
                 skycon == null || skycon.contains("CLEAR") -> {
-                    // Sunny / Clear: Light vibrant sky-blue underlay + white frost
-                    cardTintColor = Color(0xFF0284C7).copy(alpha = 0.12f)
-                    cardFrostColor = Color.White
-                    topAlpha = 0.22f
-                    midAlpha = 0.20f
-                    bottomAlpha = 0.08f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.35f),
-                        Color.White.copy(alpha = 0.08f),
-                        Color.White.copy(alpha = 0.20f)
-                    )
+                    // Sunny / Clear: Clean, light flat white panel
+                    Color(0xFFFFFFFF).copy(alpha = 0.22f)
                 }
                 skycon.contains("PARTLY_CLOUDY") -> {
-                    // Partly Cloudy: Soft mist-blue card with a subtle ground mask
-                    cardTintColor = Color(0xFF0F172A).copy(alpha = 0.06f)
-                    cardFrostColor = Color.White
-                    topAlpha = 0.24f
-                    midAlpha = 0.22f
-                    bottomAlpha = 0.10f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.30f),
-                        Color.White.copy(alpha = 0.06f),
-                        Color.White.copy(alpha = 0.15f)
-                    )
+                    // Partly Cloudy: Clean flat white panel with slightly lower opacity
+                    Color(0xFFFFFFFF).copy(alpha = 0.20f)
                 }
                 skycon.contains("CLOUDY") -> {
-                    // Cloudy: Light slate-indigo underlay + white frost
-                    cardTintColor = Color(0xFF1E293B).copy(alpha = 0.10f)
-                    cardFrostColor = Color.White
-                    topAlpha = 0.20f
-                    midAlpha = 0.18f
-                    bottomAlpha = 0.08f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.28f),
-                        Color.White.copy(alpha = 0.06f),
-                        Color.White.copy(alpha = 0.15f)
-                    )
+                    // Cloudy: Muted flat white panel
+                    Color(0xFFFFFFFF).copy(alpha = 0.18f)
                 }
                 skycon.contains("RAIN") || skycon.contains("STORM") -> {
-                    // Rainy / Stormy: Rainy wet glass underlay + cool slate-blue frost
-                    cardTintColor = Color(0xFF0F172A).copy(alpha = 0.22f)
-                    cardFrostColor = Color(0xFF94A3B8)
-                    topAlpha = 0.15f
-                    midAlpha = 0.12f
-                    bottomAlpha = 0.05f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.25f),
-                        Color.White.copy(alpha = 0.05f),
-                        Color.White.copy(alpha = 0.12f)
-                    )
+                    // Rainy / Stormy: Flat slate-blue panel to contrast rain
+                    Color(0xFF1E293B).copy(alpha = 0.25f)
                 }
                 skycon.contains("SNOW") -> {
-                    // Snowy: Cold rock-slate underlay + ice-white frost for high contrast on snowy glare
-                    cardTintColor = Color(0xFF0F172A).copy(alpha = 0.20f)
-                    cardFrostColor = Color.White
-                    topAlpha = 0.18f
-                    midAlpha = 0.14f
-                    bottomAlpha = 0.06f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.32f),
-                        Color.White.copy(alpha = 0.06f),
-                        Color.White.copy(alpha = 0.16f)
-                    )
+                    // Snowy: Dark slate panel for high contrast against snowy glare
+                    Color(0xFF0F172A).copy(alpha = 0.20f)
                 }
                 skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> {
-                    // Haze / Fog: Warm amber underlay + white frost
-                    cardTintColor = Color(0xFF451A03).copy(alpha = 0.06f)
-                    cardFrostColor = Color.White
-                    topAlpha = 0.24f
-                    midAlpha = 0.22f
-                    bottomAlpha = 0.10f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.30f),
-                        Color.White.copy(alpha = 0.06f),
-                        Color.White.copy(alpha = 0.15f)
-                    )
+                    // Haze / Fog: Soft flat white panel
+                    Color(0xFFFFFFFF).copy(alpha = 0.18f)
                 }
                 skycon == "WIND" -> {
-                    // Windy: Cool mint-teal underlay + white frost
-                    cardTintColor = Color(0xFF0D9488).copy(alpha = 0.10f)
-                    cardFrostColor = Color.White
-                    topAlpha = 0.20f
-                    midAlpha = 0.18f
-                    bottomAlpha = 0.08f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.28f),
-                        Color.White.copy(alpha = 0.06f),
-                        Color.White.copy(alpha = 0.15f)
-                    )
+                    // Windy: Fresh flat white panel
+                    Color(0xFFFFFFFF).copy(alpha = 0.20f)
                 }
                 else -> {
-                    cardTintColor = Color(0xFF0284C7).copy(alpha = 0.12f)
-                    cardFrostColor = Color.White
-                    topAlpha = 0.22f
-                    midAlpha = 0.20f
-                    bottomAlpha = 0.08f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.35f),
-                        Color.White.copy(alpha = 0.08f),
-                        Color.White.copy(alpha = 0.20f)
-                    )
+                    Color(0xFFFFFFFF).copy(alpha = 0.22f)
                 }
             }
         } else {
-            // Night Scenarios: Highly customized obsidian glass schemes
-            when {
+            cardTintColor = when {
                 skycon == null || skycon.contains("CLEAR") -> {
-                    // Sunny / Clear Night: Midnight obsidian underlay + moonlit cyan frost
-                    cardTintColor = Color(0xFF030712).copy(alpha = 0.35f)
-                    cardFrostColor = Color(0xFF38BDF8)
-                    topAlpha = 0.12f
-                    midAlpha = 0.06f
-                    bottomAlpha = 0.03f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.22f),
-                        Color.White.copy(alpha = 0.03f),
-                        Color(0xFF38BDF8).copy(alpha = 0.10f)
-                    )
+                    // Sunny / Clear Night: Deep midnight blue flat panel
+                    Color(0xFF0B132B).copy(alpha = 0.45f)
                 }
                 skycon.contains("PARTLY_CLOUDY") -> {
-                    // Partly Cloudy Night: Indigo-violet obsidian underlay + violet frost
-                    cardTintColor = Color(0xFF0B0F19).copy(alpha = 0.40f)
-                    cardFrostColor = Color(0xFF818CF8)
-                    topAlpha = 0.14f
-                    midAlpha = 0.07f
-                    bottomAlpha = 0.03f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.20f),
-                        Color.White.copy(alpha = 0.03f),
-                        Color(0xFF818CF8).copy(alpha = 0.10f)
-                    )
+                    // Partly Cloudy Night: Deep slate flat panel
+                    Color(0xFF0F172A).copy(alpha = 0.45f)
                 }
                 skycon.contains("CLOUDY") -> {
-                    // Cloudy Night: Dark slate-obsidian underlay + slate frost
-                    cardTintColor = Color(0xFF0F172A).copy(alpha = 0.42f)
-                    cardFrostColor = Color(0xFF94A3B8)
-                    topAlpha = 0.12f
-                    midAlpha = 0.06f
-                    bottomAlpha = 0.03f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.18f),
-                        Color.White.copy(alpha = 0.03f),
-                        Color(0xFF94A3B8).copy(alpha = 0.08f)
-                    )
+                    // Cloudy Night: Deep slate-blue flat panel
+                    Color(0xFF1E293B).copy(alpha = 0.45f)
                 }
                 skycon.contains("RAIN") || skycon.contains("STORM") -> {
-                    // Rainy / Stormy Night: Deep storm obsidian underlay + water-blue frost
-                    cardTintColor = Color(0xFF020617).copy(alpha = 0.45f)
-                    cardFrostColor = Color(0xFF38BDF8)
-                    topAlpha = 0.10f
-                    midAlpha = 0.05f
-                    bottomAlpha = 0.02f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.15f),
-                        Color.White.copy(alpha = 0.02f),
-                        Color(0xFF38BDF8).copy(alpha = 0.08f)
-                    )
+                    // Rainy / Stormy Night: Very deep flat slate panel
+                    Color(0xFF0F172A).copy(alpha = 0.50f)
                 }
                 skycon.contains("SNOW") -> {
-                    // Snowy Night: Deep snowy obsidian underlay + snowy-white frost
-                    cardTintColor = Color(0xFF0F172A).copy(alpha = 0.38f)
-                    cardFrostColor = Color(0xFFE2E8F0)
-                    topAlpha = 0.16f
-                    midAlpha = 0.08f
-                    bottomAlpha = 0.04f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.22f),
-                        Color.White.copy(alpha = 0.04f),
-                        Color.White.copy(alpha = 0.10f)
-                    )
+                    // Snowy Night: Flat deep slate panel
+                    Color(0xFF0F172A).copy(alpha = 0.40f)
                 }
                 skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> {
-                    // Haze / Fog Night: Dark amber-twilight underlay + amber gold frost
-                    cardTintColor = Color(0xFF0C0A09).copy(alpha = 0.45f)
-                    cardFrostColor = Color(0xFFF59E0B)
-                    topAlpha = 0.12f
-                    midAlpha = 0.05f
-                    bottomAlpha = 0.02f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.18f),
-                        Color.White.copy(alpha = 0.02f),
-                        Color(0xFFF59E0B).copy(alpha = 0.08f)
-                    )
+                    // Haze / Fog Night: Warm deep stone grey flat panel
+                    Color(0xFF1C1917).copy(alpha = 0.50f)
                 }
                 skycon == "WIND" -> {
-                    // Windy Night: Deep ocean-teal obsidian underlay + teal frost
-                    cardTintColor = Color(0xFF042F2E).copy(alpha = 0.35f)
-                    cardFrostColor = Color(0xFF2DD4BF)
-                    topAlpha = 0.12f
-                    midAlpha = 0.06f
-                    bottomAlpha = 0.03f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.20f),
-                        Color.White.copy(alpha = 0.03f),
-                        Color(0xFF2DD4BF).copy(alpha = 0.10f)
-                    )
+                    // Windy Night: Deep ocean-teal flat panel
+                    Color(0xFF042F2E).copy(alpha = 0.40f)
                 }
                 else -> {
-                    cardTintColor = Color(0xFF0C1424).copy(alpha = 0.18f)
-                    cardFrostColor = Color(0xFFE2E8F0)
-                    topAlpha = 0.14f
-                    midAlpha = 0.08f
-                    bottomAlpha = 0.04f
-                    borderColors = listOf(
-                        Color.White.copy(alpha = 0.22f),
-                        Color.White.copy(alpha = 0.03f),
-                        Color.White.copy(alpha = 0.10f)
-                    )
+                    Color(0xFF0F172A).copy(alpha = 0.45f)
                 }
             }
         }
 
-        // --- Custom Diagonal Glowing Border Brush ---
+        // Keep values for backwards compatibility in WeatherTheme model
+        val cardFrostColor = Color.Transparent
+        val topAlpha = 0f
+        val midAlpha = 0f
+        val bottomAlpha = 0f
         val borderBrush = androidx.compose.ui.graphics.Brush.linearGradient(
-            colors = borderColors,
-            start = androidx.compose.ui.geometry.Offset(0f, 0f),
-            end = androidx.compose.ui.geometry.Offset.Infinite
+            colors = listOf(Color.Transparent, Color.Transparent)
         )
-
-        val borderColor = if (isDay) CardBorderDay else CardBorderNight
+        val borderColor = Color.Transparent
 
         // --- Chart Colors ---
         val chartColors = if (isDay) {
