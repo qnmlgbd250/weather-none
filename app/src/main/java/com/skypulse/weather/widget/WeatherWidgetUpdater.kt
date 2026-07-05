@@ -291,7 +291,8 @@ object WeatherWidgetUpdater {
         val density = context.resources.displayMetrics.density
         val radius = 18f * density
         val rect = RectF(0f, 0f, width.toFloat(), height.toFloat())
-        val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay).map { it.toArgb() }.toIntArray()
+        val isRain = isRainSkycon(skycon)
+        val gradientColors = weatherWidgetGradient(skycon, isDay)
 
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), gradientColors, null, Shader.TileMode.CLAMP)
@@ -318,5 +319,60 @@ object WeatherWidgetUpdater {
             canvas.drawRoundRect(rect, radius, radius, this)
         }
 
+        if (isRain) {
+            drawStaticRainStreaks(canvas, rect, radius, density, isDay)
+        }
+
         return bitmap
+    }
+
+    private fun isRainSkycon(skycon: String?): Boolean {
+        return skycon?.let {
+            it.contains("RAIN") || it.contains("STORM") || it == "THUNDER_SHOWER"
+        } == true
+    }
+
+    private fun weatherWidgetGradient(skycon: String?, isDay: Boolean): IntArray {
+        return WeatherUtils.getWeatherGradient(skycon, isDay).map { it.toArgb() }.toIntArray()
+    }
+
+    private fun drawStaticRainStreaks(canvas: Canvas, rect: RectF, radius: Float, density: Float, isDay: Boolean) {
+        val width = rect.width()
+        val height = rect.height()
+        val mask = Path().apply { addRoundRect(rect, radius, radius, Path.Direction.CW) }
+        val fan = Path().apply {
+            moveTo(width, 0f)
+            arcTo(RectF(width - 142f * density, -22f * density, width + 42f * density, 162f * density), -92f, -110f, false)
+            lineTo(width, height * 0.54f)
+            close()
+        }
+        fan.op(mask, Path.Op.INTERSECT)
+
+        canvas.save()
+        canvas.clipPath(fan)
+        val streaks = arrayOf(
+            floatArrayOf(width - 18f * density, 8f * density, width - 48f * density, 46f * density, 1.35f * density),
+            floatArrayOf(width - 42f * density, 8f * density, width - 76f * density, 54f * density, 1.1f * density),
+            floatArrayOf(width - 64f * density, 18f * density, width - 94f * density, 56f * density, 1.0f * density),
+            floatArrayOf(width - 30f * density, 44f * density, width - 66f * density, 88f * density, 1.15f * density)
+        )
+        streaks.forEachIndexed { index, streak ->
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = streak[4]
+                strokeCap = Paint.Cap.ROUND
+                shader = LinearGradient(
+                    streak[0], streak[1], streak[2], streak[3],
+                    intArrayOf(
+                        Color.TRANSPARENT,
+                        Color.argb(if (isDay) 84 - index * 10 else 72 - index * 8, 224, 242, 255),
+                        Color.TRANSPARENT
+                    ),
+                    floatArrayOf(0f, 0.48f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawLine(streak[0], streak[1], streak[2], streak[3], this)
+            }
+        }
+        canvas.restore()
     }
