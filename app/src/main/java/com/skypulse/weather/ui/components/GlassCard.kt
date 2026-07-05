@@ -1,7 +1,6 @@
 package com.skypulse.weather.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,12 +8,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import com.skypulse.weather.ui.theme.WeatherTheme
 import com.skypulse.weather.ui.theme.LocalWeatherTheme
 import com.skypulse.weather.ui.theme.SunnyGradient
 import com.skypulse.weather.ui.theme.PartialCloudGradient
+import com.skypulse.weather.ui.theme.SkyPulseDesignSystem
+import com.skypulse.weather.ui.theme.WeatherTheme
 
 fun GlassCardBg(theme: WeatherTheme): Color {
     val alpha = if (theme.isDay) {
@@ -33,10 +33,18 @@ fun GlassCard(
     content: @Composable BoxScope.() -> Unit
 ) {
     val theme = LocalWeatherTheme.current
+    val shape = RoundedCornerShape(SkyPulseDesignSystem.Radius.card)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .shadow(
+                elevation = SkyPulseDesignSystem.Elevation.glass,
+                shape = shape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.10f),
+                spotColor = Color.Black.copy(alpha = 0.14f)
+            )
+            .clip(shape)
             .background(theme.cardTintColor),
         content = content
     )

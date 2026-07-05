@@ -98,7 +98,7 @@ fun SettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(IosSettingsBg)
+            .background(SkyPulseDesignSystem.Colors.settingsBackground)
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -114,7 +114,7 @@ fun SettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = IosSettingsBg
+                    containerColor = SkyPulseDesignSystem.Colors.settingsBackground
                 )
             )
 
@@ -263,9 +263,9 @@ private fun IosCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(IosCardRadius.dp))
-            .background(IosCardBg),
+            .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
+            .clip(RoundedCornerShape(SkyPulseDesignSystem.Radius.settingsCard))
+            .background(SkyPulseDesignSystem.Colors.settingsSurface),
         content = content
     )
 }
@@ -275,8 +275,8 @@ private fun IosCard(
 private fun IosDivider() {
     HorizontalDivider(
         modifier = Modifier.padding(horizontal = 16.dp),
-        thickness = 0.5.dp,
-        color = IosDividerColor
+        thickness = SkyPulseDesignSystem.Border.hairline,
+        color = SkyPulseDesignSystem.Colors.settingsDivider
     )
 }
 @Composable
@@ -299,7 +299,7 @@ private fun ToggleItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(SkyPulseDesignSystem.TouchTarget.listRow)
             .clickable { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -334,7 +334,7 @@ private fun SimpleItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(SkyPulseDesignSystem.TouchTarget.listRow)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically

@@ -44,7 +44,10 @@ fun DailyForecastCard(
     var visible by remember { mutableStateOf(false) }
     val cardAlpha by animateFloatAsState(
         targetValue = if (skipAnimation || visible) 1f else 0f,
-        animationSpec = if (skipAnimation) tween(0) else tween(600, delayMillis = 300),
+        animationSpec = if (skipAnimation) tween(0) else tween(
+            SkyPulseDesignSystem.Motion.cardEnterMillis,
+            delayMillis = SkyPulseDesignSystem.Motion.cardEnterDelayMillis
+        ),
         label = "card_fade"
     )
     LaunchedEffect(Unit) { visible = true }

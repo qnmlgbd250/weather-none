@@ -57,7 +57,7 @@ fun CityListScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(IosSettingsBg)
+            .background(SkyPulseDesignSystem.Colors.settingsBackground)
             .statusBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -75,7 +75,7 @@ fun CityListScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = IosSettingsBg
+                        containerColor = SkyPulseDesignSystem.Colors.settingsBackground
                     )
                 )
             }
@@ -90,9 +90,9 @@ fun CityListScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(45.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Color.White),
+                        .height(SkyPulseDesignSystem.TouchTarget.default)
+                        .clip(RoundedCornerShape(SkyPulseDesignSystem.Radius.pill))
+                        .background(SkyPulseDesignSystem.Colors.settingsSurface),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(color = IosTextPrimary, fontSize = 18.sp),
                     singleLine = true,
                     cursorBrush = SolidColor(IosAccentBlue),
@@ -202,8 +202,11 @@ fun CityListScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    contentPadding = PaddingValues(
+                        horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal,
+                        vertical = SkyPulseDesignSystem.Spacing.sectionGap
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(SkyPulseDesignSystem.Spacing.contentGap)
                 ) {
                     items(items = cities, key = { it.id }) { city ->
                         val weatherData = cityWeatherMap[city.id]

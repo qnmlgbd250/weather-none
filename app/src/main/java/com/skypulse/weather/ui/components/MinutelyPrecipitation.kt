@@ -23,6 +23,7 @@ import com.skypulse.weather.model.MinutelyForecast
 import com.skypulse.weather.ui.theme.PrecipBarBottom
 import com.skypulse.weather.ui.theme.PrecipBarShadow
 import com.skypulse.weather.ui.theme.PrecipBarTop
+import com.skypulse.weather.ui.theme.SkyPulseDesignSystem
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.ui.theme.TextTertiary
@@ -51,7 +52,10 @@ fun MinutelyPrecipitationCard(
     var visible by remember { mutableStateOf(false) }
     val cardAlpha by animateFloatAsState(
         targetValue = if (skipAnimation || visible) 1f else 0f,
-        animationSpec = if (skipAnimation) tween(0) else tween(600, delayMillis = 150),
+        animationSpec = if (skipAnimation) tween(0) else tween(
+            SkyPulseDesignSystem.Motion.cardEnterMillis,
+            delayMillis = SkyPulseDesignSystem.Motion.fastMillis
+        ),
         label = "minutely_fade"
     )
     LaunchedEffect(Unit) { visible = true }

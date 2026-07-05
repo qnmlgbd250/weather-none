@@ -32,8 +32,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.AlertContent
@@ -260,15 +258,14 @@ fun CurrentWeather(
     var visible by remember { mutableStateOf(false) }
     val cardAlpha by animateFloatAsState(
         targetValue = if (skipAnimation || visible) 1f else 0f,
-        animationSpec = if (skipAnimation) tween(0) else tween(800),
+        animationSpec = if (skipAnimation) tween(0) else tween(SkyPulseDesignSystem.Motion.heroEnterMillis),
         label = "fade_in"
     )
-    val offsetY by animateFloatAsState(
-        targetValue = if (visible || skipAnimation) 0f else 30f,
-        animationSpec = if (skipAnimation) tween(0) else tween(800, easing = EaseOut),
+    val offsetY by animateDpAsState(
+        targetValue = if (visible || skipAnimation) 0.dp else 30.dp,
+        animationSpec = if (skipAnimation) tween(0) else tween(SkyPulseDesignSystem.Motion.heroEnterMillis, easing = EaseOut),
         label = "slide_in"
     )
-    val paddingDp = offsetY.dp
     LaunchedEffect(Unit) { visible = true }
     LaunchedEffect(skipAnimation) { if (skipAnimation) visible = true }
 
@@ -286,9 +283,9 @@ fun CurrentWeather(
     Column(
         modifier = modifier
             .alpha(cardAlpha)
-            .padding(horizontal = 20.dp)
+            .offset(y = offsetY)
+            .padding(horizontal = SkyPulseDesignSystem.Spacing.homeHorizontal)
     ) {
-        // Temperature centered — tap to refresh
         val tempValue = WeatherUtils.formatTemperature(realtime?.temperature).replace("°", "")
         Box(
             modifier = Modifier.fillMaxWidth(),
@@ -314,16 +311,16 @@ fun CurrentWeather(
                 Text(
                     text = tempValue,
                     style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 100.sp,
+                        fontSize = SkyPulseDesignSystem.TypographyScale.temperature,
                         fontWeight = FontWeight.Thin,
-                        letterSpacing = (-3).sp
+                        letterSpacing = 0.sp
                     ),
                     color = TextPrimary
                 )
                 Text(
                     text = "°",
                     style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = 48.sp,
+                        fontSize = SkyPulseDesignSystem.TypographyScale.temperatureDegree,
                         fontWeight = FontWeight.Thin
                     ),
                     color = TextPrimary,

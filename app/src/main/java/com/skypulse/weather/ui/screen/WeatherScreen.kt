@@ -43,6 +43,7 @@ import com.skypulse.weather.viewmodel.SettingsViewModel
 import com.skypulse.weather.viewmodel.WeatherUiState
 import com.skypulse.weather.viewmodel.WeatherViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 val LocalSkipCardAnimation = compositionLocalOf { false }
 
@@ -90,6 +91,8 @@ fun WeatherScreen(
     var homeBootstrapStarted by rememberSaveable { mutableStateOf(false) }
 
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
+    var skipLifecycleCardAnimation by remember { mutableStateOf(false) }
+    val lifecycleAnimationScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -97,6 +100,11 @@ fun WeatherScreen(
                 Lifecycle.Event.ON_PAUSE -> backgroundTimestamp = System.currentTimeMillis()
                 Lifecycle.Event.ON_RESUME -> {
                     if (backgroundTimestamp > 0L) {
+                        skipLifecycleCardAnimation = true
+                        lifecycleAnimationScope.launch {
+                            delay(SkyPulseDesignSystem.Motion.lifecycleSkipMillis)
+                            skipLifecycleCardAnimation = false
+                        }
                         viewModel.onResume()
                         backgroundTimestamp = 0L
                     }
@@ -240,7 +248,11 @@ fun WeatherScreen(
                                     )
 
                                     CompositionLocalProvider(
-                                        LocalSkipCardAnimation provides (pagerState.isScrollInProgress || justEnteredCityDetail.value)
+                                        LocalSkipCardAnimation provides (
+                                            pagerState.isScrollInProgress ||
+                                                justEnteredCityDetail.value ||
+                                                skipLifecycleCardAnimation
+                                            )
                                     ) {
                                         HorizontalPager(
                                             state = pagerState,
@@ -376,7 +388,7 @@ private fun CityDotBar(
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
                 .height(0.5.dp)
                 .align(Alignment.Center)
                 .alpha(dividerAlpha.value)
@@ -467,7 +479,7 @@ private fun WeatherContentBody(
         Spacer(modifier = Modifier.height(32.dp))
 
         result?.forecastKeypoint?.let { keypoint ->
-            GlassCard(modifier = Modifier.padding(horizontal = 16.dp)) {
+            GlassCard(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
                 Text(
                     text = keypoint,
                     style = MaterialTheme.typography.bodyMedium,
@@ -475,7 +487,7 @@ private fun WeatherContentBody(
                     modifier = Modifier.padding(16.dp)
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
         }
 
         val minutelyData = result?.minutely?.precipitation_2h
@@ -486,9 +498,9 @@ private fun WeatherContentBody(
                 minutely = result?.minutely,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
         }
 
         HourlyForecastCard(
@@ -499,26 +511,26 @@ private fun WeatherContentBody(
             showWindGust = settings.showHourlyWindGust,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
 
         DailyForecastCard(
             daily = result?.daily,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
 
         if (settings.showCardDetail) {
             WeatherDetailCards(
                 realtime = realtime,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
         }
 
         if (settings.showCardSunriseSunset) {
@@ -526,7 +538,7 @@ private fun WeatherContentBody(
                 astro = result?.daily?.astro,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
             )
         }
 
@@ -539,6 +551,6 @@ private fun WeatherContentBody(
                 .padding(top = 22.dp, bottom = 22.dp),
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
     }
 }

@@ -38,6 +38,7 @@ import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.ui.theme.IosTextPrimary
 import com.skypulse.weather.ui.theme.IosTextSecondary
+import com.skypulse.weather.ui.theme.SkyPulseDesignSystem
 import com.skypulse.weather.util.WeatherUtils
 import kotlin.math.roundToInt
 
@@ -69,7 +70,7 @@ fun SwipeableCityListRow(
         Box(
             modifier = Modifier
                 .matchParentSize()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(SkyPulseDesignSystem.Radius.cityCard))
                 .background(Color(0xFFFF3B30)),
             contentAlignment = Alignment.CenterEnd
         ) {
@@ -104,7 +105,7 @@ fun SwipeableCityListRow(
                         }
                     )
                 }
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(SkyPulseDesignSystem.Radius.cityCard))
                 .background(
                     Brush.linearGradient(colors = gradientColors)
                 )
@@ -113,7 +114,10 @@ fun SwipeableCityListRow(
                     indication = null,
                     onClick = onClick
                 )
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(
+                    horizontal = SkyPulseDesignSystem.Spacing.homeHorizontal,
+                    vertical = SkyPulseDesignSystem.Spacing.contentGap
+                )
         ) {
             Column(
                 modifier = Modifier.align(Alignment.TopStart)
