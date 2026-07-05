@@ -29,13 +29,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.skypulse.weather.data.WeatherSettings
+import com.skypulse.weather.domain.CitySelectionPolicy
 import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.AppScreen
 import com.skypulse.weather.viewmodel.CitySearchViewModel
 import com.skypulse.weather.viewmodel.RefreshPhase
+import com.skypulse.weather.viewmodel.SettingsViewModel
 import com.skypulse.weather.viewmodel.WeatherUiState
 import com.skypulse.weather.viewmodel.WeatherViewModel
 import kotlinx.coroutines.delay
@@ -46,30 +50,26 @@ val LocalSkipCardAnimation = compositionLocalOf { false }
 @Composable
 fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
-    searchViewModel: CitySearchViewModel = hiltViewModel()
+    searchViewModel: CitySearchViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val refreshPhase by viewModel.refreshPhase.collectAsState()
-    val isLocating by viewModel.isLocating.collectAsState()
-    val currentScreen by viewModel.currentScreen.collectAsState()
-    val savedCities by viewModel.savedCities.collectAsState()
-    val cityWeatherMap by viewModel.cityWeatherMap.collectAsState()
-    val searchResults by searchViewModel.searchResults.collectAsState()
-    val isSearching by searchViewModel.isSearching.collectAsState()
-    val isSearchActive by searchViewModel.isSearchActive.collectAsState()
-    val updateState by viewModel.updateState.collectAsState()
-    val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsState()
-    val selectedCityId by viewModel.selectedCityId.collectAsState()
-    val onboardingReady by viewModel.onboardingReady.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val refreshPhase by viewModel.refreshPhase.collectAsStateWithLifecycle()
+    val isLocating by viewModel.isLocating.collectAsStateWithLifecycle()
+    val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
+    val savedCities by viewModel.savedCities.collectAsStateWithLifecycle()
+    val cityWeatherMap by viewModel.cityWeatherMap.collectAsStateWithLifecycle()
+    val searchResults by searchViewModel.searchResults.collectAsStateWithLifecycle()
+    val isSearching by searchViewModel.isSearching.collectAsStateWithLifecycle()
+    val isSearchActive by searchViewModel.isSearchActive.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val selectedAlertIndex by viewModel.selectedAlertIndex.collectAsStateWithLifecycle()
+    val selectedCityId by viewModel.selectedCityId.collectAsStateWithLifecycle()
+    val onboardingReady by viewModel.onboardingReady.collectAsStateWithLifecycle()
+    val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val currentCityIndex by remember {
         derivedStateOf {
-            val cities = savedCities
-            val selId = selectedCityId
-            if (selId == null) {
-                cities.indexOfFirst { it.isCurrentLocation }.coerceAtLeast(0)
-            } else {
-                cities.indexOfFirst { it.id == selId }.coerceAtLeast(0)
-            }
+            CitySelectionPolicy.currentIndex(savedCities, selectedCityId)
         }
     }
 
@@ -84,7 +84,7 @@ fun WeatherScreen(
         previousScreen = currentScreen
     }
 
-    val showOnboarding by viewModel.showOnboarding.collectAsState()
+    val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
     var allPermissionsHandled by rememberSaveable { mutableStateOf(false) }
     var locationSkipped by rememberSaveable { mutableStateOf(false) }
     var homeBootstrapStarted by rememberSaveable { mutableStateOf(false) }
@@ -264,6 +264,7 @@ fun WeatherScreen(
                                                 WeatherContentBody(
                                                     state = contentState,
                                                     scrollState = pageScrollState,
+                                                    settings = settings,
                                                     onRefresh = { viewModel.refresh() },
                                                     onAlertClick = { viewModel.navigateToAlertDetail(0) }
                                                 )
@@ -317,7 +318,19 @@ fun WeatherScreen(
                     onBack = { viewModel.navigateBack() },
                     onCheckUpdate = { viewModel.checkForUpdates() },
                     updateState = updateState,
-                    onClearUpdateState = { viewModel.clearUpdateState() }
+                    onClearUpdateState = { viewModel.clearUpdateState() },
+                    settings = settings,
+                    onRainAlertChange = { settingsViewModel.setRainAlert(it) },
+                    onWarningAlertChange = { settingsViewModel.setWarningAlert(it) },
+                    onTempChangeAlertChange = { settingsViewModel.setTempChangeAlert(it) },
+                    onWindAlertChange = { settingsViewModel.setWindAlert(it) },
+                    onTyphoonAlertChange = { settingsViewModel.setTyphoonAlert(it) },
+                    onShowHourlyAqiChange = { settingsViewModel.setShowHourlyAqi(it) },
+                    onShowHourlyUvChange = { settingsViewModel.setShowHourlyUv(it) },
+                    onShowHourlyWindChange = { settingsViewModel.setShowHourlyWind(it) },
+                    onShowHourlyWindGustChange = { settingsViewModel.setShowHourlyWindGust(it) },
+                    onShowCardDetailChange = { settingsViewModel.setShowCardDetail(it) },
+                    onShowCardSunriseSunsetChange = { settingsViewModel.setShowCardSunriseSunset(it) }
                 )
             }
 
@@ -409,6 +422,7 @@ private fun CityDotBar(
 private fun WeatherContentBody(
     state: WeatherUiState.Success,
     scrollState: ScrollState,
+    settings: WeatherSettings,
     onRefresh: () -> Unit = {},
     onAlertClick: (Int) -> Unit = {}
 ) {
@@ -425,11 +439,6 @@ private fun WeatherContentBody(
     }.orEmpty()
 
     val haptic = LocalHapticFeedback.current
-
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val prefs = context.getSharedPreferences("notification_prefs", android.content.Context.MODE_PRIVATE)
-    val showDetailCard = prefs.getBoolean("show_card_detail", true)
-    val showSunriseSunset = prefs.getBoolean("show_card_sunrise_sunset", true)
 
     Column(
         modifier = Modifier
@@ -484,6 +493,10 @@ private fun WeatherContentBody(
 
         HourlyForecastCard(
             hourly = result?.hourly,
+            showAqi = settings.showHourlyAqi,
+            showUv = settings.showHourlyUv,
+            showWind = settings.showHourlyWind,
+            showWindGust = settings.showHourlyWindGust,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
@@ -500,7 +513,7 @@ private fun WeatherContentBody(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (showDetailCard) {
+        if (settings.showCardDetail) {
             WeatherDetailCards(
                 realtime = realtime,
                 modifier = Modifier.fillMaxWidth()
@@ -508,7 +521,7 @@ private fun WeatherContentBody(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        if (showSunriseSunset) {
+        if (settings.showCardSunriseSunset) {
             SunriseSunsetCard(
                 astro = result?.daily?.astro,
                 modifier = Modifier

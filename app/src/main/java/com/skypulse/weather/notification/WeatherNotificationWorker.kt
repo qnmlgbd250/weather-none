@@ -15,6 +15,7 @@ import androidx.work.WorkerParameters
 import com.skypulse.weather.R
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
+import com.skypulse.weather.sync.RefreshPolicy
 import com.skypulse.weather.sync.RefreshManager
 import com.skypulse.weather.sync.SyncReason
 import com.skypulse.weather.util.WeatherUtils
@@ -46,7 +47,6 @@ class WeatherNotificationWorker @AssistedInject constructor(
         private const val TAG = "WeatherNotifWorker"
         private const val KEY_TEMP_BASELINE_DATE = "temp_baseline_date"
         private const val KEY_TEMP_BASELINE_MAX = "temp_baseline_max"
-        private const val CACHE_TTL_MS = 25 * 60 * 1000L
     }
 
     override suspend fun doWork(): Result {
@@ -73,7 +73,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
                 ?: return Result.success()
 
             // 检查数据是否过期（Repository 决定缓存策略）
-            val isCacheStale = repository.isCacheStale(city.id, CACHE_TTL_MS)
+            val isCacheStale = repository.isCacheStale(city.id, RefreshPolicy.NOTIFICATION_CACHE_TTL_MS)
 
             if (isCacheStale) {
                 // 数据过期，通过 RefreshManager 请求同步

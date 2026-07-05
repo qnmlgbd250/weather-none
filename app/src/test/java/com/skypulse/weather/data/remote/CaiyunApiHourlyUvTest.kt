@@ -5,6 +5,7 @@ import com.squareup.moshi.Moshi
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -16,7 +17,7 @@ import java.util.concurrent.TimeUnit
  * API 响应路径：result.hourly.life_index.ultraviolet[]
  * 每个元素包含：datetime, index(String), desc(String)
  *
- * 运行方式：./gradlew.bat test --tests "com.skypulse.weather.data.remote.CaiyunApiHourlyUvTest"
+ * 运行方式：./gradlew.bat test --tests "com.skypulse.weather.data.remote.CaiyunApiHourlyUvTest" -DrunRealApiTests=true
  */
 class CaiyunApiHourlyUvTest {
 
@@ -38,6 +39,8 @@ class CaiyunApiHourlyUvTest {
 
     @Test
     fun `hourly response contains life_index with ultraviolet data`() = runTest {
+        assumeRealApiTestsEnabled()
+
         // 北京坐标
         val response = api.getWeather(
             token = token,
@@ -104,6 +107,8 @@ class CaiyunApiHourlyUvTest {
 
     @Test
     fun `hourly UV index values match expected descriptions`() = runTest {
+        assumeRealApiTestsEnabled()
+
         val response = api.getWeather(
             token = token,
             longitude = 116.4074,
@@ -141,5 +146,12 @@ class CaiyunApiHourlyUvTest {
                 println("UV=$v: API desc='${item.desc}', 期望='$expected', 匹配=${item.desc == expected}")
             }
         }
+    }
+
+    private fun assumeRealApiTestsEnabled() {
+        assumeTrue(
+            "real API tests are opt-in; run with -DrunRealApiTests=true",
+            System.getProperty("runRealApiTests") == "true"
+        )
     }
 }

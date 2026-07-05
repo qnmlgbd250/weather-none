@@ -59,20 +59,21 @@ class WeatherUtilsTest {
 
     @Test
     fun `formatWindSpeed classifies calm wind`() {
-        assertEquals("0级", WeatherUtils.formatWindSpeed(0.5))
-        assertEquals("0级", WeatherUtils.formatWindSpeed(0.0))
+        assertEquals("0", WeatherUtils.formatWindSpeed(0.5))
+        assertEquals("0", WeatherUtils.formatWindSpeed(0.0))
     }
 
     @Test
     fun `formatWindSpeed classifies level 1`() {
-        assertEquals("1级", WeatherUtils.formatWindSpeed(3.0))
-        assertEquals("1级", WeatherUtils.formatWindSpeed(5.9))
+        assertEquals("1", WeatherUtils.formatWindSpeed(3.0))
+        assertEquals("1", WeatherUtils.formatWindSpeed(5.0))
+        assertEquals("2", WeatherUtils.formatWindSpeed(5.9))
     }
 
     @Test
     fun `formatWindSpeed classifies strong wind`() {
-        assertEquals("6级", WeatherUtils.formatWindSpeed(45.0))
-        assertEquals("12级", WeatherUtils.formatWindSpeed(120.0))
+        assertEquals("6", WeatherUtils.formatWindSpeed(45.0))
+        assertEquals("12", WeatherUtils.formatWindSpeed(120.0))
     }
 
     // ============ formatWindDirection ============
@@ -120,9 +121,9 @@ class WeatherUtilsTest {
     }
 
     @Test
-    fun `formatPressure formats with hPa unit`() {
-        assertEquals("1013 hPa", WeatherUtils.formatPressure(1013.0))
-        assertEquals("1013 hPa", WeatherUtils.formatPressure(1013.5))
+    fun `formatPressure converts Pa to hPa with Chinese unit`() {
+        assertEquals("1013 百帕", WeatherUtils.formatPressure(101300.0))
+        assertEquals("1013 百帕", WeatherUtils.formatPressure(101350.0))
     }
 
     // ============ formatVisibility ============

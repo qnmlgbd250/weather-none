@@ -38,7 +38,6 @@ class WeatherSyncManager @Inject constructor(
         private const val CURRENT_LOCATION_ID = "current_location"
         private const val LOCATING_NAME = "定位中..."
         private const val UNKNOWN_LOCATION = "未知位置"
-        private const val RATE_LIMIT_MS = 120_000L // 120s per city
         private const val MAX_RETRIES = 2
     }
 
@@ -90,7 +89,7 @@ class WeatherSyncManager @Inject constructor(
             val lastFetch = lastFetchRecordsByCityId[cityId]
             if (
                 lastFetch != null &&
-                System.currentTimeMillis() - lastFetch.timeMillis < 5000L &&
+                RefreshPolicy.isSameCoordinateDedupeWindow(System.currentTimeMillis(), lastFetch.timeMillis) &&
                 isSameCoordinate(lastFetch, longitude, latitude)
             ) {
                 Log.i(TAG, "doRefreshWeather: $cityId 排队后检查：5秒内同坐标已获取，跳过重复请求")
@@ -283,13 +282,13 @@ class WeatherSyncManager @Inject constructor(
     fun isRecentlyFetched(cityId: String?): Boolean {
         if (cityId == null) return false
         val lastFetch = lastFetchRecordsByCityId[cityId] ?: return false
-        return System.currentTimeMillis() - lastFetch.timeMillis < RATE_LIMIT_MS
+        return RefreshPolicy.isCityRateLimited(System.currentTimeMillis(), lastFetch.timeMillis)
     }
 
     suspend fun isFreshEnough(cityId: String?): Boolean = withContext(Dispatchers.IO) {
         if (cityId == null) return@withContext false
         if (isRecentlyFetched(cityId)) return@withContext true
-        !repository.isCacheStale(cityId, RATE_LIMIT_MS)
+        !repository.isCacheStale(cityId, RefreshPolicy.CITY_RATE_LIMIT_MS)
     }
 
 

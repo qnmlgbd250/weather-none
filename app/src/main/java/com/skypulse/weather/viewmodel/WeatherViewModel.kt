@@ -7,13 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.data.PermissionDataStore
 import com.skypulse.weather.domain.CheckUpdateUseCase
+import com.skypulse.weather.domain.CitySelectionPolicy
 import com.skypulse.weather.domain.ManageCityUseCase
 import com.skypulse.weather.domain.RefreshWeatherUseCase
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.sync.SyncResult
-import com.squareup.moshi.Moshi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
@@ -52,10 +52,6 @@ enum class RefreshPhase {
     Idle, Refreshing, Success
 }
 
-enum class AppScreen {
-    CityList, CityDetail, Settings, AlertDetail
-}
-
 data class CityWeatherData(
     val weather: WeatherResponse? = null,
     val error: String? = null
@@ -79,7 +75,6 @@ class WeatherViewModel @Inject constructor(
     private val locationManager: LocationManager,
     private val permissionDataStore: PermissionDataStore,
     private val checkUpdateUseCase: CheckUpdateUseCase,
-    private val moshi: Moshi,
 ) : ViewModel() {
 
     companion object {
@@ -87,8 +82,8 @@ class WeatherViewModel @Inject constructor(
     }
 
     // --- Screen navigation ---
-    private val _currentScreen = MutableStateFlow(AppScreen.CityDetail)
-    val currentScreen: StateFlow<AppScreen> = _currentScreen.asStateFlow()
+    private val navigation = WeatherNavigationState()
+    val currentScreen: StateFlow<AppScreen> = navigation.currentScreen
 
     // --- Permission onboarding ---
     private val _showOnboarding = MutableStateFlow(false)
@@ -105,11 +100,7 @@ class WeatherViewModel @Inject constructor(
     val cityWeatherMap: StateFlow<Map<String, CityWeatherData>> = repository.observeAllWeather()
         .map { entities ->
             entities.associate { entity ->
-                val weather = try {
-                    moshi.adapter(WeatherResponse::class.java).fromJson(entity.responseJson)
-                } catch (_: Exception) {
-                    null
-                }
+                val weather = repository.parseWeatherEntity(entity)
                 entity.cityId to CityWeatherData(weather = weather)
             }
         }
@@ -120,15 +111,12 @@ class WeatherViewModel @Inject constructor(
         )
 
     // --- Selected city for detail view ---
-    private val _selectedCityId = MutableStateFlow<String?>(null)
-    val selectedCityId: StateFlow<String?> = _selectedCityId.asStateFlow()
+    val selectedCityId: StateFlow<String?> = navigation.selectedCityId
 
     // --- Alert detail selection ---
-    private val _selectedAlertIndex = MutableStateFlow(0)
-    val selectedAlertIndex: StateFlow<Int> = _selectedAlertIndex.asStateFlow()
+    val selectedAlertIndex: StateFlow<Int> = navigation.selectedAlertIndex
 
-    private val _swipeDirection = MutableStateFlow(1)
-    val swipeDirection: StateFlow<Int> = _swipeDirection.asStateFlow()
+    val swipeDirection: StateFlow<Int> = navigation.swipeDirection
 
     // --- Transient Error for detailed view offline handling ---
     private val transientError = MutableStateFlow<String?>(null)
@@ -136,11 +124,11 @@ class WeatherViewModel @Inject constructor(
     // --- GPS-based state (detail view, reactively driven from Room & selected city) ---
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<WeatherUiState> = combine(
-        _selectedCityId,
+        selectedCityId,
         _savedCities,
         transientError
     ) { selectedId, cities, errorMsg ->
-        val cityId = selectedId ?: cities.find { it.isCurrentLocation }?.id ?: cities.firstOrNull()?.id
+        val cityId = selectedId ?: CitySelectionPolicy.defaultCity(cities)?.id
         cityId to errorMsg
     }.flatMapLatest { (cityId, errorMsg) ->
         if (cityId == null) {
@@ -148,11 +136,7 @@ class WeatherViewModel @Inject constructor(
         } else {
             repository.observeWeather(cityId).map { entity ->
                 if (entity != null) {
-                    val weather = try {
-                        moshi.adapter(WeatherResponse::class.java).fromJson(entity.responseJson)
-                    } catch (_: Exception) {
-                        null
-                    }
+                    val weather = repository.parseWeatherEntity(entity)
                     if (weather != null) {
                         val city = _savedCities.value.find { it.id == cityId }
                         val locationName = if (city?.isCurrentLocation == true) {
@@ -228,7 +212,7 @@ class WeatherViewModel @Inject constructor(
             // Initialize detail screen selected city
             val initialCity = cities.find { it.isCurrentLocation } ?: cities.firstOrNull()
             if (initialCity != null) {
-                _selectedCityId.value = initialCity.id
+                navigation.selectCity(initialCity.id)
                 // 不在 init 中触发天气请求，由 LaunchedEffect/onResume 统一负责
             }
         }
@@ -251,7 +235,7 @@ class WeatherViewModel @Inject constructor(
     // ============ Navigation ============
 
     fun navigateToCityList() {
-        _currentScreen.value = AppScreen.CityList
+        navigation.showCityList()
         val existingData = cityWeatherMap.value
         val citiesToLoad = _savedCities.value.filter { city ->
             val data = existingData[city.id]
@@ -271,9 +255,8 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun navigateToCityDetail(cityId: String) {
-        _selectedCityId.value = cityId
+        navigation.showCityDetail(cityId)
         transientError.value = null
-        _currentScreen.value = AppScreen.CityDetail
         val city = _savedCities.value.find { it.id == cityId }
         if (city != null) {
             refreshCityAfterSwitch(city)
@@ -281,37 +264,21 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun switchToNextCity() {
-        _swipeDirection.value = 1
+        navigation.markNextSwipe()
         val cities = _savedCities.value
-        if (cities.size <= 1) return
-        val currentId = _selectedCityId.value
-        val currentIndex = if (currentId == null) {
-            cities.indexOfFirst { it.isCurrentLocation }
-        } else {
-            cities.indexOfFirst { it.id == currentId }
-        }
-        val nextIndex = if (currentIndex < 0) 0 else (currentIndex + 1) % cities.size
-        switchToCity(cities[nextIndex])
+        val nextCity = CitySelectionPolicy.nextCity(cities, selectedCityId.value) ?: return
+        switchToCity(nextCity)
     }
 
     fun switchToPreviousCity() {
-        _swipeDirection.value = -1
+        navigation.markPreviousSwipe()
         val cities = _savedCities.value
-        if (cities.size <= 1) return
-        val currentId = _selectedCityId.value
-        val currentIndex = if (currentId == null) {
-            cities.indexOfFirst { it.isCurrentLocation }
-        } else {
-            cities.indexOfFirst { it.id == currentId }
-        }
-        val prevIndex = if (currentIndex < 0) 0 else {
-            (currentIndex - 1 + cities.size) % cities.size
-        }
-        switchToCity(cities[prevIndex])
+        val previousCity = CitySelectionPolicy.previousCity(cities, selectedCityId.value) ?: return
+        switchToCity(previousCity)
     }
 
     private fun switchToCity(city: City) {
-        _selectedCityId.value = city.id
+        navigation.selectCity(city.id)
         transientError.value = null
         refreshCityAfterSwitch(city)
     }
@@ -324,24 +291,23 @@ class WeatherViewModel @Inject constructor(
     }
 
     fun navigateToSettings() {
-        _currentScreen.value = AppScreen.Settings
+        navigation.showSettings()
     }
 
     fun navigateToAlertDetail(alertIndex: Int = 0) {
-        _selectedAlertIndex.value = alertIndex
-        _currentScreen.value = AppScreen.AlertDetail
+        navigation.showAlertDetail(alertIndex)
     }
 
     fun navigateBack() {
-        when (_currentScreen.value) {
+        when (currentScreen.value) {
             AppScreen.Settings, AppScreen.AlertDetail -> {
-                _currentScreen.value = AppScreen.CityDetail
+                navigation.showCityDetail()
             }
             AppScreen.CityList -> {
-                _currentScreen.value = AppScreen.CityDetail
-                val cityId = _selectedCityId.value ?: _savedCities.value.firstOrNull()?.id
+                navigation.showCityDetail()
+                val cityId = selectedCityId.value ?: _savedCities.value.firstOrNull()?.id
                 if (cityId != null) {
-                    _selectedCityId.value = cityId
+                    navigation.selectCity(cityId)
                     val city = _savedCities.value.find { it.id == cityId }
                     if (city != null) {
                         fetchWeatherForCity(city)
@@ -353,9 +319,9 @@ class WeatherViewModel @Inject constructor(
                         _savedCities.value = freshCities
                         val updatedCities = manageCityUseCase.ensureCurrentLocationCity()
                         _savedCities.value = updatedCities
-                        val defaultCity = updatedCities.firstOrNull { it.isCurrentLocation } ?: updatedCities.firstOrNull()
+                        val defaultCity = CitySelectionPolicy.defaultCity(updatedCities)
                         if (defaultCity != null) {
-                            _selectedCityId.value = defaultCity.id
+                            navigation.selectCity(defaultCity.id)
                             val cachedLocation = locationManager.getCachedLocation()
                             val result = if (cachedLocation != null) {
                                 refreshWeatherUseCase.refreshCity(
@@ -382,8 +348,8 @@ class WeatherViewModel @Inject constructor(
             val (city, updatedCities) = manageCityUseCase.addCity(name, longitude, latitude)
             _savedCities.value = updatedCities
             loadWeatherForCity(city)
-            if (_selectedCityId.value == null) {
-                _selectedCityId.value = city.id
+            if (selectedCityId.value == null) {
+                navigation.selectCity(city.id)
             }
         }
     }
@@ -393,9 +359,9 @@ class WeatherViewModel @Inject constructor(
             val updatedCities = manageCityUseCase.removeCity(cityId)
             _savedCities.value = updatedCities
             repository.deleteWeatherCache(cityId)
-            if (_selectedCityId.value == cityId) {
+            if (selectedCityId.value == cityId) {
                 val nextCity = updatedCities.firstOrNull()
-                _selectedCityId.value = nextCity?.id
+                navigation.selectCity(nextCity?.id)
                 transientError.value = null
                 if (nextCity != null) {
                     fetchWeatherForCity(nextCity)
@@ -415,8 +381,8 @@ class WeatherViewModel @Inject constructor(
         _savedCities.value = updatedCities
         val currentCity = updatedCities.find { it.isCurrentLocation }
         if (currentCity != null) {
-            if (_selectedCityId.value == null) {
-                _selectedCityId.value = currentCity.id
+            if (selectedCityId.value == null) {
+                navigation.selectCity(currentCity.id)
             }
             if (currentCity.isUnresolvedLocationPlaceholder()) {
                 repository.deleteWeatherCache(currentCity.id)
@@ -587,7 +553,7 @@ class WeatherViewModel @Inject constructor(
             _savedCities.value = cities
             val gpsCity = cities.find { it.isCurrentLocation }
             if (gpsCity != null) {
-                _selectedCityId.value = gpsCity.id
+                navigation.selectCity(gpsCity.id)
             }
             val refreshCity = selectedCityForRefresh()
             if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
@@ -675,12 +641,7 @@ class WeatherViewModel @Inject constructor(
 
 
     private fun selectedCityForRefresh(): City? {
-        val selectedId = _selectedCityId.value
-        return if (selectedId == null) {
-            _savedCities.value.find { it.isCurrentLocation }
-        } else {
-            _savedCities.value.find { it.id == selectedId }
-        }
+        return CitySelectionPolicy.selectedCity(_savedCities.value, selectedCityId.value)
     }
 
     private fun City.isUnresolvedLocationPlaceholder(): Boolean {

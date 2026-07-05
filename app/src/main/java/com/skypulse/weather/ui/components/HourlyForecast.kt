@@ -143,18 +143,15 @@ private val ParamTagShape = RoundedCornerShape(4.dp)
 @Composable
 fun HourlyForecastCard(
     hourly: HourlyForecast?,
+    showAqi: Boolean = true,
+    showUv: Boolean = true,
+    showWind: Boolean = true,
+    showWindGust: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (hourly?.temperature.isNullOrEmpty()) return
     val data = hourly ?: return
     data.temperature ?: return
-
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val prefs = context.getSharedPreferences("notification_prefs", android.content.Context.MODE_PRIVATE)
-    val showAqi = prefs.getBoolean("show_hourly_aqi", true)
-    val showUv = prefs.getBoolean("show_hourly_uv", true)
-    val showWind = prefs.getBoolean("show_hourly_wind", true)
-    val showWindGust = prefs.getBoolean("show_hourly_wind_gust", false)
 
     val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }

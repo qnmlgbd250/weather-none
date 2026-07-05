@@ -28,12 +28,6 @@ class RefreshManager @Inject constructor(
 
     companion object {
         private const val TAG = "RefreshManager"
-
-        /** 全局最小同步间隔：120 秒内不重复同步 */
-        private const val GLOBAL_SYNC_INTERVAL_MS = 120_000L
-
-        /** 天气缓存 TTL：5 分钟过期则需要刷新 */
-        private const val WEATHER_TTL_MS = 5 * 60 * 1000L
     }
 
     /** 同步执行锁：确保同一时间只有一个同步任务 */
@@ -70,9 +64,10 @@ class RefreshManager @Inject constructor(
         return syncMutex.withLock {
             // 2. 全局限流：距离上次同步不足 120 秒
             if (!force) {
-                val elapsed = System.currentTimeMillis() - lastSyncTime
-                FileLogger.i(TAG, "requestSync($reason): [检查2] 距上次同步=${elapsed}ms, 限流阈值=${GLOBAL_SYNC_INTERVAL_MS}ms")
-                if (elapsed < GLOBAL_SYNC_INTERVAL_MS) {
+                val now = System.currentTimeMillis()
+                val elapsed = now - lastSyncTime
+                FileLogger.i(TAG, "requestSync($reason): [检查2] 距上次同步=${elapsed}ms, 限流阈值=${RefreshPolicy.GLOBAL_SYNC_INTERVAL_MS}ms")
+                if (RefreshPolicy.isGlobalRateLimited(now, lastSyncTime, force)) {
                     FileLogger.i(TAG, "requestSync($reason): [检查2] 距上次同步仅 ${elapsed}ms，跳过")
                     Log.d(TAG, "requestSync($reason): 距上次同步仅 ${elapsed}ms，跳过")
                     return@withLock SyncResult.RateLimited
@@ -84,12 +79,12 @@ class RefreshManager @Inject constructor(
                 val city = cityRepository.getCurrentLocationCity()
                     ?: cityRepository.getCities().firstOrNull()
                 if (city != null) {
-                    val isStale = weatherRepository.isCacheStale(city.id, WEATHER_TTL_MS)
+                    val isStale = weatherRepository.isCacheStale(city.id, RefreshPolicy.WEATHER_TTL_MS)
                     val lastUpdated = weatherRepository.getLastFetchTime(city.id)
                     val cacheAge = System.currentTimeMillis() - lastUpdated
                     FileLogger.i(TAG, "requestSync($reason): [检查3] 城市=${city.name}, cityId=${city.id}, " +
-                        "缓存年龄=${cacheAge}ms, TTL=${WEATHER_TTL_MS}ms, isStale=$isStale")
-                    if (!isStale) {
+                        "缓存年龄=${cacheAge}ms, TTL=${RefreshPolicy.WEATHER_TTL_MS}ms, isStale=$isStale")
+                    if (RefreshPolicy.shouldSkipFreshCache(isStale, force)) {
                         FileLogger.i(TAG, "requestSync($reason): [检查3] 缓存未过期，跳过同步")
                         Log.d(TAG, "requestSync($reason): 缓存未过期，跳过")
                         return@withLock SyncResult.RateLimited

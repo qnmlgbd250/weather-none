@@ -36,6 +36,7 @@ class WeatherRepository @Inject constructor(
     private val weatherDao: WeatherDao,
     private val moshi: Moshi
 ) {
+    private val weatherAdapter = moshi.adapter(WeatherResponse::class.java)
 
     // ============ Network (via RemoteDataSource) ============
 
@@ -76,8 +77,12 @@ class WeatherRepository @Inject constructor(
      */
     suspend fun getWeatherFromCache(cityId: String): WeatherResponse? = withContext(Dispatchers.Default) {
         val entity = weatherDao.getWeather(cityId) ?: return@withContext null
-        try {
-            moshi.adapter(WeatherResponse::class.java).fromJson(entity.responseJson)
+        parseWeatherEntity(entity)
+    }
+
+    fun parseWeatherEntity(entity: WeatherEntity): WeatherResponse? {
+        return try {
+            weatherAdapter.fromJson(entity.responseJson)
         } catch (_: Exception) {
             null
         }
@@ -109,7 +114,7 @@ class WeatherRepository @Inject constructor(
      * 将天气数据写入 Room 缓存。
      */
     suspend fun saveWeatherToCache(cityId: String, weather: WeatherResponse) = withContext(Dispatchers.Default) {
-        val json = moshi.adapter(WeatherResponse::class.java).toJson(weather)
+        val json = weatherAdapter.toJson(weather)
         weatherDao.upsert(
             WeatherEntity(
                 cityId = cityId,

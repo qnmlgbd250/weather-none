@@ -1,6 +1,7 @@
 package com.skypulse.weather.repository
 
-import com.skypulse.weather.data.remote.WeatherApiService
+import com.skypulse.weather.data.local.database.WeatherDao
+import com.skypulse.weather.data.remote.WeatherRemoteDataSource
 import com.skypulse.weather.model.HourlyForecast
 import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.model.WeatherResponse
@@ -8,6 +9,7 @@ import com.skypulse.weather.model.WeatherResult
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import com.squareup.moshi.Moshi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,28 +18,23 @@ import org.junit.Test
 
 class WeatherRepositoryTest {
 
-    private lateinit var api: WeatherApiService
+    private lateinit var remoteDataSource: WeatherRemoteDataSource
+    private lateinit var weatherDao: WeatherDao
     private lateinit var repository: WeatherRepository
 
     @Before
     fun setup() {
-        api = mockk()
-        repository = WeatherRepository(api)
+        remoteDataSource = mockk()
+        weatherDao = mockk()
+        repository = WeatherRepository(remoteDataSource, weatherDao, Moshi.Builder().build())
     }
 
     @Test
     fun `getWeather returns success when API returns ok status`() = runTest {
         val mockResponse = WeatherResponse(status = "ok")
         coEvery {
-            api.getWeather(
-                longitude = 116.4074,
-                latitude = 39.9042,
-                span = 16,
-                alert = true,
-                dailyStart = null,
-                hourlySteps = 24
-            )
-        } returns mockResponse
+            remoteDataSource.getWeather(116.4074, 39.9042, false)
+        } returns Result.success(mockResponse)
 
         val result = repository.getWeather(116.4074, 39.9042)
 
@@ -49,15 +46,8 @@ class WeatherRepositoryTest {
     fun `getWeather returns failure when API returns non-ok status`() = runTest {
         val mockResponse = WeatherResponse(status = "error")
         coEvery {
-            api.getWeather(
-                longitude = any(),
-                latitude = any(),
-                span = any(),
-                alert = any(),
-                dailyStart = any(),
-                hourlySteps = any()
-            )
-        } returns mockResponse
+            remoteDataSource.getWeather(116.4074, 39.9042, false)
+        } returns Result.failure(Exception("API error: ${mockResponse.status}"))
 
         val result = repository.getWeather(116.4074, 39.9042)
 
@@ -68,15 +58,8 @@ class WeatherRepositoryTest {
     @Test
     fun `getWeather returns failure when API throws exception`() = runTest {
         coEvery {
-            api.getWeather(
-                longitude = any(),
-                latitude = any(),
-                span = any(),
-                alert = any(),
-                dailyStart = any(),
-                hourlySteps = any()
-            )
-        } throws RuntimeException("Network error")
+            remoteDataSource.getWeather(116.4074, 39.9042, false)
+        } returns Result.failure(RuntimeException("Network error"))
 
         val result = repository.getWeather(116.4074, 39.9042)
 
@@ -100,15 +83,8 @@ class WeatherRepositoryTest {
             )
         )
         coEvery {
-            api.getWeather(
-                longitude = 116.4074,
-                latitude = 39.9042,
-                span = 16,
-                alert = true,
-                dailyStart = -1,
-                hourlySteps = 72
-            )
-        } returns mockResponse
+            remoteDataSource.getWeather(116.4074, 39.9042, true)
+        } returns Result.success(mockResponse)
 
         val result = repository.getWeather(116.4074, 39.9042, includeYesterday = true)
 
@@ -117,14 +93,7 @@ class WeatherRepositoryTest {
         assertEquals(2, temperatures.size)
         assertEquals("2026-06-13T13:00+08:00", temperatures.first().datetime)
         coVerify(exactly = 1) {
-            api.getWeather(
-                longitude = 116.4074,
-                latitude = 39.9042,
-                span = 16,
-                alert = true,
-                dailyStart = -1,
-                hourlySteps = 72
-            )
+            remoteDataSource.getWeather(116.4074, 39.9042, true)
         }
     }
 }

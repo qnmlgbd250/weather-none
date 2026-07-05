@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
-import com.skypulse.weather.notification.WeatherNotificationScheduler
+import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.ui.components.DonateDialog
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.ui.theme.SetLightStatusBarEffect
@@ -44,27 +44,22 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onCheckUpdate: () -> Unit,
     updateState: UpdateCheckResult?,
-    onClearUpdateState: () -> Unit
+    onClearUpdateState: () -> Unit,
+    settings: WeatherSettings,
+    onRainAlertChange: (Boolean) -> Unit,
+    onWarningAlertChange: (Boolean) -> Unit,
+    onTempChangeAlertChange: (Boolean) -> Unit,
+    onWindAlertChange: (Boolean) -> Unit,
+    onTyphoonAlertChange: (Boolean) -> Unit,
+    onShowHourlyAqiChange: (Boolean) -> Unit,
+    onShowHourlyUvChange: (Boolean) -> Unit,
+    onShowHourlyWindChange: (Boolean) -> Unit,
+    onShowHourlyWindGustChange: (Boolean) -> Unit,
+    onShowCardDetailChange: (Boolean) -> Unit,
+    onShowCardSunriseSunsetChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     var showDonateDialog by remember { mutableStateOf(false) }
-    val prefs = context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, android.content.Context.MODE_PRIVATE)
-    var rainAlert by remember { mutableStateOf(prefs.getBoolean("rain_alert", true)) }
-    var warningAlert by remember { mutableStateOf(prefs.getBoolean("warning_alert", true)) }
-    var tempChangeAlert by remember { mutableStateOf(prefs.getBoolean("temp_change_alert", false)) }
-    var windAlert by remember { mutableStateOf(prefs.getBoolean("wind_alert", false)) }
-    var typhoonAlert by remember { mutableStateOf(prefs.getBoolean("typhoon_alert", true)) }
-    var showHourlyAqi by remember { mutableStateOf(prefs.getBoolean("show_hourly_aqi", true)) }
-    var showHourlyUv by remember { mutableStateOf(prefs.getBoolean("show_hourly_uv", true)) }
-    var showHourlyWind by remember { mutableStateOf(prefs.getBoolean("show_hourly_wind", true)) }
-    var showHourlyWindGust by remember { mutableStateOf(prefs.getBoolean("show_hourly_wind_gust", false)) }
-    // Card display toggles
-    var showCardDetail by remember { mutableStateOf(prefs.getBoolean("show_card_detail", true)) }
-    var showCardSunriseSunset by remember { mutableStateOf(prefs.getBoolean("show_card_sunrise_sunset", true)) }
-    fun updateAlertPreference(key: String, enabled: Boolean) {
-        prefs.edit().putBoolean(key, enabled).apply()
-        WeatherNotificationScheduler.scheduleIfNeeded(context.applicationContext)
-    }
 
     val isChecking = updateState is UpdateCheckResult.Checking
     val infiniteTransition = rememberInfiniteTransition(label = "refresh")
@@ -133,25 +128,15 @@ fun SettingsScreen(
                 // Notification settings
                 SectionHeader("通知设置")
                 IosCard {
-                    ToggleItem("短临降水提醒", rainAlert) {
-                        rainAlert = it; updateAlertPreference("rain_alert", it)
-                    }
+                    ToggleItem("短临降水提醒", settings.rainAlert, onRainAlertChange)
                     IosDivider()
-                    ToggleItem("气象预警", warningAlert) {
-                        warningAlert = it; updateAlertPreference("warning_alert", it)
-                    }
+                    ToggleItem("气象预警", settings.warningAlert, onWarningAlertChange)
                     IosDivider()
-                    ToggleItem("变温提醒", tempChangeAlert) {
-                        tempChangeAlert = it; updateAlertPreference("temp_change_alert", it)
-                    }
+                    ToggleItem("变温提醒", settings.tempChangeAlert, onTempChangeAlertChange)
                     IosDivider()
-                    ToggleItem("大风提醒", windAlert) {
-                        windAlert = it; updateAlertPreference("wind_alert", it)
-                    }
+                    ToggleItem("大风提醒", settings.windAlert, onWindAlertChange)
                     IosDivider()
-                    ToggleItem("极端天气", typhoonAlert) {
-                        typhoonAlert = it; updateAlertPreference("typhoon_alert", it)
-                    }
+                    ToggleItem("极端天气", settings.typhoonAlert, onTyphoonAlertChange)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -159,21 +144,13 @@ fun SettingsScreen(
                 // Hourly display settings
                 SectionHeader("逐小时显示")
                 IosCard {
-                    ToggleItem("空气质量", showHourlyAqi) {
-                        showHourlyAqi = it; prefs.edit().putBoolean("show_hourly_aqi", it).apply()
-                    }
+                    ToggleItem("空气质量", settings.showHourlyAqi, onShowHourlyAqiChange)
                     IosDivider()
-                    ToggleItem("紫外线", showHourlyUv) {
-                        showHourlyUv = it; prefs.edit().putBoolean("show_hourly_uv", it).apply()
-                    }
+                    ToggleItem("紫外线", settings.showHourlyUv, onShowHourlyUvChange)
                     IosDivider()
-                    ToggleItem("风力", showHourlyWind) {
-                        showHourlyWind = it; prefs.edit().putBoolean("show_hourly_wind", it).apply()
-                    }
+                    ToggleItem("风力", settings.showHourlyWind, onShowHourlyWindChange)
                     IosDivider()
-                    ToggleItem("阵风", showHourlyWindGust) {
-                        showHourlyWindGust = it; prefs.edit().putBoolean("show_hourly_wind_gust", it).apply()
-                    }
+                    ToggleItem("阵风", settings.showHourlyWindGust, onShowHourlyWindGustChange)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -181,13 +158,9 @@ fun SettingsScreen(
                 // Card display settings
                 SectionHeader("卡片显示")
                 IosCard {
-                    ToggleItem("气象详情", showCardDetail) {
-                        showCardDetail = it; prefs.edit().putBoolean("show_card_detail", it).apply()
-                    }
+                    ToggleItem("气象详情", settings.showCardDetail, onShowCardDetailChange)
                     IosDivider()
-                    ToggleItem("日出日落", showCardSunriseSunset) {
-                        showCardSunriseSunset = it; prefs.edit().putBoolean("show_card_sunrise_sunset", it).apply()
-                    }
+                    ToggleItem("日出日落", settings.showCardSunriseSunset, onShowCardSunriseSunsetChange)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
