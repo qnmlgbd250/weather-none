@@ -96,6 +96,7 @@ class WeatherNotificationWorker @AssistedInject constructor(
 
             val skycon = realtime?.skycon ?: "UNKNOWN"
             val windSpeed = realtime?.wind?.speed ?: 0.0
+            val gustSpeed = weather.result?.hourly?.gust?.firstOrNull { it.value != null }?.value
             val weatherDesc = getWeatherDesc(skycon)
 
             val maxTemp = WeatherUtils.todayTemperature(daily)?.max?.toInt() ?: 0
@@ -148,18 +149,20 @@ class WeatherNotificationWorker @AssistedInject constructor(
                 )
             }
             if (prefs.getBoolean("wind_alert", false)) {
-                if (windSpeed >= 38.9) {
+                val windAlert = WindAlertPolicy.evaluate(windSpeed, gustSpeed)
+                if (windAlert != null) {
                     if (dedup.shouldNotifyWind()) {
-                        val windLevel = when {
-                            windSpeed >= 88.2 -> "9级"
-                            windSpeed >= 74.9 -> "8级"
-                            windSpeed >= 61.9 -> "7级"
-                            windSpeed >= 50.0 -> "6级"
-                            windSpeed >= 38.9 -> "5级"
-                            else -> ""
+                        val detail = if (windAlert.isGust) {
+                            "${windAlert.level}阵风"
+                        } else {
+                            "${windAlert.level}大风"
                         }
-                        val title = buildNotificationTitle("大风提醒", windLevel + "大风")
-                        val body = "当前风速 ${windSpeed}km/h，请注意防风，避免高空作业"
+                        val title = buildNotificationTitle("大风提醒", detail)
+                        val body = if (windAlert.isGust) {
+                            "当前阵风 ${windAlert.speed}km/h，请注意防风，避免高空作业"
+                        } else {
+                            "当前风速 ${windAlert.speed}km/h，请注意防风，避免高空作业"
+                        }
                         sendNotification(nm, 4, title, body)
                     }
                 }
