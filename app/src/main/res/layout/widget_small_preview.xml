@@ -14,6 +14,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
+        android:src="@drawable/widget_preview_bg"
         android:contentDescription="@null" />
 
     <!-- Top row: pin icon + city name -->
@@ -35,6 +36,7 @@
             android:layout_height="14dp"
             android:layout_gravity="center_vertical"
             android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_location"
             android:contentDescription="@null" />
 
         <TextView
@@ -45,6 +47,7 @@
             android:layout_marginStart="4dp"
             android:textColor="@android:color/white"
             android:textSize="14sp"
+            android:text="当前位置"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -60,6 +63,7 @@
         android:layout_marginEnd="14dp"
         android:layout_marginTop="8dp"
         android:scaleType="fitCenter"
+        android:src="@drawable/ic_widget_preview_sun"
         android:contentDescription="@string/app_name" />
 
     <!-- Temperature, below location row -->
@@ -72,6 +76,7 @@
         android:layout_marginTop="2dp"
         android:textColor="@android:color/white"
         android:textSize="42sp"
+        android:text="26°"
         android:fontFamily="sans-serif-medium"
         android:textStyle="bold"
         android:letterSpacing="0.02"
@@ -88,6 +93,7 @@
         android:layout_marginBottom="12dp"
         android:textColor="#B3FFFFFF"
         android:textSize="14sp"
+        android:text="晴  18° / 28°"
         android:fontFamily="sans-serif-medium"
         android:letterSpacing="0.03"
         android:maxLines="1"

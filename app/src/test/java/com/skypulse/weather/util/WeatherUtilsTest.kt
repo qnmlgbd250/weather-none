@@ -1,7 +1,11 @@
 package com.skypulse.weather.util
 
+import com.skypulse.weather.model.AstroTime
+import com.skypulse.weather.model.DailyAstro
+import com.skypulse.weather.model.DailyForecast
 import org.junit.Assert.*
 import org.junit.Test
+import java.util.Calendar
 
 class WeatherUtilsTest {
 
@@ -197,6 +201,29 @@ class WeatherUtilsTest {
         assertTrue(result || !result)
     }
 
+    @Test
+    fun `isCurrentlyDay uses daily sunrise and sunset when available`() {
+        val daily = DailyForecast(
+            astro = listOf(
+                DailyAstro(
+                    date = "2026-07-05",
+                    sunrise = AstroTime("07:30"),
+                    sunset = AstroTime("17:20")
+                )
+            )
+        )
+
+        assertFalse(WeatherUtils.isCurrentlyDay(daily, calendarAt("2026-07-05", 7, 0)))
+        assertTrue(WeatherUtils.isCurrentlyDay(daily, calendarAt("2026-07-05", 12, 0)))
+        assertFalse(WeatherUtils.isCurrentlyDay(daily, calendarAt("2026-07-05", 18, 0)))
+    }
+
+    @Test
+    fun `isCurrentlyDay falls back to fixed window when astro is missing`() {
+        assertTrue(WeatherUtils.isCurrentlyDay(null, calendarAt("2026-07-05", 12, 0)))
+        assertFalse(WeatherUtils.isCurrentlyDay(null, calendarAt("2026-07-05", 23, 0)))
+    }
+
     // ============ getWeatherInfo ============
 
     @Test
@@ -339,5 +366,13 @@ class WeatherUtilsTest {
         val nullGradient = WeatherUtils.getWeatherGradient(null, isDay = true)
         val clearGradient = WeatherUtils.getWeatherGradient("CLEAR_DAY", isDay = true)
         assertEquals(nullGradient, clearGradient)
+    }
+
+    private fun calendarAt(date: String, hour: Int, minute: Int): Calendar {
+        val parts = date.split("-").map { it.toInt() }
+        return Calendar.getInstance().apply {
+            clear()
+            set(parts[0], parts[1] - 1, parts[2], hour, minute, 0)
+        }
     }
 }

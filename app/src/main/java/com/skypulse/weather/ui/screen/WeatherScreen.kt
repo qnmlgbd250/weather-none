@@ -137,8 +137,12 @@ fun WeatherScreen(
         is WeatherUiState.Success -> s.weather.result?.realtime?.skycon
         else -> null
     }
-    val isDay = WeatherUtils.isCurrentlyDay()
-    val weatherTheme = remember(skycon, isDay) {
+    val daily = when (val s = uiState) {
+        is WeatherUiState.Success -> s.weather.result?.daily
+        else -> null
+    }
+    val isDay = WeatherUtils.isCurrentlyDay(daily)
+    val weatherTheme = remember(skycon, daily, isDay) {
         WeatherUtils.getWeatherTheme(skycon, isDay)
     }
 
@@ -187,7 +191,7 @@ fun WeatherScreen(
             }
 
             AppScreen.CityDetail -> {
-                WeatherBackground(skycon = skycon) {
+                WeatherBackground(skycon = skycon, daily = daily) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (val state = uiState) {
                             is WeatherUiState.Loading -> {

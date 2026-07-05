@@ -7,16 +7,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.util.WeatherUtils
 
 @Composable
 fun WeatherBackground(
     skycon: String?,
+    daily: DailyForecast? = null,
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val isDay = WeatherUtils.isCurrentlyDay()
+    val isDay = WeatherUtils.isCurrentlyDay(daily)
     val gradientColors = WeatherUtils.getWeatherGradient(skycon, isDay)
 
     Box(

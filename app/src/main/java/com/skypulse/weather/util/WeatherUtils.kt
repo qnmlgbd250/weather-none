@@ -1,6 +1,7 @@
 package com.skypulse.weather.util
 
 import androidx.compose.ui.graphics.Color
+import com.skypulse.weather.model.DailyAstro
 import com.skypulse.weather.model.DailyForecast
 import com.skypulse.weather.model.DailyTemperature
 import com.skypulse.weather.ui.theme.*
@@ -343,9 +344,48 @@ object WeatherUtils {
         return isRelativeDay(dateStr, 1)
     }
 
-    fun isCurrentlyDay(): Boolean {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+    fun isCurrentlyDay(
+        daily: DailyForecast? = null,
+        now: Calendar = Calendar.getInstance()
+    ): Boolean {
+        isDayByAstro(daily?.astro, now)?.let { return it }
+        val hour = now.get(Calendar.HOUR_OF_DAY)
         return hour in 6..18
+    }
+
+    private fun isDayByAstro(
+        astro: List<DailyAstro>?,
+        now: Calendar
+    ): Boolean? {
+        if (astro.isNullOrEmpty()) return null
+        val candidate = astro.firstOrNull { isSameDate(it.date, now) }
+            ?: astro.firstOrNull { parseTimeMinutes(it.sunrise?.time) != null && parseTimeMinutes(it.sunset?.time) != null }
+            ?: return null
+        val sunrise = parseTimeMinutes(candidate.sunrise?.time) ?: return null
+        val sunset = parseTimeMinutes(candidate.sunset?.time) ?: return null
+        if (sunrise >= sunset) return null
+        val minuteOfDay = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        return minuteOfDay in sunrise until sunset
+    }
+
+    private fun parseTimeMinutes(time: String?): Int? {
+        if (time.isNullOrBlank()) return null
+        val match = Regex("(\\d{1,2}):(\\d{2})").find(time) ?: return null
+        val hour = match.groupValues[1].toIntOrNull() ?: return null
+        val minute = match.groupValues[2].toIntOrNull() ?: return null
+        if (hour !in 0..23 || minute !in 0..59) return null
+        return hour * 60 + minute
+    }
+
+    private fun isSameDate(dateStr: String?, calendar: Calendar): Boolean {
+        return try {
+            val date = parseDateOnly(dateStr) ?: return false
+            val other = Calendar.getInstance()
+            other.time = date
+            isSameDay(other, calendar)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun parseDateOnly(dateStr: String?): Date? {

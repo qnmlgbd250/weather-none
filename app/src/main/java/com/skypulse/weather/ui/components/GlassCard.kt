@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import com.skypulse.weather.ui.theme.LocalWeatherTheme
 import com.skypulse.weather.ui.theme.SunnyGradient
@@ -37,13 +36,6 @@ fun GlassCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(
-                elevation = SkyPulseDesignSystem.Elevation.glass,
-                shape = shape,
-                clip = false,
-                ambientColor = Color.Black.copy(alpha = 0.10f),
-                spotColor = Color.Black.copy(alpha = 0.14f)
-            )
             .clip(shape)
             .background(theme.cardTintColor),
         content = content

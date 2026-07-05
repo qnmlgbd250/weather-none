@@ -55,9 +55,13 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     "有数据=${cached != null}, " +
                     "skycon=${cached?.result?.realtime?.skycon}, " +
                     "temp=${cached?.result?.realtime?.temperature}")
-                WeatherWidgetUpdater.updateAll(applicationContext, cached, displayName)
-
-
+                val forceLocationRefresh = !canRenderWeatherFrame(firstCity)
+                if (!forceLocationRefresh) {
+                    WeatherWidgetUpdater.updateAll(applicationContext, cached, displayName)
+                } else {
+                    FileLogger.i(TAG, "doWork: 当前定位仍是默认占位坐标，先渲染定位中状态，避免北京首帧")
+                    WeatherWidgetUpdater.updateLoading(applicationContext, displayName)
+                }
 
                 // 4. 通过 RefreshManager 请求同步
                 val reason = when (trigger) {
@@ -65,13 +69,14 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     "onetime" -> SyncReason.WIDGET_CREATED
                     else -> SyncReason.PERIODIC
                 }
-                FileLogger.i(TAG, "doWork: [步骤3] 请求同步, reason=$reason, forWidget=true")
-                refreshManager.requestSync(reason, forWidget = true)
+                FileLogger.i(TAG, "doWork: [步骤3] 请求同步, reason=$reason, forWidget=true, force=$forceLocationRefresh")
+                refreshManager.requestSync(reason, force = forceLocationRefresh, forWidget = true)
                 FileLogger.i(TAG, "doWork: [步骤3] 同步请求完成")
 
                 // 5. 同步完成后重新读取并渲染
-                val freshWeather = repository.getWeatherFromCache(firstCity.id)
-                val freshName = resolveDisplayName(firstCity)
+                val freshCity = cityRepository.getCurrentLocationCity() ?: firstCity
+                val freshWeather = repository.getWeatherFromCache(freshCity.id)
+                val freshName = resolveDisplayName(freshCity)
                 val dataChanged = cached?.result?.realtime?.temperature !=
                     freshWeather?.result?.realtime?.temperature
                 FileLogger.i(TAG, "doWork: [步骤4] 同步后读取完成, " +
@@ -79,7 +84,12 @@ class WeatherWidgetWorker @AssistedInject constructor(
                     "skycon=${freshWeather?.result?.realtime?.skycon}, " +
                     "temp=${freshWeather?.result?.realtime?.temperature}, " +
                     "displayName=$freshName, 数据变化=$dataChanged")
-                WeatherWidgetUpdater.updateAll(applicationContext, freshWeather, freshName)
+                if (canRenderWeatherFrame(freshCity)) {
+                    WeatherWidgetUpdater.updateAll(applicationContext, freshWeather, freshName)
+                } else {
+                    FileLogger.i(TAG, "doWork: 同步后仍无可信当前位置，保持定位中状态")
+                    WeatherWidgetUpdater.updateLoading(applicationContext, freshName)
+                }
 
             } else {
                 FileLogger.w(TAG, "doWork: 无城市数据，渲染空状态")
@@ -106,6 +116,10 @@ class WeatherWidgetWorker @AssistedInject constructor(
 
     companion object {
         private const val TAG = "WidgetWorker"
+        private const val CURRENT_LOCATION_ID = "current_location"
+        private const val LOCATING_NAME = "定位中..."
+        private const val UNKNOWN_LOCATION = "未知位置"
+        private const val CURRENT_LOCATION_NAME = "当前定位"
     }
 
     /**
@@ -116,14 +130,33 @@ class WeatherWidgetWorker @AssistedInject constructor(
         if (!city.isCurrentLocation) return city.name
         val cachedName = locationManager.getCachedLocation()?.name
         // 优先用缓存中的定位名（过滤无效值）
-        if (cachedName != null && cachedName != "未知位置" && cachedName != "当前定位") {
-            return cachedName
+        cachedName?.takeIf { isValidLocationName(it) }?.let {
+            return it
         }
         // 其次用 Room 中的城市名（过滤无效值）
-        if (city.name != "未知位置" && city.name != "当前定位") {
+        if (isValidLocationName(city.name)) {
             return city.name
         }
-        // 兜底：Room 中的名字（即使是"当前定位"，也比"未知位置"好）
-        return city.name
+        return "当前位置"
+    }
+
+    private fun canRenderWeatherFrame(city: City): Boolean {
+        if (!city.isCurrentLocation) return true
+        if (city.id != CURRENT_LOCATION_ID) return true
+        if (!isDefaultCoordinate(city.longitude, city.latitude)) return true
+        val cachedLocation = locationManager.getCachedLocation() ?: return false
+        return !isDefaultCoordinate(cachedLocation.longitude, cachedLocation.latitude)
+    }
+
+    private fun isDefaultCoordinate(longitude: Double, latitude: Double): Boolean {
+        return kotlin.math.abs(longitude - LocationManager.DEFAULT_LONGITUDE) < 0.0001 &&
+            kotlin.math.abs(latitude - LocationManager.DEFAULT_LATITUDE) < 0.0001
+    }
+
+    private fun isValidLocationName(name: String?): Boolean {
+        return !name.isNullOrBlank() &&
+            name != UNKNOWN_LOCATION &&
+            name != CURRENT_LOCATION_NAME &&
+            name != LOCATING_NAME
     }
 }

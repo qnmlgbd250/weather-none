@@ -21,6 +21,45 @@ object WeatherWidgetUpdater {
     private const val TAG = "WidgetUpdater"
     private val iconCache = android.util.LruCache<String, Bitmap>(14)
 
+    fun updateLoading(context: Context, cityName: String? = null) {
+        try {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
+            if (ids.isEmpty()) {
+                FileLogger.w(TAG, "updateLoading: \u65e0\u6d3b\u8dc3 widget\uff0c\u8df3\u8fc7\u6e32\u67d3")
+                return
+            }
+
+            val cityText = shortenLocation(cityName ?: "\u5b9a\u4f4d\u4e2d...")
+            val iconBitmap = renderIcon(context, "partly-cloudy-day")
+            ids.forEach { widgetId ->
+                val views = RemoteViews(context.packageName, R.layout.widget_small)
+                views.setTextViewText(R.id.widget_city, cityText)
+                views.setTextViewText(R.id.widget_temp, "--")
+                views.setTextViewText(R.id.widget_detail, "\u5b9a\u4f4d\u4e2d...")
+                if (iconBitmap != null) {
+                    views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
+                }
+                val (w, h) = getWidgetSizePx(context, widgetId)
+                val sizedBg = buildGradientBitmap(context, null, w, h)
+                views.setImageViewBitmap(R.id.widget_bg, sizedBg)
+                views.setImageViewResource(R.id.widget_pin, R.drawable.ic_widget_location)
+                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
+                views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
+
+                val intent = Intent(context, MainActivity::class.java)
+                val pending = PendingIntent.getActivity(
+                    context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                views.setOnClickPendingIntent(R.id.widget_root, pending)
+                manager.updateAppWidget(widgetId, views)
+            }
+            FileLogger.i(TAG, "updateLoading: \u6e32\u67d3\u5b9a\u4f4d\u5360\u4f4d\u6001\u5b8c\u6210, widgetCount=${ids.size}")
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "updateLoading: \u6e32\u67d3\u5f02\u5e38", e)
+        }
+    }
+
     fun updateAll(context: Context, weather: WeatherResponse?, cityName: String?) {
         try {
             val manager = AppWidgetManager.getInstance(context)
@@ -33,7 +72,7 @@ object WeatherWidgetUpdater {
             val realtime = weather?.result?.realtime
             val daily = weather?.result?.daily
             val skycon = realtime?.skycon
-            val isDay = WeatherUtils.isCurrentlyDay()
+            val isDay = WeatherUtils.isCurrentlyDay(daily)
             val info = WeatherUtils.getWeatherInfo(skycon)
             val tempText = WeatherUtils.formatTemperature(realtime?.temperature)
             val todayTemp = WeatherUtils.todayTemperature(daily)
@@ -102,6 +141,7 @@ object WeatherWidgetUpdater {
     private fun shortenLocation(raw: String): String {
         val value = raw.trim()
         if (value.isEmpty()) return "--"
+        if (value == "定位中...") return value
 
         val districtMatch = Regex("([^\u7701\u5e02\u533a\u53bf]+[\u533a\u53bf])").find(value)
         if (districtMatch != null) return districtMatch.groupValues[1]

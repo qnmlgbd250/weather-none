@@ -62,7 +62,7 @@ fun SwipeableCityListRow(
     )
 
     val skycon = weather?.result?.realtime?.skycon
-    val isDay = WeatherUtils.isCurrentlyDay()
+    val isDay = WeatherUtils.isCurrentlyDay(weather?.result?.daily)
     val gradientColors = getCityCardGradient(skycon, isDay)
 
     Box(modifier = modifier.fillMaxWidth()) {
