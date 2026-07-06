@@ -35,7 +35,9 @@ class LocationManager @Inject constructor(
     data class CachedLocation(
         val latitude: Double,
         val longitude: Double,
-        val name: String
+        val name: String,
+        val time: Long = 0L,
+        val accuracy: Float = 0f
     )
 
     companion object {
@@ -46,6 +48,8 @@ class LocationManager @Inject constructor(
         private const val KEY_CACHED_LAT = "cached_lat"
         private const val KEY_CACHED_LON = "cached_lon"
         private const val KEY_CACHED_NAME = "cached_name"
+        private const val KEY_CACHED_TIME = "cached_time"
+        private const val KEY_CACHED_ACCURACY = "cached_accuracy"
 
         private var privacyAgreed = false
 
@@ -85,17 +89,27 @@ class LocationManager @Inject constructor(
         val lat = cachePrefs.getFloat(KEY_CACHED_LAT, 0f).toDouble()
         val lon = cachePrefs.getFloat(KEY_CACHED_LON, 0f).toDouble()
         val name = cachePrefs.getString(KEY_CACHED_NAME, null)?.takeIf { it.isNotBlank() }
+        val time = cachePrefs.getLong(KEY_CACHED_TIME, 0L)
+        val accuracy = cachePrefs.getFloat(KEY_CACHED_ACCURACY, 0f)
         if (lat == 0.0 || lon == 0.0 || name == null) return null
-        return CachedLocation(latitude = lat, longitude = lon, name = name)
+        return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
     }
 
-    fun saveCachedLocation(name: String, longitude: Double, latitude: Double) {
+    fun saveCachedLocation(
+        name: String,
+        longitude: Double,
+        latitude: Double,
+        time: Long = System.currentTimeMillis(),
+        accuracy: Float = 0f
+    ) {
         val normalizedName = name.takeIf { it.isNotBlank() } ?: return
         if (latitude == 0.0 || longitude == 0.0) return
         cachePrefs.edit()
             .putFloat(KEY_CACHED_LAT, latitude.toFloat())
             .putFloat(KEY_CACHED_LON, longitude.toFloat())
             .putString(KEY_CACHED_NAME, normalizedName)
+            .putLong(KEY_CACHED_TIME, time)
+            .putFloat(KEY_CACHED_ACCURACY, accuracy)
             .apply()
     }
 
@@ -466,16 +480,45 @@ class LocationManager @Inject constructor(
 
     // ============ Unified Entrance for Positioning (System -> Amap) ============
 
-    private fun applyAntiJitter(lat: Double, lon: Double, name: String): CachedLocation {
+    private fun applyAntiJitter(
+        lat: Double,
+        lon: Double,
+        name: String,
+        accuracy: Float = 0f,
+        time: Long = System.currentTimeMillis()
+    ): CachedLocation {
         val cached = getCachedLocation()
         if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
             val dist = distanceBetween(lat, lon, cached.latitude, cached.longitude)
-            if (dist < 200f) {
-                Log.i(TAG, "防跳变机制触发：新位置距离上次缓存仅 ${dist}米（< 200m），复用缓存坐标与地名: (${cached.latitude}, ${cached.longitude}) - ${cached.name}")
+            
+            // 1. 时间衰减判定：若缓存记录早于 5 分钟前，强制放行更新，打破“静止后不更新”的死锁
+            val timeDiff = time - cached.time
+            val isCacheExpired = timeDiff > 5 * 60 * 1000L // 5分钟
+            
+            // 2. 基站跳变过滤（针对 1.5km 级跳变场景）：
+            // 若新定位精度较差（如基站定位，精度半径 > 300m），且缓存未过期，
+            // 并且上次缓存的精度更好，同时上次缓存点落在新定位误差圆内部（dist < accuracy），
+            // 说明这次的大范围跳变大概率是由于基站切换产生的“粗略定位”，实际位置并未发生剧烈改变，应予以过滤并复用高精度缓存。
+            val isOutlierJump = !isCacheExpired && 
+                                accuracy > 300f && 
+                                cached.accuracy > 0f && 
+                                cached.accuracy < accuracy && 
+                                dist < accuracy
+            
+            if (isOutlierJump) {
+                Log.i(TAG, "检测到疑似基站漂移跳变：新精度 ${accuracy}m，距离缓存 ${dist}m，缓存精度 ${cached.accuracy}m，复用缓存")
+                FileLogger.i(TAG, "检测到疑似基站漂移跳变：新精度 ${accuracy}m，距离缓存 ${dist}m，缓存精度 ${cached.accuracy}m，复用缓存")
+                return cached
+            }
+
+            // 3. 常规微小防抖动：在缓存未过期的情况下，如果位移小于 200m，
+            // 且新定位的精度并未“显著优于”旧定位（如新精度 >= 旧精度，或新定位精度本身大于 100m），则判定为抖动，复用旧位置。
+            if (!isCacheExpired && dist < 200f && (accuracy >= cached.accuracy || accuracy > 100f)) {
+                Log.i(TAG, "防跳变机制触发：新位置距离上次缓存仅 ${dist}米（< 200m），复用旧坐标与地名: (${cached.latitude}, ${cached.longitude}) - ${cached.name}")
                 return cached
             }
         }
-        return CachedLocation(latitude = lat, longitude = lon, name = name)
+        return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
     }
 
     suspend fun requestSystemOrIpLocation(): CachedLocation? {
@@ -505,12 +548,12 @@ class LocationManager @Inject constructor(
                         val amapName = resolveLocationName(amapLoc)
                         if (amapName != "未知位置" && amapName.isNotBlank()) {
                             Log.i(TAG, "高德辅助解析成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$amapName")
-                            return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, amapName)
+                            return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, amapName, amapLoc.accuracy, amapLoc.time)
                         }
                     }
                 }
                 
-                return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name)
+                return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name, sysLoc.accuracy, sysLoc.time)
             }
             Log.w(TAG, "系统自带定位失败或超时，降级尝试高德定位服务作为最终兜底...")
 
@@ -519,7 +562,7 @@ class LocationManager @Inject constructor(
             if (amapLoc != null) {
                 val name = resolveLocationName(amapLoc)
                 Log.i(TAG, "高德兜底定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
-                return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name)
+                return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name, amapLoc.accuracy, amapLoc.time)
             }
             Log.w(TAG, "系统自带定位与高德兜底定位均已失败，已剔除IP定位，直接返回null")
         } else {
@@ -534,8 +577,10 @@ class LocationManager @Inject constructor(
         val cached = getCachedLocation()
         if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
             val dist = distanceBetween(lat, lon, cached.latitude, cached.longitude)
-            if (dist < 200f) {
-                Log.i(TAG, "reverseGeocode: 距离上次缓存位置仅为 ${dist}米，复用缓存位置名称: ${cached.name}")
+            val timeDiff = System.currentTimeMillis() - cached.time
+            val isCacheExpired = timeDiff > 5 * 60 * 1000L // 5分钟
+            if (!isCacheExpired && dist < 200f) {
+                Log.i(TAG, "reverseGeocode: 距离上次缓存位置仅为 ${dist}米且未过期，复用缓存位置名称: ${cached.name}")
                 return@withContext cached.name
             }
         }
@@ -583,8 +628,8 @@ class LocationManager @Inject constructor(
                 val district = normalizeLocationPart(addr.subLocality)
                     ?.takeIf { it != city }
                 val detail = listOfNotNull(
-                    normalizeFineLocationPart(addr.thoroughfare),
                     normalizeFineLocationPart(addr.featureName),
+                    normalizeFineLocationPart(addr.thoroughfare),
                     normalizeFineLocationPart(addr.getAddressLine(0))
                 )
                     .distinct()

@@ -160,10 +160,10 @@ class WeatherSyncManager @Inject constructor(
                     if (oldName == LOCATING_NAME || oldName.isBlank()) {
                         oldName = "当前位置"
                     }
-                    locationManager.saveCachedLocation(oldName, lon, lat)
+                    locationManager.saveCachedLocation(oldName, lon, lat, location.time, location.accuracy)
                     upsertCurrentLocationCity(oldName, lon, lat)
                 } else {
-                    locationManager.saveCachedLocation(locationName, lon, lat)
+                    locationManager.saveCachedLocation(locationName, lon, lat, location.time, location.accuracy)
                     upsertCurrentLocationCity(locationName, lon, lat)
                 }
 
@@ -224,10 +224,10 @@ class WeatherSyncManager @Inject constructor(
                 FileLogger.i(TAG, "小组件定位成功: lon=$lon, lat=$lat, name=${location.name}")
                 // 只更新定位缓存，不更新 Room 城市记录
                 if (location.name != "未知位置") {
-                    locationManager.saveCachedLocation(location.name, lon, lat)
+                    locationManager.saveCachedLocation(location.name, lon, lat, location.time, location.accuracy)
                 } else {
                     val oldCachedName = locationManager.getCachedLocation()?.name
-                    locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat)
+                    locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat, location.time, location.accuracy)
                 }
                 return@withLock doRefreshWeather("current_location", lon, lat)
             }
