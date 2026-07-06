@@ -20,8 +20,8 @@ class RefreshWeatherUseCase @Inject constructor(
      * 通过 GPS 定位刷新天气。
      * 完整流程：定位解析 → 更新城市坐标 → 获取天气 → 写入 Room。
      */
-    suspend fun refreshWithLocation(): SyncResult {
-        return syncManager.refreshWeatherWithLocation()
+    suspend fun refreshWithLocation(highAccuracy: Boolean = false): SyncResult {
+        return syncManager.refreshWeatherWithLocation(highAccuracy = highAccuracy)
     }
 
     /**

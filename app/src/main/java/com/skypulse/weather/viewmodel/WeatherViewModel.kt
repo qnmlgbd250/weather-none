@@ -478,7 +478,7 @@ class WeatherViewModel @Inject constructor(
             _isLocating.value = true
             transientError.value = null
             try {
-                val result = refreshWeatherUseCase.refreshWithLocation()
+                val result = refreshWeatherUseCase.refreshWithLocation(highAccuracy = true)
                 val response = result.getOrNull()
                 if (response != null) {
                     // Automatically updated via flow
@@ -599,16 +599,19 @@ class WeatherViewModel @Inject constructor(
             handleSyncResult(result, city, silent)
             result is SyncResult.Success
         } else {
-            refreshCurrentLocation(silent)
+            refreshCurrentLocation(silent, highAccuracy = !silent)
         }
     }
 
     /**
      * 刷新定位城市天气（通过 SyncManager 的完整定位+天气流程）。
      */
-    private suspend fun refreshCurrentLocation(silent: Boolean = false): Boolean {
+    private suspend fun refreshCurrentLocation(
+        silent: Boolean = false,
+        highAccuracy: Boolean = false
+    ): Boolean {
         transientError.value = null
-        val result = refreshWeatherUseCase.refreshWithLocation()
+        val result = refreshWeatherUseCase.refreshWithLocation(highAccuracy = highAccuracy)
         val success = result is SyncResult.Success
         if (!success && !silent) {
             val errorMsg = (result as? SyncResult.Error)?.message ?: "获取天气数据失败，请稍后重试"

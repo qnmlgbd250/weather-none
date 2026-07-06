@@ -123,14 +123,15 @@ class WeatherSyncManager @Inject constructor(
      * 解析定位 → 更新当前城市坐标/名称 → 获取天气 → 写入 Room。
      * 用于主应用的定位城市刷新（前台）。
      */
-    suspend fun refreshWeatherWithLocation(): SyncResult = withContext(Dispatchers.IO) {
+    suspend fun refreshWeatherWithLocation(highAccuracy: Boolean = false): SyncResult = withContext(Dispatchers.IO) {
         locationMutex.withLock {
             val hasLocationPermission = locationManager.hasLocationPermission()
-            Log.i(TAG, "refreshWeatherWithLocation: hasPermission=$hasLocationPermission")
+            Log.i(TAG, "refreshWeatherWithLocation: hasPermission=$hasLocationPermission, highAccuracy=$highAccuracy")
 
             // 加锁后再次读取 Room 中定位城市信息做新鲜度校验（双重检查）
             val currentBeforeLocation = getCurrentLocationCity()
             if (
+                !highAccuracy &&
                 currentBeforeLocation != null &&
                 !currentBeforeLocation.isUnresolvedCurrentLocation() &&
                 isFreshEnough(currentBeforeLocation.id)
@@ -144,7 +145,7 @@ class WeatherSyncManager @Inject constructor(
                 Log.i(TAG, "无定位权限，IP定位已剔除，直接跳过定位")
                 null
             } else {
-                locationManager.requestSystemOrIpLocation()
+                locationManager.requestSystemOrIpLocation(highAccuracy = highAccuracy)
             }
 
             if (location != null) {

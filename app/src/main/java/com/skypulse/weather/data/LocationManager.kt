@@ -40,6 +40,11 @@ class LocationManager @Inject constructor(
         val accuracy: Float = 0f
     )
 
+    private data class LocationRequestProfile(
+        val highAccuracy: Boolean,
+        val timeoutMillis: Long
+    )
+
     companion object {
         private const val TAG = "LocationManager"
         const val DEFAULT_LONGITUDE = 116.4074
@@ -50,6 +55,13 @@ class LocationManager @Inject constructor(
         private const val KEY_CACHED_NAME = "cached_name"
         private const val KEY_CACHED_TIME = "cached_time"
         private const val KEY_CACHED_ACCURACY = "cached_accuracy"
+
+        private const val HIGH_ACCURACY_TIMEOUT_MS = 9000L
+        private const val GOOD_ACCURACY_METERS = 60f
+        private const val ACCEPTABLE_ACCURACY_METERS = 120f
+        private const val COARSE_ACCURACY_METERS = 200f
+        private const val RECENT_ACTIVE_FIX_MS = 60 * 1000L
+        private const val RECENT_LAST_KNOWN_MS = 90 * 1000L
 
         private var privacyAgreed = false
 
@@ -213,7 +225,10 @@ class LocationManager @Inject constructor(
 
     // ============ System Positioning (FusedLocation & Native LocationManager) ============
 
-    suspend fun requestSystemLocation(timeoutMillis: Long = 8000L): Location? = withContext(Dispatchers.IO) {
+    suspend fun requestSystemLocation(
+        timeoutMillis: Long = 8000L,
+        highAccuracy: Boolean = false
+    ): Location? = withContext(Dispatchers.IO) {
         if (!hasLocationPermission()) {
             Log.w(TAG, "requestSystemLocation: 无定位权限，跳过")
             return@withContext null
@@ -229,10 +244,10 @@ class LocationManager @Inject constructor(
         }
 
         if (hasGms) {
-            Log.i(TAG, "尝试 GMS FusedLocation...")
+            Log.i(TAG, "尝试 GMS FusedLocation, highAccuracy=$highAccuracy...")
             val fused = try {
                 kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
-                    requestFusedLocation(timeoutMillis)
+                    requestFusedLocation(timeoutMillis, highAccuracy)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "GMS FusedLocation timeout or exception: ${e.message}")
@@ -246,10 +261,10 @@ class LocationManager @Inject constructor(
         }
 
         // 2. 尝试原生 LocationManager
-        requestNativeLocation(timeoutMillis)
+        requestNativeLocation(timeoutMillis, highAccuracy)
     }
 
-    private suspend fun requestFusedLocation(timeoutMillis: Long): Location? {
+    private suspend fun requestFusedLocation(timeoutMillis: Long, highAccuracy: Boolean): Location? {
         return try {
             val location = suspendCancellableCoroutine<Location?> { cont ->
                 try {
@@ -257,30 +272,60 @@ class LocationManager @Inject constructor(
                         context, Manifest.permission.ACCESS_FINE_LOCATION
                     ) == PackageManager.PERMISSION_GRANTED
                     val priority = if (hasFine) {
-                        com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY
+                        if (highAccuracy) {
+                            com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY
+                        } else {
+                            com.google.android.gms.location.Priority.PRIORITY_BALANCED_POWER_ACCURACY
+                        }
                     } else {
                         com.google.android.gms.location.Priority.PRIORITY_LOW_POWER
                     }
-                    val request = com.google.android.gms.location.LocationRequest.Builder(priority, timeoutMillis)
-                        .setMaxUpdates(1)
+                    val requestInterval = if (highAccuracy) 1000L else timeoutMillis
+                    val request = com.google.android.gms.location.LocationRequest.Builder(priority, requestInterval)
+                        .setMaxUpdates(if (highAccuracy) 4 else 1)
+                        .setMinUpdateIntervalMillis(requestInterval)
                         .build()
 
-                    val callback = object : com.google.android.gms.location.LocationCallback() {
+                    var bestLocation: Location? = null
+                    var finished = false
+                    val handler = android.os.Handler(android.os.Looper.getMainLooper())
+                    lateinit var callback: com.google.android.gms.location.LocationCallback
+
+                    fun finish() {
+                        if (finished) return
+                        finished = true
+                        handler.removeCallbacksAndMessages(null)
+                        try {
+                            fusedLocationClient.removeLocationUpdates(callback)
+                        } catch (_: Exception) {}
+                        if (cont.isActive) cont.resume(bestLocation)
+                    }
+
+                    val finishRunnable = Runnable { finish() }
+
+                    callback = object : com.google.android.gms.location.LocationCallback() {
                         override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
-                            val loc = result.lastLocation
-                            if (cont.isActive) cont.resume(loc)
-                            try {
-                                fusedLocationClient.removeLocationUpdates(this)
-                            } catch (_: Exception) {}
+                            val locations = result.locations.ifEmpty { listOfNotNull(result.lastLocation) }
+                            locations.forEach { loc ->
+                                bestLocation = betterLocation(bestLocation, loc)
+                            }
+                            val best = bestLocation
+                            if (!highAccuracy || best.isGoodEnough()) {
+                                finish()
+                            }
                         }
                     }
 
                     cont.invokeOnCancellation {
+                        handler.removeCallbacksAndMessages(null)
                         try {
                             fusedLocationClient.removeLocationUpdates(callback)
                         } catch (_: Exception) {}
                     }
 
+                    if (highAccuracy) {
+                        handler.postDelayed(finishRunnable, timeoutMillis)
+                    }
                     fusedLocationClient.requestLocationUpdates(
                         request,
                         callback,
@@ -300,7 +345,7 @@ class LocationManager @Inject constructor(
         }
     }
 
-    private suspend fun requestNativeLocation(timeoutMillis: Long): Location? {
+    private suspend fun requestNativeLocation(timeoutMillis: Long, highAccuracy: Boolean = false): Location? {
         return try {
             val nativeLocManager = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
             if (nativeLocManager == null) {
@@ -312,7 +357,7 @@ class LocationManager @Inject constructor(
             val gpsLastKnown = try {
                 nativeLocManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
             } catch (_: SecurityException) { null }
-            if (gpsLastKnown != null && (System.currentTimeMillis() - gpsLastKnown.time) < 10 * 60 * 1000) {
+            if (gpsLastKnown != null && shouldUseLastKnown(gpsLastKnown, highAccuracy)) {
                 Log.i(TAG, "NativeLocation: 使用近期的 GPS lastKnown: lat=${gpsLastKnown.latitude}, lon=${gpsLastKnown.longitude}")
                 return gpsLastKnown
             }
@@ -320,7 +365,7 @@ class LocationManager @Inject constructor(
             val netLastKnown = try {
                 nativeLocManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
             } catch (_: SecurityException) { null }
-            if (netLastKnown != null && (System.currentTimeMillis() - netLastKnown.time) < 5 * 60 * 1000) {
+            if (netLastKnown != null && shouldUseLastKnown(netLastKnown, highAccuracy)) {
                 Log.i(TAG, "NativeLocation: 使用近期的 Network lastKnown: lat=${netLastKnown.latitude}, lon=${netLastKnown.longitude}")
                 return netLastKnown
             }
@@ -331,9 +376,13 @@ class LocationManager @Inject constructor(
                 return null
             }
 
-            // 2. 双通道并行定位策略 (GPS 与 Network 同时开启监听，取最快返回的有效位置)
-            Log.i(TAG, "NativeLocation: 启动 GPS & Network 双通道并行定位, 超时=${timeoutMillis}ms")
-            val activeLoc = requestParallelLocation(nativeLocManager, providers, timeoutMillis)
+            // 2. 双通道并行定位策略：常规场景取最快；前台强定位采样后择优。
+            Log.i(TAG, "NativeLocation: 启动 GPS & Network 双通道并行定位, highAccuracy=$highAccuracy, 超时=${timeoutMillis}ms")
+            val activeLoc = if (highAccuracy) {
+                requestBestParallelLocation(nativeLocManager, providers, timeoutMillis)
+            } else {
+                requestParallelLocation(nativeLocManager, providers, timeoutMillis)
+            }
             if (activeLoc != null) {
                 Log.i(TAG, "NativeLocation: 并行定位成功: provider=${activeLoc.provider}, lat=${activeLoc.latitude}, lon=${activeLoc.longitude}")
                 return activeLoc
@@ -353,6 +402,102 @@ class LocationManager @Inject constructor(
             null
         } catch (e: Exception) {
             Log.e(TAG, "NativeLocation 发生异常", e)
+            null
+        }
+    }
+
+    private fun shouldUseLastKnown(location: Location, highAccuracy: Boolean): Boolean {
+        val age = System.currentTimeMillis() - location.time
+        if (age < 0L) return false
+        return if (highAccuracy) {
+            age <= RECENT_LAST_KNOWN_MS && location.accuracyOrDefault() <= GOOD_ACCURACY_METERS
+        } else {
+            val maxAge = if (location.provider == android.location.LocationManager.GPS_PROVIDER) {
+                10 * 60 * 1000L
+            } else {
+                5 * 60 * 1000L
+            }
+            age <= maxAge
+        }
+    }
+
+    private suspend fun requestBestParallelLocation(
+        nativeLocManager: android.location.LocationManager,
+        providers: List<String>,
+        timeoutMillis: Long
+    ): Location? {
+        return try {
+            suspendCancellableCoroutine<Location?> { cont ->
+                val handler = android.os.Handler(android.os.Looper.getMainLooper())
+                var bestLocation: Location? = null
+                var finished = false
+                lateinit var listener: android.location.LocationListener
+
+                fun finish() {
+                    if (finished) return
+                    finished = true
+                    try {
+                        nativeLocManager.removeUpdates(listener)
+                    } catch (_: Exception) {}
+                    if (cont.isActive) cont.resume(bestLocation)
+                }
+
+                val finishRunnable = Runnable { finish() }
+                listener = object : android.location.LocationListener {
+                    override fun onLocationChanged(loc: Location) {
+                        bestLocation = betterLocation(bestLocation, loc)
+                        Log.i(TAG, "BestParallelLocation: 收到 ${loc.provider}, accuracy=${loc.accuracyOrDefault()}m, best=${bestLocation?.provider}")
+                        if (bestLocation.isGoodEnough()) {
+                            handler.removeCallbacks(finishRunnable)
+                            finish()
+                        }
+                    }
+
+                    @Deprecated("Deprecated in API")
+                    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+                    override fun onProviderEnabled(provider: String) {}
+                    override fun onProviderDisabled(provider: String) {}
+                }
+
+                cont.invokeOnCancellation {
+                    handler.removeCallbacks(finishRunnable)
+                    try {
+                        nativeLocManager.removeUpdates(listener)
+                    } catch (_: Exception) {}
+                }
+
+                try {
+                    var registeredAny = false
+                    if (providers.contains(android.location.LocationManager.GPS_PROVIDER)) {
+                        nativeLocManager.requestLocationUpdates(
+                            android.location.LocationManager.GPS_PROVIDER,
+                            0L, 0f, listener, android.os.Looper.getMainLooper()
+                        )
+                        registeredAny = true
+                    }
+                    if (providers.contains(android.location.LocationManager.NETWORK_PROVIDER)) {
+                        nativeLocManager.requestLocationUpdates(
+                            android.location.LocationManager.NETWORK_PROVIDER,
+                            0L, 0f, listener, android.os.Looper.getMainLooper()
+                        )
+                        registeredAny = true
+                    }
+
+                    if (registeredAny) {
+                        handler.postDelayed(finishRunnable, timeoutMillis)
+                    } else if (cont.isActive) {
+                        cont.resume(null)
+                    }
+                } catch (e: SecurityException) {
+                    Log.e(TAG, "requestBestParallelLocation SecurityException", e)
+                    if (cont.isActive) cont.resume(null)
+                } catch (e: Exception) {
+                    Log.e(TAG, "requestBestParallelLocation Exception", e)
+                    if (cont.isActive) cont.resume(null)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "requestBestParallelLocation error", e)
             null
         }
     }
@@ -478,6 +623,35 @@ class LocationManager @Inject constructor(
         }
     }
 
+    private fun betterLocation(current: Location?, candidate: Location?): Location? {
+        if (candidate == null) return current
+        if (current == null) return candidate
+        val currentAccuracy = current.accuracyOrDefault()
+        val candidateAccuracy = candidate.accuracyOrDefault()
+        val candidateIsFresh = candidate.time > current.time + 2_000L
+        val candidateIsMuchMoreAccurate = candidateAccuracy + 20f < currentAccuracy
+        val candidateIsAccurateAndFresh = candidateAccuracy <= currentAccuracy + 25f && candidateIsFresh
+        val candidateUsesGps = candidate.provider == android.location.LocationManager.GPS_PROVIDER &&
+            current.provider != android.location.LocationManager.GPS_PROVIDER &&
+            candidateAccuracy <= ACCEPTABLE_ACCURACY_METERS
+
+        return if (candidateIsMuchMoreAccurate || candidateIsAccurateAndFresh || candidateUsesGps) {
+            candidate
+        } else {
+            current
+        }
+    }
+
+    private fun Location?.isGoodEnough(): Boolean {
+        val location = this ?: return false
+        val age = System.currentTimeMillis() - location.time
+        return location.accuracyOrDefault() <= GOOD_ACCURACY_METERS && age in 0L..RECENT_ACTIVE_FIX_MS
+    }
+
+    private fun Location.accuracyOrDefault(): Float {
+        return if (hasAccuracy()) accuracy else Float.MAX_VALUE
+    }
+
     // ============ Unified Entrance for Positioning (System -> Amap) ============
 
     private fun applyAntiJitter(
@@ -485,7 +659,8 @@ class LocationManager @Inject constructor(
         lon: Double,
         name: String,
         accuracy: Float = 0f,
-        time: Long = System.currentTimeMillis()
+        time: Long = System.currentTimeMillis(),
+        highAccuracy: Boolean = false
     ): CachedLocation {
         val cached = getCachedLocation()
         if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
@@ -511,6 +686,15 @@ class LocationManager @Inject constructor(
                 return cached
             }
 
+            val isReliableFineUpdate = highAccuracy &&
+                accuracy > 0f &&
+                accuracy <= ACCEPTABLE_ACCURACY_METERS &&
+                (dist >= 35f || (name != cached.name && dist >= 20f))
+            if (isReliableFineUpdate) {
+                Log.i(TAG, "前台高精度定位放行：dist=${dist}m, accuracy=${accuracy}m, name=$name")
+                return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
+            }
+
             // 3. 常规微小防抖动：在缓存未过期的情况下，如果位移小于 200m，
             // 且新定位的精度并未“显著优于”旧定位（如新精度 >= 旧精度，或新定位精度本身大于 100m），则判定为抖动，复用旧位置。
             if (!isCacheExpired && dist < 200f && (accuracy >= cached.accuracy || accuracy > 100f)) {
@@ -521,23 +705,33 @@ class LocationManager @Inject constructor(
         return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
     }
 
-    suspend fun requestSystemOrIpLocation(): CachedLocation? {
-        Log.i(TAG, "定位总入口被调用（系统自带优先+高德兜底，已剔除IP定位）...")
+    suspend fun requestSystemOrIpLocation(highAccuracy: Boolean = false): CachedLocation? {
+        val profile = LocationRequestProfile(
+            highAccuracy = highAccuracy,
+            timeoutMillis = if (highAccuracy) HIGH_ACCURACY_TIMEOUT_MS else 8000L
+        )
+        Log.i(TAG, "定位总入口被调用（系统自带优先+高德兜底，已剔除IP定位）, highAccuracy=$highAccuracy...")
 
         if (hasLocationPermission()) {
             // 1. 优先尝试手机自带的系统定位服务（GMS Fused / 原生 LocationManager），增加 3 次重试机制以提高冷启动成功率
             var sysLoc: Location? = null
-            for (attempt in 1..3) {
-                sysLoc = requestSystemLocation()
+            val maxAttempts = if (highAccuracy) 1 else 3
+            for (attempt in 1..maxAttempts) {
+                sysLoc = requestSystemLocation(profile.timeoutMillis, profile.highAccuracy)
                 if (sysLoc != null) break
-                if (attempt < 3) {
+                if (attempt < maxAttempts) {
                     Log.w(TAG, "系统自带定位第 ${attempt} 次失败，等待 1 秒后重试...")
                     kotlinx.coroutines.delay(1000L)
                 }
             }
 
             if (sysLoc != null) {
-                val name = reverseGeocode(sysLoc.latitude, sysLoc.longitude)
+                val name = reverseGeocode(
+                    sysLoc.latitude,
+                    sysLoc.longitude,
+                    forceRefresh = highAccuracy,
+                    accuracy = sysLoc.accuracy
+                )
                 Log.i(TAG, "系统自带定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name")
                 
                 // 若系统定位拿到了经纬度，但地名解析失败，则启动高德定位进行地名补全与二次校准
@@ -547,13 +741,37 @@ class LocationManager @Inject constructor(
                     if (amapLoc != null) {
                         val amapName = resolveLocationName(amapLoc)
                         if (amapName != "未知位置" && amapName.isNotBlank()) {
-                            Log.i(TAG, "高德辅助解析成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$amapName")
-                            return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, amapName, amapLoc.accuracy, amapLoc.time)
+                            val distanceToSystem = distanceBetween(
+                                sysLoc.latitude,
+                                sysLoc.longitude,
+                                amapLoc.latitude,
+                                amapLoc.longitude
+                            )
+                            if (distanceToSystem <= ACCEPTABLE_ACCURACY_METERS || sysLoc.accuracyOrDefault() <= ACCEPTABLE_ACCURACY_METERS) {
+                                Log.i(TAG, "高德辅助解析成功，仅采用名称: distanceToSystem=${distanceToSystem}m, name=$amapName")
+                                return applyAntiJitter(
+                                    sysLoc.latitude,
+                                    sysLoc.longitude,
+                                    amapName,
+                                    sysLoc.accuracy,
+                                    sysLoc.time,
+                                    highAccuracy
+                                )
+                            }
+                            Log.i(TAG, "系统定位地址未知且精度较差，采用高德兜底坐标与名称: distanceToSystem=${distanceToSystem}m")
+                            return applyAntiJitter(
+                                amapLoc.latitude,
+                                amapLoc.longitude,
+                                amapName,
+                                amapLoc.accuracy,
+                                amapLoc.time,
+                                highAccuracy
+                            )
                         }
                     }
                 }
                 
-                return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name, sysLoc.accuracy, sysLoc.time)
+                return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name, sysLoc.accuracy, sysLoc.time, highAccuracy)
             }
             Log.w(TAG, "系统自带定位失败或超时，降级尝试高德定位服务作为最终兜底...")
 
@@ -562,7 +780,7 @@ class LocationManager @Inject constructor(
             if (amapLoc != null) {
                 val name = resolveLocationName(amapLoc)
                 Log.i(TAG, "高德兜底定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
-                return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name, amapLoc.accuracy, amapLoc.time)
+                return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name, amapLoc.accuracy, amapLoc.time, highAccuracy)
             }
             Log.w(TAG, "系统自带定位与高德兜底定位均已失败，已剔除IP定位，直接返回null")
         } else {
@@ -573,13 +791,25 @@ class LocationManager @Inject constructor(
 
     // ============ Location Name Resolution (Geocoder fallback) ============
 
-    suspend fun reverseGeocode(lat: Double, lon: Double): String = withContext(Dispatchers.IO) {
+    suspend fun reverseGeocode(
+        lat: Double,
+        lon: Double,
+        forceRefresh: Boolean = false,
+        accuracy: Float = 0f
+    ): String = withContext(Dispatchers.IO) {
         val cached = getCachedLocation()
-        if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
+        if (!forceRefresh && cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
             val dist = distanceBetween(lat, lon, cached.latitude, cached.longitude)
             val timeDiff = System.currentTimeMillis() - cached.time
-            val isCacheExpired = timeDiff > 5 * 60 * 1000L // 5分钟
-            if (!isCacheExpired && dist < 200f) {
+
+            val cacheLimit = when {
+                dist < 35f -> 3 * 60 * 1000L
+                accuracy > COARSE_ACCURACY_METERS && dist < 120f -> 5 * 60 * 1000L
+                else -> 60 * 1000L
+            }
+            val isCacheExpired = timeDiff > cacheLimit
+
+            if (!isCacheExpired && dist < 120f) {
                 Log.i(TAG, "reverseGeocode: 距离上次缓存位置仅为 ${dist}米且未过期，复用缓存位置名称: ${cached.name}")
                 return@withContext cached.name
             }
@@ -665,11 +895,25 @@ class LocationManager @Inject constructor(
             .removePrefix("中国")
             .removeCommonLocationNoise()
             .removeAdministrativePrefix()
+            .extractBuildingName()
             .truncateAfterUsefulLocationSuffix()
             .takeIf { it.isNotBlank() }
             ?: return null
         if (cleaned.matches(Regex("^\\d+[号弄栋幢单元室]?$"))) return null
         return cleaned.take(14)
+    }
+
+    private fun String.extractBuildingName(): String {
+        // Match a street/road/number prefix followed by a building/landmark name
+        val pattern = Regex("^.*?(?:街|路|道|巷|号|弄|区|园|村)(.+?(?:大厦|大楼|写字楼|中心|广场|大厅|公馆|公寓|小区|花园|阁|轩|馆|院|大戏院|剧院|学校|大学|医院|大酒店|酒店|商厦|大商场|商场|超市|大门|正门|北门|南门|东门|西门|地铁站|公交站|厂|大厂|TCL))$")
+        val match = pattern.find(this)
+        if (match != null) {
+            val candidate = match.groupValues[1].trim()
+            if (candidate.length >= 2) {
+                return candidate
+            }
+        }
+        return this
     }
 
     private fun String.removeCommonLocationNoise(): String {
