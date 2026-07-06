@@ -25,6 +25,7 @@ object WeatherUtils {
 
     fun getWeatherTheme(skycon: String?, isDay: Boolean): WeatherTheme {
         val background = getWeatherGradient(skycon, isDay)
+        val precipitationIconColor = getPrecipitationIconColor(skycon, isDay)
 
         // --- Card Colors & Alphas Refactoring ---
         val cardTintColor: Color
@@ -143,8 +144,31 @@ object WeatherUtils {
             cardBottomAlpha = bottomAlpha,
             cardBorderBrush = borderBrush,
             cardBorderColor = borderColor,
-            chartColors = chartColors
+            chartColors = chartColors,
+            precipitationIconColor = precipitationIconColor
         )
+    }
+
+    fun getPrecipitationIconColor(skycon: String?, isDay: Boolean): Color {
+        val isRain = skycon?.let {
+            it.contains("RAIN") || it.contains("STORM") || it == "THUNDER_SHOWER"
+        } == true
+        val isDimDay = skycon?.let {
+            it.contains("CLOUDY") ||
+                it.contains("SNOW") ||
+                it.contains("HAZE") ||
+                it == "FOG" ||
+                it == "DUST" ||
+                it == "SAND" ||
+                it == "WIND"
+        } == true
+
+        return when {
+            !isDay -> Color(0xFFFFFFFF)
+            isRain -> Color(0xFFEAF7FF)
+            isDimDay -> Color(0xFFDDF3FF)
+            else -> Color(0xFF0A5AD4)
+        }
     }
 
     fun getWeatherInfo(skycon: String?, hour: Int = 12): WeatherInfo {

@@ -40,7 +40,39 @@ class CaiyunAlertResponseTest {
     }
 
     @Test
-    fun `toAlertContentList drops inactive warnings`() {
+    fun `toAlertContentList keeps status 2 published warnings`() {
+        val response = CaiyunAlertResponse(
+            alerts = listOf(
+                CaiyunAlert(
+                    id = "alert-2",
+                    regionCode = "CN",
+                    areaCode = "440300",
+                    alertType = 156110203,
+                    publishTime = 1783375680,
+                    status = 2,
+                    data = listOf(
+                        AlertLocalizedData(
+                            languageCode = "zh-CN",
+                            title = "深圳市气象台发布暴雨黄色预警[III级/较重]",
+                            text = "目前全市暴雨黄色预警信号生效中，请继续防御暴雨可能引发的局部内涝。",
+                            level = "yellow",
+                            name = "暴雨黄色预警"
+                        )
+                    )
+                )
+            )
+        )
+
+        val alerts = response.toAlertContentList()
+
+        assertEquals(1, alerts.size)
+        assertEquals("alert-2", alerts[0].id)
+        assertEquals("active", alerts[0].status)
+        assertEquals("暴雨黄色预警", alerts[0].level)
+    }
+
+    @Test
+    fun `toAlertContentList drops cancelled warnings`() {
         val response = CaiyunAlertResponse(
             alerts = listOf(
                 CaiyunAlert(
@@ -51,6 +83,27 @@ class CaiyunAlertResponseTest {
                             languageCode = "zh-CN",
                             title = "北京市解除大风蓝色预警",
                             text = "预警已解除"
+                        )
+                    )
+                )
+            )
+        )
+
+        assertEquals(0, response.toAlertContentList().size)
+    }
+
+    @Test
+    fun `toAlertContentList drops inactive warnings`() {
+        val response = CaiyunAlertResponse(
+            alerts = listOf(
+                CaiyunAlert(
+                    id = "alert-3",
+                    status = 3,
+                    data = listOf(
+                        AlertLocalizedData(
+                            languageCode = "zh-CN",
+                            title = "深圳市气象台发布暴雨黄色预警",
+                            text = "暴雨黄色预警信号生效中。"
                         )
                     )
                 )

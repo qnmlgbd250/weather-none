@@ -1,5 +1,6 @@
 package com.skypulse.weather.util
 
+import androidx.compose.ui.graphics.Color
 import com.skypulse.weather.model.AstroTime
 import com.skypulse.weather.model.DailyAstro
 import com.skypulse.weather.model.DailyForecast
@@ -366,6 +367,23 @@ class WeatherUtilsTest {
         val nullGradient = WeatherUtils.getWeatherGradient(null, isDay = true)
         val clearGradient = WeatherUtils.getWeatherGradient("CLEAR_DAY", isDay = true)
         assertEquals(nullGradient, clearGradient)
+    }
+
+    // ============ getPrecipitationIconColor ============
+
+    @Test
+    fun `getPrecipitationIconColor keeps original blue on bright day`() {
+        assertEquals(Color(0xFF0A5AD4), WeatherUtils.getPrecipitationIconColor("CLEAR_DAY", isDay = true))
+    }
+
+    @Test
+    fun `getPrecipitationIconColor uses pale rain color on rainy day`() {
+        assertEquals(Color(0xFFEAF7FF), WeatherUtils.getPrecipitationIconColor("MODERATE_RAIN", isDay = true))
+    }
+
+    @Test
+    fun `getPrecipitationIconColor uses white at night`() {
+        assertEquals(Color.White, WeatherUtils.getPrecipitationIconColor("LIGHT_RAIN", isDay = false))
     }
 
     private fun calendarAt(date: String, hour: Int, minute: Int): Calendar {

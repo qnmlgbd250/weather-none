@@ -67,11 +67,10 @@ data class AlertLocalizedData(
  */
 fun CaiyunAlertResponse.toAlertContentList(): List<AlertContent> {
     return alerts?.mapNotNull { alert ->
-        if (alert.status != 1) return@mapNotNull null
-
         val localized = alert.data?.firstOrNull { it.languageCode == "zh-CN" }
             ?: alert.data?.firstOrNull()
             ?: return@mapNotNull null
+        if (!alert.isActiveWarning(localized)) return@mapNotNull null
 
         // 构建 level：优先用 name（如"台风白色预警"中的"白色"），再用 level 字段
         val level = localized.name ?: localized.level ?: ""
@@ -84,11 +83,20 @@ fun CaiyunAlertResponse.toAlertContentList(): List<AlertContent> {
             description = localized.text,
             level = level,
             type = alert.alertType?.toString(),
-            status = if (alert.status == 1) "active" else "inactive",
+            status = "active",
             id = alert.id,
             regionCode = alert.regionCode,
             areaCode = alert.areaCode,
             publishTime = alert.publishTime
         )
     }.orEmpty()
+}
+
+private fun CaiyunAlert.isActiveWarning(localized: AlertLocalizedData): Boolean {
+    val activeStatus = status == 1 || status == 2
+    if (!activeStatus) return false
+
+    val text = listOfNotNull(localized.title, localized.name, localized.text).joinToString(separator = " ")
+    val isCancellation = listOf("解除", "取消", "终止").any { keyword -> text.contains(keyword) }
+    return !isCancellation
 }

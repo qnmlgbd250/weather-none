@@ -82,7 +82,8 @@ object WeatherWidgetUpdater {
             FileLogger.i(TAG, "updateAll: \u6e32\u67d3\u6570\u636e \u2014 city=$cityText, temp=$tempText, " +
                 "detail=$detailText, skycon=$skycon, isDay=$isDay, icon=${info.icon}, " +
                 "widgetCount=${ids.size}")
-            val iconBitmap = renderIcon(context, info.icon)
+            val precipitationColor = WeatherUtils.getPrecipitationIconColor(skycon, isDay).toArgb()
+            val iconBitmap = renderIcon(context, info.icon, precipitationColor)
             if (iconBitmap == null) {
                 FileLogger.w(TAG, "updateAll: \u56fe\u6807\u6e32\u67d3\u5931\u8d25 skycon=$skycon, icon=${info.icon}")
             }
@@ -152,19 +153,20 @@ object WeatherWidgetUpdater {
         return if (segment.length > 4) segment.substring(0, 4) else segment
     }
 
-    private fun renderIcon(context: Context, icon: String): Bitmap? {
-        iconCache.get(icon)?.let { return it }
+    private fun renderIcon(context: Context, icon: String, precipitationColor: Int? = null): Bitmap? {
+        val cacheKey = if (precipitationColor == null) icon else "$icon:$precipitationColor"
+        iconCache.get(cacheKey)?.let { return it }
         val bitmap = when (icon) {
             "clear-night" -> renderMoonBitmap(context)
-            else -> renderSvgIcon(context, icon)
+            else -> renderSvgIcon(context, icon, precipitationColor)
         }
-        if (bitmap != null) iconCache.put(icon, bitmap)
+        if (bitmap != null) iconCache.put(cacheKey, bitmap)
         return bitmap
     }
 
-    private fun renderSvgIcon(context: Context, icon: String): Bitmap? {
+    private fun renderSvgIcon(context: Context, icon: String, precipitationColor: Int?): Bitmap? {
         val size = (96 * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        return WeatherSvgRenderer.renderBitmap(context, icon, size)
+        return WeatherSvgRenderer.renderBitmap(context, icon, size, precipitationColor)
     }
 
     /**
