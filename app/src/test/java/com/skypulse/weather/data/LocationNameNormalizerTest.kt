@@ -25,9 +25,10 @@ class LocationNameNormalizerTest {
     }
 
     @Test
-    fun `address detail extracts real landmark from full address`() {
-        assertEquals("腾讯大厦", LocationNameNormalizer.normalizeAddressDetail("广东省深圳市南山区高新南四区腾讯大厦"))
-        assertEquals("环球金融中心", LocationNameNormalizer.normalizeAddressDetail("上海市浦东新区世纪大道100号环球金融中心"))
+    fun `address detail keeps road and landmark detail from full address`() {
+        assertEquals("高新南四区腾讯大厦", LocationNameNormalizer.normalizeAddressDetail("广东省深圳市南山区高新南四区腾讯大厦"))
+        assertEquals("世纪大道100号环球金融中心", LocationNameNormalizer.normalizeAddressDetail("上海市浦东新区世纪大道100号环球金融中心"))
+        assertEquals("高新南路TCL大厦", LocationNameNormalizer.normalizeAddressDetail("广东省深圳市南山区高新南路TCL大厦"))
     }
 
     @Test

@@ -887,6 +887,13 @@ class LocationManager @Inject constructor(
 
             if (!isCacheExpired && dist < 120f) {
                 Log.i(TAG, "reverseGeocode: 距离上次缓存位置仅为 ${dist}米且未过期，复用缓存位置名称: ${cached.name}")
+                logReverseGeocodeResult(
+                    source = "cache",
+                    lat = lat,
+                    lon = lon,
+                    result = cached.name,
+                    details = "dist=${dist}m, age=${timeDiff}ms, accuracy=${accuracy}m"
+                )
                 return@withContext cached.name
             }
         }
@@ -901,6 +908,13 @@ class LocationManager @Inject constructor(
         }
 
         if (systemResult != null && systemResult != "未知位置" && systemResult.isNotBlank()) {
+            logReverseGeocodeResult(
+                source = "system_geocoder",
+                lat = lat,
+                lon = lon,
+                result = systemResult,
+                details = "selected=true"
+            )
             return@withContext systemResult
         }
 
@@ -909,6 +923,13 @@ class LocationManager @Inject constructor(
         val bdcResult = queryBigDataCloud(lat, lon)
         if (bdcResult != null && bdcResult != "未知位置" && bdcResult.isNotBlank()) {
             Log.i(TAG, "reverseGeocode: BigDataCloud 解析成功: $bdcResult")
+            logReverseGeocodeResult(
+                source = "bigdatacloud",
+                lat = lat,
+                lon = lon,
+                result = bdcResult,
+                details = "selected=true"
+            )
             return@withContext bdcResult
         }
 
@@ -917,9 +938,23 @@ class LocationManager @Inject constructor(
         val osmResult = queryNominatim(lat, lon)
         if (osmResult != null && osmResult != "未知位置" && osmResult.isNotBlank()) {
             Log.i(TAG, "reverseGeocode: Nominatim 解析成功: $osmResult")
+            logReverseGeocodeResult(
+                source = "nominatim",
+                lat = lat,
+                lon = lon,
+                result = osmResult,
+                details = "selected=true"
+            )
             return@withContext osmResult
         }
 
+        logReverseGeocodeResult(
+            source = "all_failed",
+            lat = lat,
+            lon = lon,
+            result = "未知位置",
+            details = "system=null, bigdatacloud=null, nominatim=null"
+        )
         "未知位置"
     }
 
@@ -945,13 +980,34 @@ class LocationManager @Inject constructor(
                     .distinct()
                     .joinToString(" ")
                 Log.d(TAG, "geocoderFallback($lat,$lon): city=$city, district=$district, detail=$detail, result=${result.ifBlank { "EMPTY" }}")
+                logReverseGeocodeResult(
+                    source = "system_geocoder_raw",
+                    lat = lat,
+                    lon = lon,
+                    result = result.ifEmpty { "未知位置" },
+                    details = "locality=${addr.locality.safeLogValue()}, subLocality=${addr.subLocality.safeLogValue()}, feature=${addr.featureName.safeLogValue()}, thoroughfare=${addr.thoroughfare.safeLogValue()}, line=${addr.getAddressLine(0).safeLogValue()}, normalizedCity=${city.safeLogValue()}, normalizedDistrict=${district.safeLogValue()}, normalizedDetail=${detail.safeLogValue()}"
+                )
                 result.ifEmpty { "未知位置" }
             } else {
                 Log.w(TAG, "geocoderFallback($lat,$lon): no addresses returned")
+                logReverseGeocodeResult(
+                    source = "system_geocoder_raw",
+                    lat = lat,
+                    lon = lon,
+                    result = "未知位置",
+                    details = "no_addresses"
+                )
                 "未知位置"
             }
         } catch (e: Exception) {
             Log.w(TAG, "geocoderFallback($lat,$lon): exception: ${e.message}")
+            logReverseGeocodeResult(
+                source = "system_geocoder_raw",
+                lat = lat,
+                lon = lon,
+                result = "未知位置",
+                details = "exception=${e.javaClass.simpleName}:${e.message.safeLogValue()}"
+            )
             "未知位置"
         }
     }
@@ -973,6 +1029,13 @@ class LocationManager @Inject constructor(
                 shortTimeoutClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         Log.w(TAG, "BigDataCloud API error: ${response.code}")
+                        logReverseGeocodeResult(
+                            source = "bigdatacloud_raw",
+                            lat = lat,
+                            lon = lon,
+                            result = "未知位置",
+                            details = "http=${response.code}"
+                        )
                         return@withContext null
                     }
                     val bodyStr = response.body?.string() ?: return@withContext null
@@ -986,7 +1049,16 @@ class LocationManager @Inject constructor(
                             val name = item?.optString("name")
                             if (!name.isNullOrBlank() && name != "中华人民共和国" && !name.endsWith("省")) {
                                 val cleaned = LocationNameNormalizer.normalizeAdminPart(name)
-                                if (cleaned != null) return@withContext cleaned
+                                if (cleaned != null) {
+                                    logReverseGeocodeResult(
+                                        source = "bigdatacloud_raw",
+                                        lat = lat,
+                                        lon = lon,
+                                        result = cleaned,
+                                        details = "adminName=${name.safeLogValue()}, source=administrative"
+                                    )
+                                    return@withContext cleaned
+                                }
                             }
                         }
                     }
@@ -994,10 +1066,25 @@ class LocationManager @Inject constructor(
                     val city = json.optString("city").takeIf { it.isNotBlank() }
                     val locality = json.optString("locality").takeIf { it.isNotBlank() }
                     val fallback = locality ?: city
-                    fallback?.let { LocationNameNormalizer.normalizeAdminPart(it) }
+                    val cleaned = fallback?.let { LocationNameNormalizer.normalizeAdminPart(it) }
+                    logReverseGeocodeResult(
+                        source = "bigdatacloud_raw",
+                        lat = lat,
+                        lon = lon,
+                        result = cleaned ?: "未知位置",
+                        details = "city=${city.safeLogValue()}, locality=${locality.safeLogValue()}"
+                    )
+                    cleaned
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "BigDataCloud query failed", e)
+                logReverseGeocodeResult(
+                    source = "bigdatacloud_raw",
+                    lat = lat,
+                    lon = lon,
+                    result = "未知位置",
+                    details = "exception=${e.javaClass.simpleName}:${e.message.safeLogValue()}"
+                )
                 null
             }
         }
@@ -1020,6 +1107,13 @@ class LocationManager @Inject constructor(
                 shortTimeoutClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         Log.w(TAG, "Nominatim API error: ${response.code}")
+                        logReverseGeocodeResult(
+                            source = "nominatim_raw",
+                            lat = lat,
+                            lon = lon,
+                            result = "未知位置",
+                            details = "http=${response.code}"
+                        )
                         return@withContext null
                     }
                     val bodyStr = response.body?.string() ?: return@withContext null
@@ -1033,7 +1127,16 @@ class LocationManager @Inject constructor(
 
                     if (road != null) {
                         val cleaned = LocationNameNormalizer.normalizePoiPart(road)
-                        if (cleaned != null) return@withContext cleaned
+                        if (cleaned != null) {
+                            logReverseGeocodeResult(
+                                source = "nominatim_raw",
+                                lat = lat,
+                                lon = lon,
+                                result = cleaned,
+                                details = "road=${road.safeLogValue()}"
+                            )
+                            return@withContext cleaned
+                        }
                     }
 
                     val displayName = json.optString("display_name")
@@ -1042,19 +1145,65 @@ class LocationManager @Inject constructor(
                         if (!firstPart.isNullOrBlank() && firstPart != "中国") {
                             val cleaned = LocationNameNormalizer.normalizeAddressDetail(firstPart)
                                 ?: LocationNameNormalizer.normalizePoiPart(firstPart)
-                            if (cleaned != null) return@withContext cleaned
+                            if (cleaned != null) {
+                                logReverseGeocodeResult(
+                                    source = "nominatim_raw",
+                                    lat = lat,
+                                    lon = lon,
+                                    result = cleaned,
+                                    details = "displayFirst=${firstPart.safeLogValue()}"
+                                )
+                                return@withContext cleaned
+                            }
                         }
                     }
 
                     val city = address?.optString("city")?.takeIf { it.isNotBlank() }
                         ?: address?.optString("town")?.takeIf { it.isNotBlank() }
                         ?: address?.optString("village")?.takeIf { it.isNotBlank() }
-                    city?.let { LocationNameNormalizer.normalizeAdminPart(it) }
+                    val cleanedCity = city?.let { LocationNameNormalizer.normalizeAdminPart(it) }
+                    logReverseGeocodeResult(
+                        source = "nominatim_raw",
+                        lat = lat,
+                        lon = lon,
+                        result = cleanedCity ?: "未知位置",
+                        details = "city=${city.safeLogValue()}, display=${displayName.safeLogValue()}"
+                    )
+                    cleanedCity
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Nominatim query failed", e)
+                logReverseGeocodeResult(
+                    source = "nominatim_raw",
+                    lat = lat,
+                    lon = lon,
+                    result = "未知位置",
+                    details = "exception=${e.javaClass.simpleName}:${e.message.safeLogValue()}"
+                )
                 null
             }
         }
+    }
+
+    private fun logReverseGeocodeResult(
+        source: String,
+        lat: Double,
+        lon: Double,
+        result: String,
+        details: String
+    ) {
+        FileLogger.i(
+            TAG,
+            "reverseGeocode[$source]: coord=${lat.safeCoord()},${lon.safeCoord()}, result=${result.safeLogValue()}, $details"
+        )
+    }
+
+    private fun Double.safeCoord(): String {
+        return String.format(Locale.US, "%.3f", this)
+    }
+
+    private fun String?.safeLogValue(maxLength: Int = 80): String {
+        val value = this?.replace(Regex("\\s+"), " ")?.trim()?.takeIf { it.isNotBlank() } ?: "null"
+        return if (value.length <= maxLength) value else value.take(maxLength) + "..."
     }
 }
