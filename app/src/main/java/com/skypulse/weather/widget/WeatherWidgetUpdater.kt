@@ -7,11 +7,10 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.*
 import android.widget.RemoteViews
-import com.airbnb.lottie.LottieCompositionFactory
-import com.airbnb.lottie.LottieDrawable
 import com.skypulse.weather.MainActivity
 import com.skypulse.weather.R
 import com.skypulse.weather.model.WeatherResponse
+import com.skypulse.weather.ui.components.WeatherSvgRenderer
 import com.skypulse.weather.util.FileLogger
 import androidx.compose.ui.graphics.toArgb
 import com.skypulse.weather.util.WeatherUtils
@@ -157,35 +156,20 @@ object WeatherWidgetUpdater {
         iconCache.get(icon)?.let { return it }
         val bitmap = when (icon) {
             "clear-night" -> renderMoonBitmap(context)
-            "wind" -> renderWindBitmap(context)
-            else -> renderLottieIcon(context, icon)
+            else -> renderSvgIcon(context, icon)
         }
         if (bitmap != null) iconCache.put(icon, bitmap)
         return bitmap
     }
-}
 
-    private fun renderLottieIcon(context: Context, icon: String): Bitmap? {
-        return try {
-            val composition = LottieCompositionFactory.fromAssetSync(context, "meteocons/fill/${icon}.json").value
-                ?: return null
-            val drawable = LottieDrawable()
-            drawable.composition = composition
-            drawable.progress = 0f
-            val size = (96 * context.resources.displayMetrics.density).toInt()
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            drawable.setBounds(0, 0, size, size)
-            drawable.draw(canvas)
-            bitmap
-        } catch (_: Exception) {
-            null
-        }
+    private fun renderSvgIcon(context: Context, icon: String): Bitmap? {
+        val size = (96 * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
+        return WeatherSvgRenderer.renderBitmap(context, icon, size)
     }
 
     /**
      * Hand-drawn moon icon matching the Compose MoonIcon in WeatherIcon.kt.
-     * Uses the same Lottie bezier path from clear-night.json with warm golden gradient.
+     * Uses the same preserved Meteocons moon bezier path with warm golden gradient.
      */
     private fun renderMoonBitmap(context: Context): Bitmap? {
         return try {
@@ -195,7 +179,7 @@ object WeatherWidgetUpdater {
             val canvas = Canvas(bitmap)
             val scale = size / 128f
 
-            // Original Lottie path from clear-night.json (128x128 canvas)
+            // Preserved Meteocons moon path (128x128 canvas)
             val v = arrayOf(
                 floatArrayOf(60.3018f, 32.582f),
                 floatArrayOf(95.3252f, 72.5146f),
@@ -258,62 +242,6 @@ object WeatherWidgetUpdater {
                 strokeJoin = Paint.Join.ROUND
             }
             canvas.drawPath(path, strokePaint)
-
-            bitmap
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun renderWindBitmap(context: Context): Bitmap? {
-        return try {
-            val density = context.resources.displayMetrics.density
-            val size = (96 * density).toInt()
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val scale = size / 128f
-
-            val path1 = Path().apply {
-                moveTo(24f * scale, 58f * scale)
-                lineTo(95f * scale, 58f * scale)
-                cubicTo(
-                    100.52f * scale, 58f * scale,
-                    105f * scale, 53.27f * scale,
-                    105f * scale, 47.45f * scale
-                )
-                cubicTo(
-                    105f * scale, 38.4f * scale,
-                    93.98f * scale, 33.35f * scale,
-                    87.79f * scale, 40.14f * scale
-                )
-            }
-
-            val path2 = Path().apply {
-                moveTo(24f * scale, 70f * scale)
-                lineTo(67.62f * scale, 70f * scale)
-                cubicTo(
-                    73.35f * scale, 70f * scale,
-                    78f * scale, 74.73f * scale,
-                    78f * scale, 80.56f * scale
-                )
-                cubicTo(
-                    78f * scale, 89.87f * scale,
-                    66.42f * scale, 94.52f * scale,
-                    60.13f * scale, 87.87f * scale
-                )
-            }
-
-            // Draw as solid lines for static widgets to ensure they are fully visible
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                color = Color.parseColor("#FFFFFF")
-                strokeWidth = 6f * density // 6dp stroke width compensates for RemoteViews downscaling from 96dp to 44dp
-                strokeCap = Paint.Cap.ROUND
-                strokeJoin = Paint.Join.ROUND
-            }
-
-            canvas.drawPath(path1, paint)
-            canvas.drawPath(path2, paint)
 
             bitmap
         } catch (_: Exception) {
@@ -432,3 +360,4 @@ object WeatherWidgetUpdater {
         }
         canvas.restore()
     }
+}

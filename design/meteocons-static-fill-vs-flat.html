@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Meteocons Static Fill vs Flat</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 1440px;
+      height: 980px;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+      background: #f6f8fb;
+      color: #172435;
+    }
+    .page { padding: 56px 64px; }
+    h1 { margin: 0 0 10px; font-size: 34px; line-height: 1.2; }
+    .note { margin: 0 0 34px; color: #637386; font-size: 17px; }
+    .row-title { display: flex; align-items: baseline; gap: 12px; margin: 24px 0 16px; }
+    .row-title strong { font-size: 22px; }
+    .row-title span { color: #637386; font-size: 15px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 14px;
+    }
+    .cell {
+      height: 178px;
+      background: #fff;
+      border: 1px solid #e6ebf2;
+      border-radius: 8px;
+      display: grid;
+      grid-template-rows: 122px 1fr;
+      place-items: center;
+    }
+    .cell img { width: 104px; height: 104px; display: block; }
+    .cell span { font-size: 13px; color: #536273; align-self: start; padding-top: 2px; }
+    .legend {
+      margin-top: 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .legend div {
+      background: #fff;
+      border: 1px solid #e6ebf2;
+      border-radius: 8px;
+      padding: 18px 20px;
+      color: #536273;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .legend b { color: #172435; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <h1>Meteocons 官方静态包对比</h1>
+    <p class="note">同一批官方 SVG 图标，来自 @meteocons/svg-static。上排为 fill，下排为 flat。</p>
+
+    <section>
+      <div class="row-title"><strong>fill</strong><span>保留渐变、细描边，静态后更接近当前 Lottie 的视觉质感</span></div>
+      <div class="grid">
+        <div class="cell"><img src="meteocons-static-preview/fill/clear-day.svg"><span>clear-day</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/clear-night.svg"><span>clear-night</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/partly-cloudy-day.svg"><span>partly-cloudy-day</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/overcast.svg"><span>overcast</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/rain.svg"><span>rain</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/thunderstorms-rain.svg"><span>thunderstorms-rain</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/snow.svg"><span>snow</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/fog.svg"><span>fog</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/haze.svg"><span>haze</span></div>
+        <div class="cell"><img src="meteocons-static-preview/fill/wind.svg"><span>wind</span></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="row-title"><strong>flat</strong><span>去掉渐变和描边，色块更单纯，包体和渲染都更轻</span></div>
+      <div class="grid">
+        <div class="cell"><img src="meteocons-static-preview/flat/clear-day.svg"><span>clear-day</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/clear-night.svg"><span>clear-night</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/partly-cloudy-day.svg"><span>partly-cloudy-day</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/overcast.svg"><span>overcast</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/rain.svg"><span>rain</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/thunderstorms-rain.svg"><span>thunderstorms-rain</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/snow.svg"><span>snow</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/fog.svg"><span>fog</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/haze.svg"><span>haze</span></div>
+        <div class="cell"><img src="meteocons-static-preview/flat/wind.svg"><span>wind</span></div>
+      </div>
+    </section>
+
+    <section class="legend">
+      <div><b>fill:</b> 云朵、太阳、月亮通常带轻微渐变和 1px 左右描边，层次更明显，和当前动画 JSON 的观感更接近。</div>
+      <div><b>flat:</b> 同样的轮廓语言，但改成纯色填充，视觉更干净、更静态，适合想去掉动画后让界面更安静。</div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="rain" clip-path="url(#clip0_2045_39587)">
+<g id="Sky">
+<g id="Clouds">
+<g id="Cloud">
+<path id="Cloud_2" d="M90.3886 63.0856C92.6838 53.8819 87.7408 44.1357 79.0085 40.4822C70.2653 36.8242 59.8277 40.1375 54.8372 48.2115C50.5363 45.625 44.9752 45.7781 40.8239 48.5991C36.6832 51.4128 34.4996 56.5143 35.3499 61.4539C28.3926 62.7685 23.3934 69.3393 24.0614 76.4076C24.7297 83.4776 30.8718 89.0018 37.9534 89C55.6066 89 73.306 89 90.9767 89C98.0446 89 104 83.1189 104 76.0281C104 68.7015 97.6775 62.7674 90.3886 63.0856Z" fill="#E6EFFC"/>
+</g>
+</g>
+</g>
+<g id="Precipitation">
+<g id="Raindrops">
+<path id="Raindrop 1" d="M52 83V95" stroke="#0A5AD4" stroke-width="4" stroke-linecap="round" transform="translate(0, 8)"/>
+<path id="Raindrop 2" d="M64 83V95" stroke="#0A5AD4" stroke-width="4" stroke-linecap="round" transform="translate(0, 0)"/>
+<path id="Raindrop 3" d="M76 83V95" stroke="#0A5AD4" stroke-width="4" stroke-linecap="round" transform="translate(0, 8)"/>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_2045_39587">
+<rect width="128" height="128" fill="white"/>
+</clipPath>
+</defs>
+</svg>

@@ -1,0 +1,20 @@
+<svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="haze" clip-path="url(#clip0_2045_39818)">
+<g id="Sky">
+<g id="Clouds">
+<g id="Cloud">
+<path id="Cloud_2" d="M90.3887 63.0856C92.684 53.8819 87.741 44.1357 79.0087 40.4822C70.2654 36.8242 59.8278 40.1375 54.8373 48.2115C50.5364 45.625 44.9753 45.7781 40.824 48.5991C36.6833 51.4128 34.4998 56.5143 35.35 61.4539C28.3927 62.7685 23.3935 69.3393 24.0616 76.4076C24.7298 83.4776 30.872 89.0018 37.9535 89C55.6067 89 73.3061 89 90.9768 89C98.0447 89 104 83.1189 104 76.0281C104 68.7015 97.6776 62.7674 90.3887 63.0856Z" fill="#E6EFFC"/>
+</g>
+</g>
+</g>
+<g id="Precipitation">
+<path id="Line 2" d="M40 95H88" stroke="#E2E8F0" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round" stroke-dasharray="12 9"/>
+<path id="Line 1" d="M40 103H88" stroke="#E2E8F0" stroke-width="3" stroke-miterlimit="10" stroke-linecap="round" stroke-dasharray="12 9"/>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_2045_39818">
+<rect width="128" height="128" fill="white"/>
+</clipPath>
+</defs>
+</svg>
