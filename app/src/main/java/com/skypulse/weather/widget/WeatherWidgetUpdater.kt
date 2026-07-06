@@ -155,10 +155,10 @@ object WeatherWidgetUpdater {
 
     private fun renderIcon(context: Context, icon: String): Bitmap? {
         iconCache.get(icon)?.let { return it }
-        val bitmap = if (icon == "clear-night") {
-            renderMoonBitmap(context)
-        } else {
-            renderLottieIcon(context, icon)
+        val bitmap = when (icon) {
+            "clear-night" -> renderMoonBitmap(context)
+            "wind" -> renderWindBitmap(context)
+            else -> renderLottieIcon(context, icon)
         }
         if (bitmap != null) iconCache.put(icon, bitmap)
         return bitmap
@@ -258,6 +258,62 @@ object WeatherWidgetUpdater {
                 strokeJoin = Paint.Join.ROUND
             }
             canvas.drawPath(path, strokePaint)
+
+            bitmap
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun renderWindBitmap(context: Context): Bitmap? {
+        return try {
+            val density = context.resources.displayMetrics.density
+            val size = (96 * density).toInt()
+            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            val scale = size / 128f
+
+            val path1 = Path().apply {
+                moveTo(24f * scale, 58f * scale)
+                lineTo(95f * scale, 58f * scale)
+                cubicTo(
+                    100.52f * scale, 58f * scale,
+                    105f * scale, 53.27f * scale,
+                    105f * scale, 47.45f * scale
+                )
+                cubicTo(
+                    105f * scale, 38.4f * scale,
+                    93.98f * scale, 33.35f * scale,
+                    87.79f * scale, 40.14f * scale
+                )
+            }
+
+            val path2 = Path().apply {
+                moveTo(24f * scale, 70f * scale)
+                lineTo(67.62f * scale, 70f * scale)
+                cubicTo(
+                    73.35f * scale, 70f * scale,
+                    78f * scale, 74.73f * scale,
+                    78f * scale, 80.56f * scale
+                )
+                cubicTo(
+                    78f * scale, 89.87f * scale,
+                    66.42f * scale, 94.52f * scale,
+                    60.13f * scale, 87.87f * scale
+                )
+            }
+
+            // Draw as solid lines for static widgets to ensure they are fully visible
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                color = Color.parseColor("#FFFFFF")
+                strokeWidth = 6f * density // 6dp stroke width compensates for RemoteViews downscaling from 96dp to 44dp
+                strokeCap = Paint.Cap.ROUND
+                strokeJoin = Paint.Join.ROUND
+            }
+
+            canvas.drawPath(path1, paint)
+            canvas.drawPath(path2, paint)
 
             bitmap
         } catch (_: Exception) {

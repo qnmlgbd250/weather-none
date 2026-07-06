@@ -21,6 +21,15 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.PathEffect
 
 @Composable
 fun WeatherIcon(
@@ -31,6 +40,11 @@ fun WeatherIcon(
 ) {
     if (iconType == "clear-night") {
         MoonIcon(size = size, modifier = modifier)
+        return
+    }
+
+    if (iconType == "wind") {
+        WindIcon(size = size, animated = animated, modifier = modifier)
         return
     }
 
@@ -115,6 +129,100 @@ private fun MoonIcon(size: Dp, modifier: Modifier = Modifier) {
             path = path,
             color = Color(0xFFF9AF03),
             style = Stroke(width = 1.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+    }
+}
+
+@Composable
+private fun WindIcon(
+    size: Dp,
+    animated: Boolean,
+    modifier: Modifier = Modifier
+) {
+    // If animated, animate the dash phase (flowing effect)
+    val infiniteTransition = rememberInfiniteTransition(label = "WindOffset")
+    val offsetProgress by if (animated) {
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = -105f, // negative for left-to-right flow direction (one full dash+gap loop)
+            animationSpec = infiniteRepeatable(
+                animation = tween(2000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "offset"
+        )
+    } else {
+        remember { mutableStateOf(0f) }
+    }
+
+    Canvas(modifier = modifier.size(size)) {
+        val s = this.size.width
+        val scale = s / 128f
+
+        // Top wind line
+        val path1 = Path().apply {
+            moveTo(24f * scale, 58f * scale)
+            lineTo(95f * scale, 58f * scale)
+            cubicTo(
+                100.52f * scale, 58f * scale,
+                105f * scale, 53.27f * scale,
+                105f * scale, 47.45f * scale
+            )
+            cubicTo(
+                105f * scale, 38.4f * scale,
+                93.98f * scale, 33.35f * scale,
+                87.79f * scale, 40.14f * scale
+            )
+        }
+
+        // Bottom wind line
+        val path2 = Path().apply {
+            moveTo(24f * scale, 70f * scale)
+            lineTo(67.62f * scale, 70f * scale)
+            cubicTo(
+                73.35f * scale, 70f * scale,
+                78f * scale, 74.73f * scale,
+                78f * scale, 80.56f * scale
+            )
+            cubicTo(
+                78f * scale, 89.87f * scale,
+                66.42f * scale, 94.52f * scale,
+                60.13f * scale, 87.87f * scale
+            )
+        }
+
+        // Use dashed flowing effect only when animated, solid lines when static (prevents looking missing)
+        val dashEffect = if (animated) {
+            PathEffect.dashPathEffect(
+                intervals = floatArrayOf(80f * scale, 25f * scale),
+                phase = offsetProgress * scale
+            )
+        } else {
+            null
+        }
+
+        val strokeWidthPx = if (size <= 40.dp) 1.8.dp.toPx() else 3.dp.toPx()
+
+        drawPath(
+            path = path1,
+            color = Color.White,
+            style = Stroke(
+                width = strokeWidthPx,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+                pathEffect = dashEffect
+            )
+        )
+
+        drawPath(
+            path = path2,
+            color = Color.White,
+            style = Stroke(
+                width = strokeWidthPx,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+                pathEffect = dashEffect
+            )
         )
     }
 }
