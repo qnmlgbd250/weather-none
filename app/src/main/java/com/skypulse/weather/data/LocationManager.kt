@@ -40,6 +40,14 @@ class LocationManager @Inject constructor(
         val accuracy: Float = 0f
     )
 
+    private data class PendingLocation(
+        val latitude: Double,
+        val longitude: Double,
+        val name: String,
+        val time: Long,
+        val accuracy: Float
+    )
+
     private data class LocationRequestProfile(
         val highAccuracy: Boolean,
         val timeoutMillis: Long
@@ -55,6 +63,11 @@ class LocationManager @Inject constructor(
         private const val KEY_CACHED_NAME = "cached_name"
         private const val KEY_CACHED_TIME = "cached_time"
         private const val KEY_CACHED_ACCURACY = "cached_accuracy"
+        private const val KEY_PENDING_LAT = "pending_lat"
+        private const val KEY_PENDING_LON = "pending_lon"
+        private const val KEY_PENDING_NAME = "pending_name"
+        private const val KEY_PENDING_TIME = "pending_time"
+        private const val KEY_PENDING_ACCURACY = "pending_accuracy"
 
         private const val HIGH_ACCURACY_TIMEOUT_MS = 9000L
         private const val GOOD_ACCURACY_METERS = 60f
@@ -122,6 +135,44 @@ class LocationManager @Inject constructor(
             .putString(KEY_CACHED_NAME, normalizedName)
             .putLong(KEY_CACHED_TIME, time)
             .putFloat(KEY_CACHED_ACCURACY, accuracy)
+            .apply()
+    }
+
+    private fun getPendingLocation(): PendingLocation? {
+        val lat = cachePrefs.getFloat(KEY_PENDING_LAT, 0f).toDouble()
+        val lon = cachePrefs.getFloat(KEY_PENDING_LON, 0f).toDouble()
+        val name = cachePrefs.getString(KEY_PENDING_NAME, null)?.takeIf { it.isNotBlank() }
+        val time = cachePrefs.getLong(KEY_PENDING_TIME, 0L)
+        val accuracy = cachePrefs.getFloat(KEY_PENDING_ACCURACY, 0f)
+        if (lat == 0.0 || lon == 0.0 || name == null || time <= 0L) return null
+        return PendingLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
+    }
+
+    private fun savePendingLocation(
+        name: String,
+        longitude: Double,
+        latitude: Double,
+        time: Long,
+        accuracy: Float
+    ) {
+        val normalizedName = name.takeIf { it.isNotBlank() } ?: return
+        if (latitude == 0.0 || longitude == 0.0) return
+        cachePrefs.edit()
+            .putFloat(KEY_PENDING_LAT, latitude.toFloat())
+            .putFloat(KEY_PENDING_LON, longitude.toFloat())
+            .putString(KEY_PENDING_NAME, normalizedName)
+            .putLong(KEY_PENDING_TIME, time)
+            .putFloat(KEY_PENDING_ACCURACY, accuracy)
+            .apply()
+    }
+
+    private fun clearPendingLocation() {
+        cachePrefs.edit()
+            .remove(KEY_PENDING_LAT)
+            .remove(KEY_PENDING_LON)
+            .remove(KEY_PENDING_NAME)
+            .remove(KEY_PENDING_TIME)
+            .remove(KEY_PENDING_ACCURACY)
             .apply()
     }
 
@@ -664,11 +715,34 @@ class LocationManager @Inject constructor(
     ): CachedLocation {
         val cached = getCachedLocation()
         if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
+            val now = System.currentTimeMillis()
             val dist = distanceBetween(lat, lon, cached.latitude, cached.longitude)
             
             // 1. 时间衰减判定：若缓存记录早于 5 分钟前，强制放行更新，打破“静止后不更新”的死锁
-            val timeDiff = time - cached.time
+            val timeDiff = now - cached.time
             val isCacheExpired = timeDiff > 5 * 60 * 1000L // 5分钟
+
+            if (LocationJumpGuard.shouldHoldForConfirmation(dist, accuracy, timeDiff, highAccuracy)) {
+                val pending = getPendingLocation()
+                if (pending != null) {
+                    val pendingAge = now - pending.time
+                    val distanceToPending = distanceBetween(lat, lon, pending.latitude, pending.longitude)
+                    if (LocationJumpGuard.isConfirmedByPending(distanceToPending, pendingAge)) {
+                        Log.i(TAG, "低可信大距离定位已二次确认：dist=${dist}m, pendingDist=${distanceToPending}m, accuracy=${accuracy}m, name=$name")
+                        FileLogger.i(TAG, "低可信大距离定位已二次确认：dist=${dist}m, pendingDist=${distanceToPending}m, accuracy=${accuracy}m, name=$name")
+                        clearPendingLocation()
+                        return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
+                    }
+                    if (LocationJumpGuard.isPendingExpired(pendingAge)) {
+                        clearPendingLocation()
+                    }
+                }
+
+                savePendingLocation(name, lon, lat, now, accuracy)
+                Log.i(TAG, "检测到低可信大距离定位跳变，等待二次确认：dist=${dist}m, accuracy=${accuracy}m, cached=${cached.name}, candidate=$name")
+                FileLogger.i(TAG, "检测到低可信大距离定位跳变，等待二次确认：dist=${dist}m, accuracy=${accuracy}m, cached=${cached.name}, candidate=$name")
+                return cached
+            }
             
             // 2. 基站跳变过滤（针对 1.5km 级跳变场景）：
             // 若新定位精度较差（如基站定位，精度半径 > 300m），且缓存未过期，
@@ -692,6 +766,7 @@ class LocationManager @Inject constructor(
                 (dist >= 35f || (name != cached.name && dist >= 20f))
             if (isReliableFineUpdate) {
                 Log.i(TAG, "前台高精度定位放行：dist=${dist}m, accuracy=${accuracy}m, name=$name")
+                clearPendingLocation()
                 return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
             }
 
@@ -702,6 +777,7 @@ class LocationManager @Inject constructor(
                 return cached
             }
         }
+        clearPendingLocation()
         return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
     }
 
@@ -854,13 +930,13 @@ class LocationManager @Inject constructor(
             val addresses = geocoder.getFromLocation(lat, lon, 1)
             if (!addresses.isNullOrEmpty()) {
                 val addr = addresses[0]
-                val city = normalizeLocationPart(addr.locality)
-                val district = normalizeLocationPart(addr.subLocality)
+                val city = LocationNameNormalizer.normalizeAdminPart(addr.locality)
+                val district = LocationNameNormalizer.normalizeAdminPart(addr.subLocality)
                     ?.takeIf { it != city }
                 val detail = listOfNotNull(
-                    normalizeFineLocationPart(addr.featureName),
-                    normalizeFineLocationPart(addr.thoroughfare),
-                    normalizeFineLocationPart(addr.getAddressLine(0))
+                    LocationNameNormalizer.normalizePoiPart(addr.featureName),
+                    LocationNameNormalizer.normalizePoiPart(addr.thoroughfare),
+                    LocationNameNormalizer.normalizeAddressDetail(addr.getAddressLine(0))
                 )
                     .distinct()
                     .firstOrNull { part -> part != city && part != district }
@@ -878,64 +954,6 @@ class LocationManager @Inject constructor(
             Log.w(TAG, "geocoderFallback($lat,$lon): exception: ${e.message}")
             "未知位置"
         }
-    }
-
-    private fun normalizeLocationPart(value: String?): String? {
-        val normalized = value
-            ?.replace(Regex("\\s+"), "")
-            ?.trim()
-            ?.takeIf { it.isNotBlank() && it != "null" }
-            ?: return null
-        return normalized.removeCommonLocationNoise()
-    }
-
-    private fun normalizeFineLocationPart(value: String?): String? {
-        val normalized = normalizeLocationPart(value) ?: return null
-        val cleaned = normalized
-            .removePrefix("中国")
-            .removeCommonLocationNoise()
-            .removeAdministrativePrefix()
-            .extractBuildingName()
-            .truncateAfterUsefulLocationSuffix()
-            .takeIf { it.isNotBlank() }
-            ?: return null
-        if (cleaned.matches(Regex("^\\d+[号弄栋幢单元室]?$"))) return null
-        return cleaned.take(14)
-    }
-
-    private fun String.extractBuildingName(): String {
-        // Match a street/road/number prefix followed by a building/landmark name
-        val pattern = Regex("^.*?(?:街|路|道|巷|号|弄|区|园|村)(.+?(?:大厦|大楼|写字楼|中心|广场|大厅|公馆|公寓|小区|花园|阁|轩|馆|院|大戏院|剧院|学校|大学|医院|大酒店|酒店|商厦|大商场|商场|超市|大门|正门|北门|南门|东门|西门|地铁站|公交站|厂|大厂|TCL))$")
-        val match = pattern.find(this)
-        if (match != null) {
-            val candidate = match.groupValues[1].trim()
-            if (candidate.length >= 2) {
-                return candidate
-            }
-        }
-        return this
-    }
-
-    private fun String.removeCommonLocationNoise(): String {
-        return replace("附近", "")
-            .replace("中国", "")
-            .trim()
-    }
-
-    private fun String.removeAdministrativePrefix(): String {
-        return replace(Regex("^.*?(?:省|自治区|特别行政区)"), "")
-            .replace(Regex("^.*?(?:市|自治州|地区|盟)"), "")
-            .replace(Regex("^.*?(?:区|县|自治县|旗)"), "")
-    }
-
-    private fun String.truncateAfterUsefulLocationSuffix(): String {
-        val pattern = Regex("(.+?(?:街道|大道|大街|公路|高速|快速路|路|街|巷|弄|镇|乡|村|社区|广场|公园|园区|商圈))(?:\\d+.*|[甲乙丙丁戊己庚辛壬癸]座.*|[东西南北中]门.*|出入口.*|附近.*|$)")
-        val match = pattern.find(this)
-        if (match != null) return match.groupValues[1]
-        return replace(Regex("\\d+号.*$"), "")
-            .replace(Regex("\\d+弄.*$"), "")
-            .replace(Regex("\\d+栋.*$"), "")
-            .replace(Regex("\\d+幢.*$"), "")
     }
 
     private suspend fun queryBigDataCloud(lat: Double, lon: Double): String? {
@@ -967,7 +985,7 @@ class LocationManager @Inject constructor(
                             val item = adminList.optJSONObject(i)
                             val name = item?.optString("name")
                             if (!name.isNullOrBlank() && name != "中华人民共和国" && !name.endsWith("省")) {
-                                val cleaned = normalizeFineLocationPart(name)
+                                val cleaned = LocationNameNormalizer.normalizeAdminPart(name)
                                 if (cleaned != null) return@withContext cleaned
                             }
                         }
@@ -976,7 +994,7 @@ class LocationManager @Inject constructor(
                     val city = json.optString("city").takeIf { it.isNotBlank() }
                     val locality = json.optString("locality").takeIf { it.isNotBlank() }
                     val fallback = locality ?: city
-                    fallback?.let { normalizeFineLocationPart(it) }
+                    fallback?.let { LocationNameNormalizer.normalizeAdminPart(it) }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "BigDataCloud query failed", e)
@@ -1014,7 +1032,7 @@ class LocationManager @Inject constructor(
                         ?: address?.optString("quarter")?.takeIf { it.isNotBlank() }
 
                     if (road != null) {
-                        val cleaned = normalizeFineLocationPart(road)
+                        val cleaned = LocationNameNormalizer.normalizePoiPart(road)
                         if (cleaned != null) return@withContext cleaned
                     }
 
@@ -1022,7 +1040,8 @@ class LocationManager @Inject constructor(
                     if (!displayName.isNullOrBlank()) {
                         val firstPart = displayName.split(",").firstOrNull()?.trim()
                         if (!firstPart.isNullOrBlank() && firstPart != "中国") {
-                            val cleaned = normalizeFineLocationPart(firstPart)
+                            val cleaned = LocationNameNormalizer.normalizeAddressDetail(firstPart)
+                                ?: LocationNameNormalizer.normalizePoiPart(firstPart)
                             if (cleaned != null) return@withContext cleaned
                         }
                     }
@@ -1030,7 +1049,7 @@ class LocationManager @Inject constructor(
                     val city = address?.optString("city")?.takeIf { it.isNotBlank() }
                         ?: address?.optString("town")?.takeIf { it.isNotBlank() }
                         ?: address?.optString("village")?.takeIf { it.isNotBlank() }
-                    city?.let { normalizeLocationPart(it) }
+                    city?.let { LocationNameNormalizer.normalizeAdminPart(it) }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Nominatim query failed", e)
