@@ -135,6 +135,8 @@ class UrgentNotificationWorker @AssistedInject constructor(
             if (context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, Context.MODE_PRIVATE)
                     .getBoolean("warning_alert", true)) {
                 alerts?.forEach { alert ->
+                    if (alert.status != "active") return@forEach
+
                     val title = alert.title ?: ""
 
                     val cleanTitle = title
@@ -143,8 +145,9 @@ class UrgentNotificationWorker @AssistedInject constructor(
                         .replace(Regex("预警.*$"), "预警")
                         .trim()
                     if (cleanTitle.isNotBlank()) {
-                        val shouldNotify = dedup.shouldNotifyWarning(cleanTitle)
-                        FileLogger.i(TAG, "doWork: 预警 cleanTitle=$cleanTitle, shouldNotify=$shouldNotify")
+                        val warningKey = WarningNotificationKey.from(alert, cleanTitle)
+                        val shouldNotify = dedup.shouldNotifyWarningEvent(warningKey)
+                        FileLogger.i(TAG, "doWork: 预警 cleanTitle=$cleanTitle, shouldNotify=$shouldNotify, key=$warningKey")
                         if (shouldNotify) {
                             val description = alert.description ?: ""
                             val body = if (!description.isNullOrBlank()) {

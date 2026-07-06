@@ -12,7 +12,7 @@ import org.json.JSONObject
  * - Before sending, check if an identical notification was already sent recently.
  * - Different types have different dedup windows:
  *   - Rain alerts: 2 hours (short-lived weather changes)
- *   - Weather warnings: 6 hours (warnings are typically issued for several hours)
+ *   - Weather warnings: 30 days by event/content key (long-lived warnings must not repeat)
  *   - Temperature alerts: 12 hours (daily fluctuation)
  *   - Wind alerts: 2 hours
  *   - Extreme weather: 6 hours
@@ -26,6 +26,7 @@ class NotificationDeduplicator(context: Context) {
         // Dedup windows in milliseconds
         private const val RAIN_WINDOW_MS = 2 * 60 * 60 * 1000L       // 2 hours
         private const val WARNING_WINDOW_MS = 6 * 60 * 60 * 1000L    // 6 hours
+        private const val WARNING_EVENT_RETENTION_MS = 30L * 24 * 60 * 60 * 1000L // 30 days
         private const val TEMP_CHANGE_WINDOW_MS = 12 * 60 * 60 * 1000L // 12 hours
         private const val WIND_WINDOW_MS = 2 * 60 * 60 * 1000L       // 2 hours
         private const val EXTREME_WINDOW_MS = 6 * 60 * 60 * 1000L    // 6 hours
@@ -56,6 +57,16 @@ class NotificationDeduplicator(context: Context) {
     }
 
     /**
+     * Returns true if this warning event/content has not been announced recently.
+     * Long-lived warnings can stay active for days, so the retention is intentionally
+     * much longer than the worker interval or the old title-only window.
+     */
+    fun shouldNotifyWarningEvent(eventKey: String): Boolean {
+        val key = KEY_WARNING_PREFIX + eventKey
+        return shouldNotify(key, WARNING_EVENT_RETENTION_MS)
+    }
+
+    /**
      * Returns true if the temperature change alert should be sent (not a duplicate).
      */
     fun shouldNotifyTempChange(): Boolean {
@@ -83,7 +94,14 @@ class NotificationDeduplicator(context: Context) {
     fun cleanup() {
         val now = System.currentTimeMillis()
         val records = loadRecords()
-        val maxWindow = WARNING_WINDOW_MS // Use the largest window for cleanup
+        val maxWindow = maxOf(
+            RAIN_WINDOW_MS,
+            WARNING_WINDOW_MS,
+            WARNING_EVENT_RETENTION_MS,
+            TEMP_CHANGE_WINDOW_MS,
+            WIND_WINDOW_MS,
+            EXTREME_WINDOW_MS
+        )
         val iterator = records.entries.iterator()
         while (iterator.hasNext()) {
             val entry = iterator.next()

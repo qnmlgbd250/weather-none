@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1180" viewBox="0 0 1440 1180">
+  <defs>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#476079" flood-opacity="0.13"/>
+    </filter>
+
+    <linearGradient id="sun" x1="24" y1="22" x2="72" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE978"/>
+      <stop offset="1" stop-color="#FFB545"/>
+    </linearGradient>
+    <linearGradient id="moon" x1="22" y1="16" x2="76" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EAF2FF"/>
+      <stop offset="1" stop-color="#91A9FF"/>
+    </linearGradient>
+    <linearGradient id="cloud" x1="24" y1="30" x2="76" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F6FAFF"/>
+      <stop offset="1" stop-color="#DDE8F6"/>
+    </linearGradient>
+    <linearGradient id="cloudDeep" x1="20" y1="28" x2="78" y2="74" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D9E5F0"/>
+      <stop offset="1" stop-color="#AFC1D3"/>
+    </linearGradient>
+    <linearGradient id="rain" x1="34" y1="58" x2="62" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8DDBFF"/>
+      <stop offset="1" stop-color="#3E8FFF"/>
+    </linearGradient>
+    <linearGradient id="storm" x1="40" y1="54" x2="62" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE779"/>
+      <stop offset="1" stop-color="#FF9F2D"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="32" y1="58" x2="68" y2="90" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F5FCFF"/>
+      <stop offset="1" stop-color="#A9E0FF"/>
+    </linearGradient>
+    <linearGradient id="mist" x1="18" y1="36" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#EEF4F8"/>
+      <stop offset="1" stop-color="#B8C8D5"/>
+    </linearGradient>
+
+    <g id="i-sun">
+      <circle cx="48" cy="48" r="24" fill="url(#sun)" filter="url(#softShadow)"/>
+      <g stroke="#FFD363" stroke-width="5" stroke-linecap="round" opacity="0.9">
+        <path d="M48 10v8"/><path d="M48 78v8"/><path d="M10 48h8"/><path d="M78 48h8"/>
+        <path d="M21 21l6 6"/><path d="M69 69l6 6"/><path d="M75 21l-6 6"/><path d="M27 69l-6 6"/>
+      </g>
+    </g>
+
+    <g id="i-moon">
+      <path d="M65 70c-22 7-43-10-43-33 0-13 7-25 18-31-3 19 9 37 29 42 5 1 10 1 15 0-4 10-10 17-19 22z" fill="url(#moon)" filter="url(#softShadow)"/>
+      <circle cx="62" cy="25" r="3" fill="#DCE7FF"/>
+      <circle cx="75" cy="37" r="2.4" fill="#DCE7FF"/>
+    </g>
+
+    <g id="cloud-shape">
+      <path d="M25 66c-9 0-16-7-16-16 0-8 6-15 14-16 4-12 15-20 28-20 14 0 26 10 29 24 8 2 14 9 14 18 0 10-8 18-18 18H25z" fill="url(#cloud)" filter="url(#softShadow)"/>
+      <path d="M24 66h52c10 0 18-8 18-18 0 15-9 26-25 26H26c-9 0-17-6-17-16 2 5 8 8 15 8z" fill="#C9D9EA" opacity="0.32"/>
+    </g>
+
+    <g id="cloud-dark">
+      <path d="M25 66c-9 0-16-7-16-16 0-8 6-15 14-16 4-12 15-20 28-20 14 0 26 10 29 24 8 2 14 9 14 18 0 10-8 18-18 18H25z" fill="url(#cloudDeep)" filter="url(#softShadow)"/>
+      <path d="M24 66h52c10 0 18-8 18-18 0 15-9 26-25 26H26c-9 0-17-6-17-16 2 5 8 8 15 8z" fill="#7F93A8" opacity="0.25"/>
+    </g>
+
+    <g id="drop">
+      <path d="M0-7c5 7 8 12 8 17a8 8 0 0 1-16 0c0-5 3-10 8-17z" fill="url(#rain)"/>
+    </g>
+
+    <g id="flake" stroke="url(#snow)" stroke-width="4" stroke-linecap="round">
+      <path d="M0-9v18"/><path d="M-8-4l16 8"/><path d="M8-4l-16 8"/>
+    </g>
+
+    <g id="icon-clear-day"><use href="#i-sun"/></g>
+    <g id="icon-clear-night"><use href="#i-moon"/></g>
+    <g id="icon-partly-cloudy-day">
+      <g transform="translate(4 2) scale(.72)"><use href="#i-sun"/></g>
+      <g transform="translate(8 16) scale(.88)"><use href="#cloud-shape"/></g>
+    </g>
+    <g id="icon-partly-cloudy-night">
+      <g transform="translate(5 1) scale(.76)"><use href="#i-moon"/></g>
+      <g transform="translate(8 16) scale(.88)"><use href="#cloud-shape"/></g>
+    </g>
+    <g id="icon-cloudy"><use href="#cloud-shape"/></g>
+    <g id="icon-overcast">
+      <g transform="translate(-2 8) scale(.86)" opacity="0.78"><use href="#cloud-dark"/></g>
+      <g transform="translate(8 18) scale(.88)"><use href="#cloud-dark"/></g>
+    </g>
+    <g id="icon-drizzle">
+      <use href="#cloud-shape"/>
+      <g transform="translate(32 80) scale(.72)"><use href="#drop"/></g>
+      <g transform="translate(52 82) scale(.72)"><use href="#drop"/></g>
+      <g transform="translate(70 78) scale(.72)"><use href="#drop"/></g>
+    </g>
+    <g id="icon-rain">
+      <use href="#cloud-shape"/>
+      <g transform="translate(28 78)"><use href="#drop"/></g>
+      <g transform="translate(48 84)"><use href="#drop"/></g>
+      <g transform="translate(68 78)"><use href="#drop"/></g>
+    </g>
+    <g id="icon-heavy-rain">
+      <use href="#cloud-dark"/>
+      <g transform="translate(23 76) scale(1.05)"><use href="#drop"/></g>
+      <g transform="translate(41 86) scale(1.05)"><use href="#drop"/></g>
+      <g transform="translate(59 76) scale(1.05)"><use href="#drop"/></g>
+      <g transform="translate(77 86) scale(1.05)"><use href="#drop"/></g>
+    </g>
+    <g id="icon-thunder">
+      <use href="#cloud-dark"/>
+      <path d="M52 55 38 79h13l-7 19 25-31H56l8-12z" fill="url(#storm)" filter="url(#softShadow)"/>
+    </g>
+    <g id="icon-thunder-rain">
+      <use href="#cloud-dark"/>
+      <path d="M55 53 43 74h11l-6 17 22-28H59l7-10z" fill="url(#storm)"/>
+      <g transform="translate(28 82) scale(.78)"><use href="#drop"/></g>
+      <g transform="translate(76 82) scale(.78)"><use href="#drop"/></g>
+    </g>
+    <g id="icon-snow">
+      <use href="#cloud-shape"/>
+      <g transform="translate(30 78)"><use href="#flake"/></g>
+      <g transform="translate(50 86)"><use href="#flake"/></g>
+      <g transform="translate(70 78)"><use href="#flake"/></g>
+    </g>
+    <g id="icon-heavy-snow">
+      <use href="#cloud-dark"/>
+      <g transform="translate(26 75) scale(1.05)"><use href="#flake"/></g>
+      <g transform="translate(48 86) scale(1.05)"><use href="#flake"/></g>
+      <g transform="translate(70 75) scale(1.05)"><use href="#flake"/></g>
+    </g>
+    <g id="icon-sleet">
+      <use href="#cloud-shape"/>
+      <g transform="translate(28 80) scale(.8)"><use href="#drop"/></g>
+      <g transform="translate(50 83) scale(.92)"><use href="#flake"/></g>
+      <g transform="translate(72 80) scale(.8)"><use href="#drop"/></g>
+    </g>
+    <g id="icon-fog">
+      <use href="#cloud-shape"/>
+      <g stroke="url(#mist)" stroke-width="5" stroke-linecap="round">
+        <path d="M18 78h60"/><path d="M28 89h50"/><path d="M16 100h64"/>
+      </g>
+    </g>
+    <g id="icon-haze">
+      <circle cx="34" cy="34" r="16" fill="url(#sun)" opacity="0.74"/>
+      <g stroke="#BAC8D5" stroke-width="6" stroke-linecap="round" opacity="0.9">
+        <path d="M18 52h60"/><path d="M28 65h50"/><path d="M16 78h64"/><path d="M30 91h42"/>
+      </g>
+    </g>
+    <g id="icon-wind">
+      <g stroke-linecap="round" fill="none" filter="url(#softShadow)">
+        <path d="M18 32h46c8 0 12-5 12-10 0-7-6-12-13-12-5 0-9 3-11 7" stroke="#9DB0C4" stroke-width="7"/>
+        <path d="M12 52h62c8 0 13 5 13 12s-6 13-14 13c-6 0-11-3-14-8" stroke="#7BC7F4" stroke-width="7"/>
+        <path d="M23 72h25" stroke="#C2D0DF" stroke-width="7"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="1440" height="1180" fill="#F7FAFD"/>
+  <text x="72" y="86" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="38" font-weight="700" fill="#18283A">SkyPulse Weather Icon Draft</text>
+  <text x="72" y="124" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" fill="#66788B">Minimal flat color direction - first visual pass for comparison only</text>
+
+  <g font-family="Inter, Segoe UI, Arial, sans-serif" text-anchor="middle">
+    <g transform="translate(72 170)">
+      <g transform="translate(0 0)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-clear-day" x="44" y="26"/><text x="92" y="154" font-size="17" fill="#516172">Clear Day</text></g>
+      <g transform="translate(216 0)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-clear-night" x="44" y="26"/><text x="92" y="154" font-size="17" fill="#516172">Clear Night</text></g>
+      <g transform="translate(432 0)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-partly-cloudy-day" x="44" y="26"/><text x="92" y="154" font-size="17" fill="#516172">Partly Day</text></g>
+      <g transform="translate(648 0)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-partly-cloudy-night" x="44" y="26"/><text x="92" y="154" font-size="17" fill="#516172">Partly Night</text></g>
+      <g transform="translate(864 0)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-cloudy" x="44" y="26"/><text x="92" y="154" font-size="17" fill="#516172">Cloudy</text></g>
+      <g transform="translate(1080 0)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-overcast" x="44" y="26"/><text x="92" y="154" font-size="17" fill="#516172">Overcast</text></g>
+
+      <g transform="translate(0 224)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-drizzle" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Drizzle</text></g>
+      <g transform="translate(216 224)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-rain" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Rain</text></g>
+      <g transform="translate(432 224)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-heavy-rain" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Heavy Rain</text></g>
+      <g transform="translate(648 224)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-thunder" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Thunder</text></g>
+      <g transform="translate(864 224)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-thunder-rain" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Storm Rain</text></g>
+      <g transform="translate(1080 224)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-sleet" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Sleet</text></g>
+
+      <g transform="translate(0 448)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-snow" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Snow</text></g>
+      <g transform="translate(216 448)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-heavy-snow" x="44" y="22"/><text x="92" y="154" font-size="17" fill="#516172">Heavy Snow</text></g>
+      <g transform="translate(432 448)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-fog" x="44" y="14"/><text x="92" y="154" font-size="17" fill="#516172">Fog</text></g>
+      <g transform="translate(648 448)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-haze" x="44" y="16"/><text x="92" y="154" font-size="17" fill="#516172">Haze</text></g>
+      <g transform="translate(864 448)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-wind" x="44" y="30"/><text x="92" y="154" font-size="17" fill="#516172">Wind</text></g>
+      <g transform="translate(1080 448)"><rect width="184" height="184" rx="24" fill="#FFFFFF"/><use href="#icon-heavy-rain" x="44" y="22" opacity=".92"/><text x="92" y="154" font-size="17" fill="#516172">Extreme Rain</text></g>
+    </g>
+  </g>
+
+  <g transform="translate(72 920)">
+    <text x="0" y="0" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" fill="#26384C">Design notes</text>
+    <text x="0" y="38" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" fill="#66788B">Flat rounded shapes, soft low-contrast depth, no brand cloning, vector-friendly for Android.</text>
+    <text x="0" y="70" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="17" fill="#66788B">If this direction is close, the next pass should refine proportions and export individual drawable/vector assets.</text>
+  </g>
+</svg>

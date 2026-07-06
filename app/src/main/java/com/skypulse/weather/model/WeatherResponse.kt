@@ -42,7 +42,11 @@ data class AlertContent(
     val description: String? = null,
     val level: String? = null,
     val type: String? = null,
-    val status: String? = null
+    val status: String? = null,
+    val id: String? = null,
+    val regionCode: String? = null,
+    val areaCode: String? = null,
+    val publishTime: Long? = null
 )
 
 // ============ Realtime ============

@@ -67,6 +67,8 @@ data class AlertLocalizedData(
  */
 fun CaiyunAlertResponse.toAlertContentList(): List<AlertContent> {
     return alerts?.mapNotNull { alert ->
+        if (alert.status != 1) return@mapNotNull null
+
         val localized = alert.data?.firstOrNull { it.languageCode == "zh-CN" }
             ?: alert.data?.firstOrNull()
             ?: return@mapNotNull null
@@ -82,7 +84,11 @@ fun CaiyunAlertResponse.toAlertContentList(): List<AlertContent> {
             description = localized.text,
             level = level,
             type = alert.alertType?.toString(),
-            status = if (alert.status == 1) "active" else "inactive"
+            status = if (alert.status == 1) "active" else "inactive",
+            id = alert.id,
+            regionCode = alert.regionCode,
+            areaCode = alert.areaCode,
+            publishTime = alert.publishTime
         )
     }.orEmpty()
 }
