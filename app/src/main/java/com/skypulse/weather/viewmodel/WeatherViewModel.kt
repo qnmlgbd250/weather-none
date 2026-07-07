@@ -18,6 +18,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.Job
@@ -34,7 +35,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 // ============ UI State ============
@@ -81,6 +82,7 @@ class WeatherViewModel @Inject constructor(
         private const val TAG = "WeatherVM"
         private const val REFRESH_MIN_VISIBLE_MS = 750L
         private const val REFRESH_SUCCESS_VISIBLE_MS = 750L
+        private const val REFRESH_MAX_ACTIVE_MS = 30_000L
     }
 
     // --- Screen navigation ---
@@ -433,18 +435,15 @@ class WeatherViewModel @Inject constructor(
             try {
                 _refreshPhase.value = RefreshPhase.Refreshing
                 val startTime = System.currentTimeMillis()
-                if (city.isCurrentLocation) {
-                    refreshCurrentLocation(silent = true)
-                } else {
-                    val result = refreshWeatherUseCase.refreshCity(city.id, city.longitude, city.latitude)
-                    handleSyncResult(result, city, silent = true)
-                }
+                val refreshed = runRefreshWithTimeout(city, silent = true)
                 val elapsed = System.currentTimeMillis() - startTime
                 if (elapsed < REFRESH_MIN_VISIBLE_MS) delay(REFRESH_MIN_VISIBLE_MS - elapsed)
-                _refreshPhase.value = RefreshPhase.Success
-                delay(REFRESH_SUCCESS_VISIBLE_MS)
-                _refreshPhase.value = RefreshPhase.Idle
+                if (refreshed) {
+                    _refreshPhase.value = RefreshPhase.Success
+                    delay(REFRESH_SUCCESS_VISIBLE_MS)
+                }
             } finally {
+                _refreshPhase.value = RefreshPhase.Idle
                 refreshingCityIdsMutex.withLock {
                     refreshingCityIds.remove(city.id)
                 }
@@ -528,20 +527,27 @@ class WeatherViewModel @Inject constructor(
             _isRefreshing.value = true
             _refreshPhase.value = RefreshPhase.Refreshing
             val startTime = System.currentTimeMillis()
+            try {
+                val isLimited = refreshCity != null && shouldSkipRefresh(refreshCity)
+                if (!isLimited) {
+                    runRefreshWithTimeout(refreshCity, silent = false)
+                } else {
+                    Log.d(TAG, "refresh(): skip actual refresh due to rate limiting/fresh cache, but show animation")
+                }
 
-            val isLimited = refreshCity != null && shouldSkipRefresh(refreshCity)
-            if (!isLimited) {
-                refreshSelectedWeather(refreshCity)
-            } else {
-                Log.d(TAG, "refresh(): skip actual refresh due to rate limiting/fresh cache, but show animation")
+                val elapsed = System.currentTimeMillis() - startTime
+                if (elapsed < REFRESH_MIN_VISIBLE_MS) delay(REFRESH_MIN_VISIBLE_MS - elapsed)
+                _refreshPhase.value = RefreshPhase.Success
+                delay(REFRESH_SUCCESS_VISIBLE_MS)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "refresh(): failed", e)
+                showRefreshFailureIfNoCache(refreshCity, silent = false, message = "更新失败，请稍后重试")
+            } finally {
+                _isRefreshing.value = false
+                _refreshPhase.value = RefreshPhase.Idle
             }
-
-            val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed < REFRESH_MIN_VISIBLE_MS) delay(REFRESH_MIN_VISIBLE_MS - elapsed)
-            _isRefreshing.value = false
-            _refreshPhase.value = RefreshPhase.Success
-            delay(REFRESH_SUCCESS_VISIBLE_MS)
-            _refreshPhase.value = RefreshPhase.Idle
         }
     }
 
@@ -581,15 +587,40 @@ class WeatherViewModel @Inject constructor(
         successDelayMs: Long = 300L
     ) {
         _refreshPhase.value = RefreshPhase.Refreshing
-        val startTime = System.currentTimeMillis()
-        val refreshed = refreshSelectedWeather(city, silent = true)
-        val elapsed = System.currentTimeMillis() - startTime
-        if (elapsed < minElapsedMs) delay(minElapsedMs - elapsed)
-        if (refreshed) {
-            _refreshPhase.value = RefreshPhase.Success
-            delay(successDelayMs)
+        try {
+            val startTime = System.currentTimeMillis()
+            val refreshed = runRefreshWithTimeout(city, silent = true)
+            val elapsed = System.currentTimeMillis() - startTime
+            if (elapsed < minElapsedMs) delay(minElapsedMs - elapsed)
+            if (refreshed) {
+                _refreshPhase.value = RefreshPhase.Success
+                delay(successDelayMs)
+            }
+        } finally {
+            _refreshPhase.value = RefreshPhase.Idle
         }
-        _refreshPhase.value = RefreshPhase.Idle
+    }
+
+    private suspend fun runRefreshWithTimeout(
+        city: City?,
+        silent: Boolean
+    ): Boolean {
+        val result = try {
+            withTimeoutOrNull(REFRESH_MAX_ACTIVE_MS) {
+                refreshSelectedWeather(city, silent)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "refresh timed out or failed", e)
+            showRefreshFailureIfNoCache(city, silent, message = "更新失败，请稍后重试")
+            false
+        }
+        if (result == null) {
+            Log.w(TAG, "refresh exceeded ${REFRESH_MAX_ACTIVE_MS}ms, force reset animation")
+            showRefreshFailureIfNoCache(city, silent, message = "更新超时，请稍后重试")
+        }
+        return result == true
     }
 
     private suspend fun refreshSelectedWeather(
@@ -638,6 +669,14 @@ class WeatherViewModel @Inject constructor(
             if (!silent && repository.getWeatherFromCache(city.id) == null) {
                 transientError.value = errorMsg
             }
+        }
+    }
+
+    private suspend fun showRefreshFailureIfNoCache(city: City?, silent: Boolean, message: String) {
+        if (silent) return
+        val cityId = city?.id ?: _savedCities.value.find { it.isCurrentLocation }?.id ?: "current_location"
+        if (repository.getWeatherFromCache(cityId) == null) {
+            transientError.value = message
         }
     }
 

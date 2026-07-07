@@ -32,8 +32,8 @@ object WeatherUtils {
         if (isDay) {
             cardTintColor = when {
                 skycon == null || skycon.contains("CLEAR") -> {
-                    // Sunny / Clear: Clean, light flat white panel
-                    Color(0xFFFFFFFF).copy(alpha = 0.22f)
+                    // Sunny / Clear: subtle deep-blue veil keeps white text readable on bright sky.
+                    Color(0xFF0F3F6E).copy(alpha = 0.20f)
                 }
                 skycon.contains("PARTLY_CLOUDY") -> {
                     // Partly Cloudy: Clean flat white panel with slightly lower opacity

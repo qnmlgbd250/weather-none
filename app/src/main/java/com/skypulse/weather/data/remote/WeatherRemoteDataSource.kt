@@ -4,6 +4,7 @@ import com.skypulse.weather.model.Alert
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.model.toAlertContentList
 import com.skypulse.weather.util.FileLogger
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +25,7 @@ class WeatherRemoteDataSource @Inject constructor(
 
     companion object {
         private const val TAG = "WeatherRemoteDS"
+        private const val ALERT_TIMEOUT_MS = 5_000L
     }
 
     /**
@@ -58,14 +60,21 @@ class WeatherRemoteDataSource @Inject constructor(
             // 2. 请求独立预警 API
             val alertResponse = try {
                 FileLogger.i(TAG, "预警API: 开始请求 lat=$latitude, lon=$longitude")
-                val alertResult = alertApi.getAlerts(
-                    latitude = latitude,
-                    longitude = longitude
-                )
-                val alertContents = alertResult.toAlertContentList()
-                FileLogger.i(TAG, "预警API: 成功, 获取到 ${alertContents.size} 条预警, " +
-                    "alerts=${alertContents.map { "${it.title}(level=${it.level})" }}")
-                Alert(status = "ok", content = alertContents)
+                val alertResult = withTimeoutOrNull(ALERT_TIMEOUT_MS) {
+                    alertApi.getAlerts(
+                        latitude = latitude,
+                        longitude = longitude
+                    )
+                }
+                if (alertResult != null) {
+                    val alertContents = alertResult.toAlertContentList()
+                    FileLogger.i(TAG, "预警API: 成功, 获取到 ${alertContents.size} 条预警, " +
+                        "alerts=${alertContents.map { "${it.title}(level=${it.level})" }}")
+                    Alert(status = "ok", content = alertContents)
+                } else {
+                    FileLogger.w(TAG, "预警API请求超时: ${ALERT_TIMEOUT_MS}ms, 使用主天气返回的预警兜底")
+                    response.result?.alert ?: Alert(status = "timeout", content = emptyList())
+                }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {

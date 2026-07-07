@@ -38,6 +38,7 @@ fun DonateDialog(
 ) {
     val donorScrollState = rememberScrollState()
     val donors = listOf(
+        "LAOHE" to "68.8",
         "芳华" to "66",
         "维涅斯" to "50",
         "沐沐商务QQ" to "28.88",

@@ -44,11 +44,11 @@ val CardBorderNight = Color(0x22FFFFFF)  // 13% white 鈥?subtle at night
 
 // Sunny (Day) ── clear sky blue, with a deeper top for readable white text
 val SunnyGradient = listOf(
-    Color(0xFF2A75B3),  // 顶部天顶深蓝
-    Color(0xFF3B88C8),
-    Color(0xFF4C9BDC),
-    Color(0xFF6FB3EA),
-    Color(0xFF8ECDF9)   // 底部地平线浅亮蓝
+    Color(0xFF1F5F9C),  // 顶部天顶深蓝
+    Color(0xFF2A75B3),
+    Color(0xFF3788C8),
+    Color(0xFF4B9DDD),
+    Color(0xFF65B3EA)   // 底部地平线浅亮蓝
 )
 
 // Sunny (Night) ── deep navy to midnight blue

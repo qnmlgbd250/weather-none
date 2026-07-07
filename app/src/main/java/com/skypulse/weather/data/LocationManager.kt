@@ -10,9 +10,11 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.squareup.moshi.Moshi
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import com.amap.api.location.AMapLocation
@@ -53,6 +55,10 @@ class LocationManager @Inject constructor(
         val timeoutMillis: Long
     )
 
+    private data class TimedNullableResult<T>(
+        val value: T?
+    )
+
     companion object {
         private const val TAG = "LocationManager"
         const val DEFAULT_LONGITUDE = 116.4074
@@ -70,6 +76,9 @@ class LocationManager @Inject constructor(
         private const val KEY_PENDING_ACCURACY = "pending_accuracy"
 
         private const val HIGH_ACCURACY_TIMEOUT_MS = 9000L
+        private const val REGULAR_LOCATION_TOTAL_TIMEOUT_MS = 18_000L
+        private const val HIGH_ACCURACY_LOCATION_TOTAL_TIMEOUT_MS = 13_500L
+        private const val AMAP_CALLBACK_GRACE_MS = 1_500L
         private const val GOOD_ACCURACY_METERS = 60f
         private const val ACCEPTABLE_ACCURACY_METERS = 120f
         private const val COARSE_ACCURACY_METERS = 200f
@@ -198,40 +207,49 @@ class LocationManager @Inject constructor(
     ): AMapLocation? {
         ensurePrivacyAgreed(context)
         return try {
-            val client = AMapLocationClient(context)
-            val option = AMapLocationClientOption().apply {
-                isOnceLocation = true
-                isNeedAddress = true
-                locationMode = mode
-                httpTimeOut = timeoutMillis
-            }
-            client.setLocationOption(option)
+            val result = withTimeoutOrNull(timeoutMillis + AMAP_CALLBACK_GRACE_MS) {
+                val client = AMapLocationClient(context)
+                val option = AMapLocationClientOption().apply {
+                    isOnceLocation = true
+                    isNeedAddress = true
+                    locationMode = mode
+                    httpTimeOut = timeoutMillis
+                }
+                client.setLocationOption(option)
 
-            suspendCancellableCoroutine { cont ->
-                client.setLocationListener { location ->
-                    if (cont.isActive) {
-                        if (location != null && location.errorCode == 0) {
-                            Log.i(TAG, "AMap 定位成功: ${location.latitude}, ${location.longitude}")
-                            FileLogger.i(TAG, "AMap 定位成功: lat=${location.latitude}, lon=${location.longitude}, " +
-                                "city=${location.city}, district=${location.district}, " +
-                                "aoi=${location.aoiName}, street=${location.street}")
-                            cont.resume(location)
-                        } else {
-                            Log.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, errorDetail=${location?.locationDetail}")
-                            FileLogger.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, " +
-                                "errorDetail=${location?.locationDetail}")
-                            cont.resume(null)
+                TimedNullableResult(suspendCancellableCoroutine { cont ->
+                    client.setLocationListener { location ->
+                        if (cont.isActive) {
+                            if (location != null && location.errorCode == 0) {
+                                Log.i(TAG, "AMap 定位成功: ${location.latitude}, ${location.longitude}")
+                                FileLogger.i(TAG, "AMap 定位成功: lat=${location.latitude}, lon=${location.longitude}, " +
+                                    "city=${location.city}, district=${location.district}, " +
+                                    "aoi=${location.aoiName}, street=${location.street}")
+                                cont.resume(location)
+                            } else {
+                                Log.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, errorDetail=${location?.locationDetail}")
+                                FileLogger.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, " +
+                                    "errorDetail=${location?.locationDetail}")
+                                cont.resume(null)
+                            }
                         }
+                        client.stopLocation()
+                        client.onDestroy()
                     }
-                    client.stopLocation()
-                    client.onDestroy()
-                }
-                client.startLocation()
-                cont.invokeOnCancellation {
-                    client.stopLocation()
-                    client.onDestroy()
-                }
+                    client.startLocation()
+                    cont.invokeOnCancellation {
+                        client.stopLocation()
+                        client.onDestroy()
+                    }
+                })
             }
+            if (result == null) {
+                Log.w(TAG, "AMap 定位硬超时: ${timeoutMillis + AMAP_CALLBACK_GRACE_MS}ms")
+                FileLogger.w(TAG, "AMap 定位硬超时: ${timeoutMillis + AMAP_CALLBACK_GRACE_MS}ms")
+            }
+            result?.value
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "AMap location failed", e)
             null
@@ -782,6 +800,22 @@ class LocationManager @Inject constructor(
     }
 
     suspend fun requestSystemOrIpLocation(highAccuracy: Boolean = false): CachedLocation? {
+        val totalTimeoutMillis = if (highAccuracy) {
+            HIGH_ACCURACY_LOCATION_TOTAL_TIMEOUT_MS
+        } else {
+            REGULAR_LOCATION_TOTAL_TIMEOUT_MS
+        }
+        val result = withTimeoutOrNull(totalTimeoutMillis) {
+            TimedNullableResult(requestSystemOrIpLocationInternal(highAccuracy))
+        }
+        if (result == null) {
+            Log.w(TAG, "定位总流程硬超时: ${totalTimeoutMillis}ms, highAccuracy=$highAccuracy")
+            FileLogger.w(TAG, "定位总流程硬超时: ${totalTimeoutMillis}ms, highAccuracy=$highAccuracy")
+        }
+        return result?.value
+    }
+
+    private suspend fun requestSystemOrIpLocationInternal(highAccuracy: Boolean = false): CachedLocation? {
         val profile = LocationRequestProfile(
             highAccuracy = highAccuracy,
             timeoutMillis = if (highAccuracy) HIGH_ACCURACY_TIMEOUT_MS else 8000L
