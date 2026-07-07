@@ -39,6 +39,9 @@ class WeatherSyncManager @Inject constructor(
         private const val LOCATING_NAME = "定位中..."
         private const val UNKNOWN_LOCATION = "未知位置"
         private const val MAX_RETRIES = 2
+        private const val LOCATION_CALIBRATION_MIN_INTERVAL_MS = 10 * 60 * 1000L
+        private const val LOCATION_CALIBRATION_FORCE_INTERVAL_MS = 30 * 60 * 1000L
+        private const val LOCATION_CALIBRATION_DISTANCE_METERS = 700f
     }
 
     private data class FetchRecord(
@@ -50,11 +53,16 @@ class WeatherSyncManager @Inject constructor(
     private val lastFetchRecordsByCityId = ConcurrentHashMap<String, FetchRecord>()
     private val locationMutex = Mutex()
     private val cityMutexes = ConcurrentHashMap<String, Mutex>()
+    @Volatile
+    private var lastLocationCalibrationMillis: Long = 0L
     private fun getMutexForCity(cityId: String) = cityMutexes.computeIfAbsent(cityId) { Mutex() }
 
     private fun locI(message: String) = FileLogger.locI(TAG, message)
     private fun locW(message: String) = FileLogger.locW(TAG, message)
     private fun locE(message: String) = FileLogger.locE(TAG, message)
+    private fun weatherI(message: String) = FileLogger.weatherI(TAG, message)
+    private fun weatherW(message: String) = FileLogger.weatherW(TAG, message)
+    private fun weatherE(message: String) = FileLogger.weatherE(TAG, message)
     private fun elapsedSince(startMs: Long): Long = android.os.SystemClock.elapsedRealtime() - startMs
 
     // ============ Public API ============
@@ -109,9 +117,11 @@ class WeatherSyncManager @Inject constructor(
             FileLogger.i(TAG, "doRefreshWeather: cityId=$cityId, lon=$longitude, lat=$latitude")
             Log.i(TAG, "refreshWeather: $cityId 开始网络请求 lon=$longitude lat=$latitude")
             locI("weather_fetch_start: cityId=$cityId, lon=$longitude, lat=$latitude")
+            weatherI("weather_fetch_start: cityId=$cityId, lon=$longitude, lat=$latitude")
             val fetchStartMs = android.os.SystemClock.elapsedRealtime()
             val result = fetchWithRetry(longitude, latitude)
             locI("weather_fetch_done: cityId=$cityId, elapsed=${elapsedSince(fetchStartMs)}ms, success=${result.isSuccess}")
+            weatherI("weather_fetch_done: cityId=$cityId, elapsed=${elapsedSince(fetchStartMs)}ms, success=${result.isSuccess}")
             FileLogger.i(TAG, "doRefreshWeather: 网络请求完成, success=${result.isSuccess}")
             Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
             result.fold(
@@ -120,6 +130,7 @@ class WeatherSyncManager @Inject constructor(
                     val saveStartMs = android.os.SystemClock.elapsedRealtime()
                     repository.saveWeatherToCache(cityId, response)
                     locI("weather_cache_saved: cityId=$cityId, elapsed=${elapsedSince(saveStartMs)}ms, total=${elapsedSince(startMs)}ms")
+                    weatherI("weather_cache_saved: cityId=$cityId, elapsed=${elapsedSince(saveStartMs)}ms, total=${elapsedSince(startMs)}ms")
                     FileLogger.i(TAG, "doRefreshWeather: 天气数据已写入 Room, cityId=$cityId, " +
                         "temp=${response.result?.realtime?.temperature}, " +
                         "skycon=${response.result?.realtime?.skycon}")
@@ -128,6 +139,7 @@ class WeatherSyncManager @Inject constructor(
                 onFailure = { e ->
                     FileLogger.e(TAG, "doRefreshWeather: 网络请求失败 - ${mapError(e)}")
                     locE("weather_fetch_failed: cityId=$cityId, total=${elapsedSince(startMs)}ms, error=${mapError(e)}")
+                    weatherE("weather_fetch_failed: cityId=$cityId, total=${elapsedSince(startMs)}ms, error=${mapError(e)}")
                     SyncResult.Error(mapError(e))
                 }
             )
@@ -174,6 +186,7 @@ class WeatherSyncManager @Inject constructor(
             locI("refresh_with_location_locate_done: elapsed=${elapsedSince(locateStartMs)}ms, result=${location?.let { "lat=${it.latitude}, lon=${it.longitude}, accuracy=${it.accuracy}m, name=${it.name}" } ?: "null"}")
 
             if (location != null) {
+                lastLocationCalibrationMillis = System.currentTimeMillis()
                 val lon = location.longitude
                 val lat = location.latitude
                 val locationName = location.name
@@ -221,6 +234,87 @@ class WeatherSyncManager @Inject constructor(
             Log.w(TAG, "refreshWeatherWithLocation: 定位和缓存均失败，不写入默认北京天气")
             locW("refresh_with_location_failed_no_cache: elapsed=${elapsedSince(startMs)}ms")
             SyncResult.LocationFailed
+        }
+    }
+
+    /**
+     * 首页快路径：不做阻塞式定位，优先用已确认的当前定位城市坐标或定位缓存刷新天气。
+     * 准确性由后台 calibrateCurrentLocation() 持续校准。
+     */
+    suspend fun refreshCurrentLocationFast(): SyncResult = withContext(Dispatchers.IO) {
+        val startMs = android.os.SystemClock.elapsedRealtime()
+        locI("current_location_fast_start")
+        val currentCity = getCurrentLocationCity()
+        if (currentCity != null && !currentCity.isUnresolvedCurrentLocation()) {
+            locI("current_location_fast_city_coords: elapsed=${elapsedSince(startMs)}ms, cityId=${currentCity.id}, lon=${currentCity.longitude}, lat=${currentCity.latitude}")
+            return@withContext doRefreshWeather(currentCity.id, currentCity.longitude, currentCity.latitude)
+        }
+
+        val cached = locationManager.getCachedLocation()
+        if (cached != null) {
+            val city = upsertCurrentLocationCity(cached.name, cached.longitude, cached.latitude)
+            locI("current_location_fast_cached_coords: elapsed=${elapsedSince(startMs)}ms, cityId=${city.id}, lon=${cached.longitude}, lat=${cached.latitude}, name=${cached.name}")
+            return@withContext doRefreshWeather(city.id, cached.longitude, cached.latitude)
+        }
+
+        locW("current_location_fast_no_trusted_coords: elapsed=${elapsedSince(startMs)}ms")
+        refreshWeatherWithLocation(highAccuracy = false)
+    }
+
+    /**
+     * 后台定位校准：保持当前位置最终准确，但不参与首页可见刷新等待。
+     */
+    suspend fun calibrateCurrentLocation(force: Boolean = false): SyncResult = withContext(Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        val sinceLast = now - lastLocationCalibrationMillis
+        if (!force && sinceLast >= 0L && sinceLast < LOCATION_CALIBRATION_MIN_INTERVAL_MS) {
+            locI("location_calibration_skip_recent: sinceLast=${sinceLast}ms")
+            return@withContext SyncResult.RateLimited
+        }
+
+        val waitStartMs = android.os.SystemClock.elapsedRealtime()
+        locI("location_calibration_mutex_wait_start: force=$force, sinceLast=${sinceLast}ms")
+        locationMutex.withLock {
+            val startMs = android.os.SystemClock.elapsedRealtime()
+            val lockedSinceLast = System.currentTimeMillis() - lastLocationCalibrationMillis
+            if (!force && lockedSinceLast >= 0L && lockedSinceLast < LOCATION_CALIBRATION_MIN_INTERVAL_MS) {
+                locI("location_calibration_skip_recent_after_wait: wait=${elapsedSince(waitStartMs)}ms, sinceLast=${lockedSinceLast}ms")
+                return@withLock SyncResult.RateLimited
+            }
+
+            if (!locationManager.hasLocationPermission()) {
+                locW("location_calibration_no_permission: wait=${elapsedSince(waitStartMs)}ms")
+                return@withLock SyncResult.LocationFailed
+            }
+
+            val location = locationManager.requestSystemOrIpLocation(highAccuracy = false)
+            lastLocationCalibrationMillis = System.currentTimeMillis()
+            if (location == null) {
+                locW("location_calibration_failed: elapsed=${elapsedSince(startMs)}ms")
+                return@withLock SyncResult.LocationFailed
+            }
+
+            val currentCity = getCurrentLocationCity()
+            val shouldRefreshWeather = shouldRefreshAfterLocationCalibration(currentCity, location, force)
+            val cityName = if (location.name == UNKNOWN_LOCATION || location.name.isBlank()) {
+                currentCity?.name?.takeIf { it != LOCATING_NAME && it.isNotBlank() }
+                    ?: locationManager.getCachedLocation()?.name
+                    ?: "当前位置"
+            } else {
+                location.name
+            }
+            locationManager.saveCachedLocation(cityName, location.longitude, location.latitude, location.time, location.accuracy)
+            val city = upsertCurrentLocationCity(cityName, location.longitude, location.latitude)
+            locI("location_calibration_location_saved: elapsed=${elapsedSince(startMs)}ms, shouldRefreshWeather=$shouldRefreshWeather, lon=${location.longitude}, lat=${location.latitude}, accuracy=${location.accuracy}m, name=$cityName")
+
+            if (shouldRefreshWeather) {
+                val result = doRefreshWeather(city.id, location.longitude, location.latitude)
+                locI("location_calibration_weather_complete: elapsed=${elapsedSince(startMs)}ms, result=${result::class.simpleName}")
+                result
+            } else {
+                val cachedWeather = repository.getWeatherFromCache(city.id)
+                if (cachedWeather != null) SyncResult.Success(cachedWeather) else SyncResult.RateLimited
+            }
         }
     }
 
@@ -368,6 +462,37 @@ class WeatherSyncManager @Inject constructor(
         return city
     }
 
+    private suspend fun shouldRefreshAfterLocationCalibration(
+        currentCity: City?,
+        location: LocationManager.CachedLocation,
+        force: Boolean
+    ): Boolean {
+        if (force) return true
+        if (currentCity == null || currentCity.isUnresolvedCurrentLocation()) return true
+        if (repository.getWeatherFromCache(currentCity.id) == null) return true
+
+        val distance = locationManager.distanceBetween(
+            currentCity.latitude,
+            currentCity.longitude,
+            location.latitude,
+            location.longitude
+        )
+        if (distance >= LOCATION_CALIBRATION_DISTANCE_METERS) {
+            locI("location_calibration_weather_needed_by_distance: distance=${distance}m")
+            return true
+        }
+
+        val lastFetchTime = repository.getLastFetchTime(currentCity.id)
+        val cacheAge = System.currentTimeMillis() - lastFetchTime
+        if (cacheAge >= LOCATION_CALIBRATION_FORCE_INTERVAL_MS) {
+            locI("location_calibration_weather_needed_by_age: cacheAge=${cacheAge}ms")
+            return true
+        }
+
+        locI("location_calibration_weather_skip: distance=${distance}m, cacheAge=${cacheAge}ms")
+        return false
+    }
+
     private suspend fun fetchWithRetry(
         lon: Double,
         lat: Double
@@ -379,6 +504,7 @@ class WeatherSyncManager @Inject constructor(
             }
             val attemptStartMs = android.os.SystemClock.elapsedRealtime()
             locI("weather_fetch_attempt_start: attempt=${attempt + 1}/${MAX_RETRIES + 1}, lon=$lon, lat=$lat")
+            weatherI("weather_fetch_attempt_start: attempt=${attempt + 1}/${MAX_RETRIES + 1}, lon=$lon, lat=$lat")
             val result = repository.getWeather(lon, lat, includeYesterday = true)
             result.fold(
                 onSuccess = { response ->
@@ -386,14 +512,17 @@ class WeatherSyncManager @Inject constructor(
                     if (hourly == null || hourly.temperature.isNullOrEmpty()) {
                         lastException = Exception("empty_hourly")
                         locW("weather_fetch_attempt_empty_hourly: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
+                        weatherW("weather_fetch_attempt_empty_hourly: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
                     } else {
                         locI("weather_fetch_attempt_success: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
+                        weatherI("weather_fetch_attempt_success: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
                         return Result.success(response)
                     }
                 },
                 onFailure = { e ->
                     lastException = e as? Exception ?: Exception(e)
                     locW("weather_fetch_attempt_failed: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms, error=${mapError(e)}")
+                    weatherW("weather_fetch_attempt_failed: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms, error=${mapError(e)}")
                     if (e is HttpException && e.code() == 429) {
                         return Result.failure(e)
                     }

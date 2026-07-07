@@ -157,6 +157,42 @@ object FileLogger {
         }
     }
 
+    @Synchronized
+    fun weather(tag: String, level: String, message: String) {
+        if (logDir == null) return
+
+        try {
+            val timeStr = timeFormat.format(Date())
+            val threadName = Thread.currentThread().name
+            val logLine = "[$timeStr] [$level] [$tag] [thread=$threadName] $message\n"
+
+            val logFile = getNamedLogFile("weather")
+            FileWriter(logFile, true).use { writer ->
+                writer.append(logLine)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FileLogger", "write weather log failed: ${e.message}")
+        }
+    }
+
+    @Synchronized
+    fun refresh(tag: String, level: String, message: String) {
+        if (logDir == null) return
+
+        try {
+            val timeStr = timeFormat.format(Date())
+            val threadName = Thread.currentThread().name
+            val logLine = "[$timeStr] [$level] [$tag] [thread=$threadName] $message\n"
+
+            val logFile = getNamedLogFile("refresh")
+            FileWriter(logFile, true).use { writer ->
+                writer.append(logLine)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FileLogger", "write refresh log failed: ${e.message}")
+        }
+    }
+
     fun d(tag: String, message: String) = log(tag, "D", message)
     fun i(tag: String, message: String) = log(tag, "I", message)
     fun w(tag: String, message: String) = log(tag, "W", message)
@@ -169,6 +205,18 @@ object FileLogger {
     fun locE(tag: String, message: String) = location(tag, "E", message)
     fun locE(tag: String, message: String, throwable: Throwable) = location(tag, "E", "$message\n${throwable.stackTraceToString()}")
 
+    fun weatherD(tag: String, message: String) = weather(tag, "D", message)
+    fun weatherI(tag: String, message: String) = weather(tag, "I", message)
+    fun weatherW(tag: String, message: String) = weather(tag, "W", message)
+    fun weatherE(tag: String, message: String) = weather(tag, "E", message)
+    fun weatherE(tag: String, message: String, throwable: Throwable) = weather(tag, "E", "$message\n${throwable.stackTraceToString()}")
+
+    fun refreshD(tag: String, message: String) = refresh(tag, "D", message)
+    fun refreshI(tag: String, message: String) = refresh(tag, "I", message)
+    fun refreshW(tag: String, message: String) = refresh(tag, "W", message)
+    fun refreshE(tag: String, message: String) = refresh(tag, "E", message)
+    fun refreshE(tag: String, message: String, throwable: Throwable) = refresh(tag, "E", "$message\n${throwable.stackTraceToString()}")
+
     /**
      * 清理超过 keepDays 天的日志文件（所有类型：log_ widget_ notif_ crash_）
      */
@@ -178,7 +226,7 @@ object FileLogger {
             if (!dir.exists()) return
 
             val cutoff = System.currentTimeMillis() - (keepDays * 24 * 60 * 60 * 1000L)
-            val prefixes = listOf("log_", "widget_", "notif_", "loca_", "crash_")
+            val prefixes = listOf("log_", "widget_", "notif_", "loca_", "weather_", "refresh_", "crash_")
             var deletedCount = 0
             dir.listFiles()?.forEach { file ->
                 if (file.isFile && prefixes.any { file.name.startsWith(it) } && file.lastModified() < cutoff) {

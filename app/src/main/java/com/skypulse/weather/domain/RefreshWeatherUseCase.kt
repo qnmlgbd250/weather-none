@@ -25,6 +25,20 @@ class RefreshWeatherUseCase @Inject constructor(
     }
 
     /**
+     * 首页快路径：优先用已确认的当前定位坐标刷新天气，不把完整定位链路放进用户可见等待中。
+     */
+    suspend fun refreshCurrentLocationFast(): SyncResult {
+        return syncManager.refreshCurrentLocationFast()
+    }
+
+    /**
+     * 后台校准当前位置。用于保持当前定位最终准确，但不阻塞首页刷新体验。
+     */
+    suspend fun calibrateCurrentLocation(force: Boolean = false): SyncResult {
+        return syncManager.calibrateCurrentLocation(force = force)
+    }
+
+    /**
      * 使用已有的真实定位缓存或第一个手动城市获取天气。
      * 不再用北京作为当前定位的隐式兜底，避免污染 current_location 缓存。
      */

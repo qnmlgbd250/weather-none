@@ -1,5 +1,6 @@
 package com.skypulse.weather.data.remote
 
+import android.os.SystemClock
 import com.skypulse.weather.model.Alert
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.model.toAlertContentList
@@ -28,6 +29,14 @@ class WeatherRemoteDataSource @Inject constructor(
         private const val ALERT_TIMEOUT_MS = 5_000L
     }
 
+    private fun weatherI(message: String) = FileLogger.weatherI(TAG, message)
+    private fun weatherW(message: String) = FileLogger.weatherW(TAG, message)
+    private fun weatherE(message: String, throwable: Throwable? = null) {
+        if (throwable == null) FileLogger.weatherE(TAG, message) else FileLogger.weatherE(TAG, message, throwable)
+    }
+
+    private fun elapsedSince(startMs: Long): Long = SystemClock.elapsedRealtime() - startMs
+
     /**
      * 从网络获取天气数据（含预警）。
      *
@@ -43,8 +52,12 @@ class WeatherRemoteDataSource @Inject constructor(
         latitude: Double,
         includeYesterday: Boolean = false
     ): Result<WeatherResponse> {
+        val totalStartMs = SystemClock.elapsedRealtime()
+        weatherI("remote_get_weather_start: lon=$longitude, lat=$latitude, includeYesterday=$includeYesterday")
         return try {
             // 1. 请求天气主数据（alert=false，预警单独请求）
+            val primaryStartMs = SystemClock.elapsedRealtime()
+            weatherI("primary_weather_start: lon=$longitude, lat=$latitude, span=16, alert=false, dailyStart=${if (includeYesterday) -1 else null}, hourlySteps=${if (includeYesterday) 72 else 24}")
             val response = api.getWeather(
                 longitude = longitude,
                 latitude = latitude,
@@ -53,13 +66,17 @@ class WeatherRemoteDataSource @Inject constructor(
                 dailyStart = if (includeYesterday) -1 else null,
                 hourlySteps = if (includeYesterday) 72 else 24
             )
+            weatherI("primary_weather_done: elapsed=${elapsedSince(primaryStartMs)}ms, status=${response.status}, serverTime=${response.server_time}, tzshift=${response.tzshift}")
             if (response.status != "ok") {
+                weatherW("primary_weather_bad_status: elapsed=${elapsedSince(primaryStartMs)}ms, status=${response.status}, total=${elapsedSince(totalStartMs)}ms")
                 return Result.failure(Exception("API error: ${response.status}"))
             }
 
             // 2. 请求独立预警 API
             val alertResponse = try {
                 FileLogger.i(TAG, "预警API: 开始请求 lat=$latitude, lon=$longitude")
+                val alertStartMs = SystemClock.elapsedRealtime()
+                weatherI("alert_api_start: lat=$latitude, lon=$longitude, timeout=${ALERT_TIMEOUT_MS}ms")
                 val alertResult = withTimeoutOrNull(ALERT_TIMEOUT_MS) {
                     alertApi.getAlerts(
                         latitude = latitude,
@@ -68,16 +85,19 @@ class WeatherRemoteDataSource @Inject constructor(
                 }
                 if (alertResult != null) {
                     val alertContents = alertResult.toAlertContentList()
+                    weatherI("alert_api_done: elapsed=${elapsedSince(alertStartMs)}ms, rawAlerts=${alertResult.alerts?.size ?: 0}, admins=${alertResult.admins?.size ?: 0}, activeCount=${alertContents.size}")
                     FileLogger.i(TAG, "预警API: 成功, 获取到 ${alertContents.size} 条预警, " +
                         "alerts=${alertContents.map { "${it.title}(level=${it.level})" }}")
                     Alert(status = "ok", content = alertContents)
                 } else {
+                    weatherW("alert_api_timeout: elapsed=${elapsedSince(alertStartMs)}ms, timeout=${ALERT_TIMEOUT_MS}ms")
                     FileLogger.w(TAG, "预警API请求超时: ${ALERT_TIMEOUT_MS}ms, 使用主天气返回的预警兜底")
                     response.result?.alert ?: Alert(status = "timeout", content = emptyList())
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
+                weatherE("alert_api_exception: type=${e.javaClass.simpleName}, message=${e.message}, total=${elapsedSince(totalStartMs)}ms", e)
                 FileLogger.e(TAG, "预警API请求失败: ${e.javaClass.simpleName}: ${e.message}", e)
                 // 预警请求失败不影响天气数据
                 response.result?.alert ?: Alert(status = "error", content = emptyList())
@@ -87,10 +107,12 @@ class WeatherRemoteDataSource @Inject constructor(
             val merged = response.copy(
                 result = response.result?.copy(alert = alertResponse)
             )
+            weatherI("remote_get_weather_success: total=${elapsedSince(totalStartMs)}ms, alertStatus=${alertResponse.status}, alertCount=${alertResponse.content?.size ?: 0}")
             Result.success(merged)
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
+            weatherE("remote_get_weather_failed: total=${elapsedSince(totalStartMs)}ms, type=${e.javaClass.simpleName}, message=${e.message}", e)
             Result.failure(e)
         }
     }
