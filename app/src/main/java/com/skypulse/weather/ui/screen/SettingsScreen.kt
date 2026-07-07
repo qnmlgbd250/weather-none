@@ -33,7 +33,6 @@ import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.ui.components.DonateDialog
 import com.skypulse.weather.ui.theme.*
-import com.skypulse.weather.ui.theme.SetLightStatusBarEffect
 import com.skypulse.weather.viewmodel.UpdateCheckResult
 
 private const val GITHUB_URL = "https://github.com/qnmlgbd250/weather-none"
@@ -88,9 +87,6 @@ fun SettingsScreen(
             else -> {}
         }
     }
-    SetLightStatusBarEffect(lightStatusBar = true)
-
-
     if (showDonateDialog) {
         DonateDialog(onDismiss = { showDonateDialog = false })
     }

@@ -30,7 +30,6 @@ import com.skypulse.weather.model.City
 import com.skypulse.weather.ui.components.CitySearchResultRow
 import com.skypulse.weather.ui.components.SwipeableCityListRow
 import com.skypulse.weather.ui.theme.*
-import com.skypulse.weather.ui.theme.SetLightStatusBarEffect
 import com.skypulse.weather.viewmodel.CitySearchResult
 import com.skypulse.weather.viewmodel.CityWeatherData
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,9 +50,6 @@ fun CityListScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
-
-    SetLightStatusBarEffect(lightStatusBar = true)
-
     Box(
         modifier = modifier
             .fillMaxSize()

@@ -23,7 +23,6 @@ import com.skypulse.weather.ui.theme.IosTextPrimary
 import com.skypulse.weather.ui.theme.IosTextSecondary
 import com.skypulse.weather.ui.theme.IosBackArrow
 import com.skypulse.weather.ui.theme.IosDividerColor
-import com.skypulse.weather.ui.theme.SetLightStatusBarEffect
 
 
 @Composable
@@ -33,8 +32,6 @@ internal fun AlertDetailScreen(
     initialSelectedIndex: Int = 0,
     onBack: () -> Unit = {}
 ) {
-    SetLightStatusBarEffect(lightStatusBar = true)
-
     Column(
         modifier = Modifier
             .fillMaxSize()

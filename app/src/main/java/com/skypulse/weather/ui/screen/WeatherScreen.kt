@@ -2,8 +2,10 @@ package com.skypulse.weather.ui.screen
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
@@ -20,7 +22,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -151,6 +155,8 @@ fun WeatherScreen(
         viewModel.navigateBack()
     }
 
+    SetLightStatusBarEffect(lightStatusBar = currentScreen != AppScreen.CityDetail)
+
     if (!onboardingReady) {
         LoadingShimmer(
             modifier = Modifier.fillMaxSize().statusBarsPadding()
@@ -170,13 +176,18 @@ fun WeatherScreen(
     }
 
     CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {
-        AnimatedContent(
-            targetState = currentScreen,
-            modifier = Modifier.fillMaxSize(),
-            transitionSpec = { skyPulseScreenTransition() },
-            label = "screen_transition"
-        ) { targetScreen ->
-            when (targetScreen) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(currentScreen.screenBackgroundBrush(weatherTheme))
+        ) {
+            AnimatedContent(
+                targetState = currentScreen,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = { skyPulseScreenTransition() },
+                label = "screen_transition"
+            ) { targetScreen ->
+                when (targetScreen) {
             AppScreen.CityList -> {
                 CityListScreen(
                     cities = savedCities,
@@ -369,15 +380,34 @@ fun WeatherScreen(
             }
         }
         }
+        }
     }
 }
 
 private fun AnimatedContentTransitionScope<AppScreen>.skyPulseScreenTransition(): ContentTransform {
     val direction = if (targetState.screenOrder >= initialState.screenOrder) 1 else -1
-    return (slideInHorizontally(animationSpec = tween(220)) { width -> direction * width / 5 } +
-        fadeIn(animationSpec = tween(180))) togetherWith
-        (slideOutHorizontally(animationSpec = tween(220)) { width -> -direction * width / 6 } +
-            fadeOut(animationSpec = tween(160))) using SizeTransform(clip = false)
+    val enterSpec = tween<IntOffset>(durationMillis = 300, easing = FastOutSlowInEasing)
+    val exitSpec = tween<IntOffset>(durationMillis = 260, easing = FastOutSlowInEasing)
+    val fadeInSpec = tween<Float>(durationMillis = 220, delayMillis = 40, easing = FastOutSlowInEasing)
+    val fadeOutSpec = tween<Float>(durationMillis = 140, easing = FastOutSlowInEasing)
+    val scaleSpec = tween<Float>(durationMillis = 300, easing = FastOutSlowInEasing)
+
+    return (slideInHorizontally(animationSpec = enterSpec) { width -> direction * width / 8 } +
+        fadeIn(animationSpec = fadeInSpec) +
+        scaleIn(initialScale = 0.985f, animationSpec = scaleSpec)) togetherWith
+        (slideOutHorizontally(animationSpec = exitSpec) { width -> -direction * width / 16 } +
+            fadeOut(animationSpec = fadeOutSpec) +
+            scaleOut(targetScale = 0.995f, animationSpec = scaleSpec)) using
+        SizeTransform(clip = true)
+}
+
+private fun AppScreen.screenBackgroundBrush(weatherTheme: WeatherTheme): Brush {
+    return when (this) {
+        AppScreen.CityDetail -> Brush.verticalGradient(weatherTheme.backgroundGradient)
+        AppScreen.CityList,
+        AppScreen.Settings,
+        AppScreen.AlertDetail -> Brush.verticalGradient(listOf(IosSettingsBg, IosSettingsBg))
+    }
 }
 
 private val AppScreen.screenOrder: Int
