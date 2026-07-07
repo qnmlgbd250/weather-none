@@ -23,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -427,11 +426,6 @@ private fun CityDotBar(
     isScrolled: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val dividerAlpha = animateFloatAsState(
-        targetValue = if (isScrolled) 0.35f else 0f,
-        animationSpec = tween(durationMillis = 200),
-        label = "dividerAlpha"
-    )
     val dotsAlpha = animateFloatAsState(
         targetValue = if (isScrolled) 0f else 1f,
         animationSpec = tween(durationMillis = 200),
@@ -440,30 +434,15 @@ private fun CityDotBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(16.dp)
+            .height(8.dp)
     ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
-                .height(0.5.dp)
-                .align(Alignment.Center)
-                .alpha(dividerAlpha.value)
-        ) {
-            drawLine(
-                color = TextPrimary,
-                start = Offset(0f, size.height / 2),
-                end = Offset(size.width, size.height / 2),
-                strokeWidth = size.height
-            )
-        }
         if (cityCount > 1) {
             val dotColor = TextPrimary.copy(alpha = 0.5f)
             val activeDotColor = TextPrimary
             val dotRadius = 2.5.dp
             Row(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
+                    .align(Alignment.BottomStart)
                     .padding(start = 26.dp)
                     .alpha(dotsAlpha.value),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
