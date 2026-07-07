@@ -79,8 +79,8 @@ class WeatherViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "WeatherVM"
-        private const val REFRESH_MIN_VISIBLE_MS = 300L
-        private const val REFRESH_SUCCESS_VISIBLE_MS = 500L
+        private const val REFRESH_MIN_VISIBLE_MS = 750L
+        private const val REFRESH_SUCCESS_VISIBLE_MS = 750L
     }
 
     // --- Screen navigation ---
