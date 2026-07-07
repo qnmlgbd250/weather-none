@@ -195,6 +195,30 @@ class LocationManager @Inject constructor(
         return results[0]
     }
 
+    private fun locD(message: String) = FileLogger.locD(TAG, message)
+    private fun locI(message: String) = FileLogger.locI(TAG, message)
+    private fun locW(message: String) = FileLogger.locW(TAG, message)
+    private fun locE(message: String, throwable: Throwable? = null) {
+        if (throwable == null) FileLogger.locE(TAG, message) else FileLogger.locE(TAG, message, throwable)
+    }
+
+    private fun elapsedSince(startMs: Long): Long = android.os.SystemClock.elapsedRealtime() - startMs
+
+    private fun Double.fullCoord(): String = String.format(Locale.US, "%.6f", this)
+
+    private fun Location.locSummary(): String {
+        val ageMs = System.currentTimeMillis() - time
+        return "provider=$provider, lat=${latitude.fullCoord()}, lon=${longitude.fullCoord()}, " +
+            "accuracy=${accuracyOrDefault()}m, age=${ageMs}ms, time=$time"
+    }
+
+    private fun AMapLocation.locSummary(): String {
+        return "lat=${latitude.fullCoord()}, lon=${longitude.fullCoord()}, accuracy=${accuracy}m, " +
+            "city=${city.safeLogValue()}, district=${district.safeLogValue()}, " +
+            "aoi=${aoiName.safeLogValue()}, street=${street.safeLogValue()}, " +
+            "streetNum=${streetNum.safeLogValue()}"
+    }
+
     // ============ AMAP GPS Positioning ============
 
     suspend fun requestAmapLocation(): AMapLocation? {
@@ -206,6 +230,8 @@ class LocationManager @Inject constructor(
         timeoutMillis: Long
     ): AMapLocation? {
         ensurePrivacyAgreed(context)
+        val startMs = android.os.SystemClock.elapsedRealtime()
+        locI("amap_start: mode=$mode, timeout=${timeoutMillis}ms")
         return try {
             val result = withTimeoutOrNull(timeoutMillis + AMAP_CALLBACK_GRACE_MS) {
                 val client = AMapLocationClient(context)
@@ -225,11 +251,13 @@ class LocationManager @Inject constructor(
                                 FileLogger.i(TAG, "AMap 定位成功: lat=${location.latitude}, lon=${location.longitude}, " +
                                     "city=${location.city}, district=${location.district}, " +
                                     "aoi=${location.aoiName}, street=${location.street}")
+                                locI("amap_success: elapsed=${elapsedSince(startMs)}ms, ${location.locSummary()}, address=${location.address.safeLogValue()}")
                                 cont.resume(location)
                             } else {
                                 Log.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, errorDetail=${location?.locationDetail}")
                                 FileLogger.w(TAG, "AMap 定位失败: errorCode=${location?.errorCode}, " +
                                     "errorDetail=${location?.locationDetail}")
+                                locW("amap_failed: elapsed=${elapsedSince(startMs)}ms, errorCode=${location?.errorCode}, errorInfo=${location?.errorInfo.safeLogValue()}, detail=${location?.locationDetail.safeLogValue()}")
                                 cont.resume(null)
                             }
                         }
@@ -246,12 +274,14 @@ class LocationManager @Inject constructor(
             if (result == null) {
                 Log.w(TAG, "AMap 定位硬超时: ${timeoutMillis + AMAP_CALLBACK_GRACE_MS}ms")
                 FileLogger.w(TAG, "AMap 定位硬超时: ${timeoutMillis + AMAP_CALLBACK_GRACE_MS}ms")
+                locW("amap_timeout: elapsed=${elapsedSince(startMs)}ms, timeout=${timeoutMillis + AMAP_CALLBACK_GRACE_MS}ms")
             }
             result?.value
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "AMap location failed", e)
+            locE("amap_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
             null
         }
     }
@@ -298,8 +328,11 @@ class LocationManager @Inject constructor(
         timeoutMillis: Long = 8000L,
         highAccuracy: Boolean = false
     ): Location? = withContext(Dispatchers.IO) {
+        val startMs = android.os.SystemClock.elapsedRealtime()
+        locI("system_location_start: timeout=${timeoutMillis}ms, highAccuracy=$highAccuracy")
         if (!hasLocationPermission()) {
             Log.w(TAG, "requestSystemLocation: 无定位权限，跳过")
+            locW("system_location_no_permission: elapsed=${elapsedSince(startMs)}ms")
             return@withContext null
         }
 
@@ -312,28 +345,42 @@ class LocationManager @Inject constructor(
             false
         }
 
+        locI("system_location_gms_check: elapsed=${elapsedSince(startMs)}ms, hasGms=$hasGms")
+
         if (hasGms) {
             Log.i(TAG, "尝试 GMS FusedLocation, highAccuracy=$highAccuracy...")
+            val fusedStartMs = android.os.SystemClock.elapsedRealtime()
             val fused = try {
                 kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
                     requestFusedLocation(timeoutMillis, highAccuracy)
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "GMS FusedLocation timeout or exception: ${e.message}")
+                locW("fused_exception: elapsed=${elapsedSince(fusedStartMs)}ms, message=${e.message.safeLogValue()}")
                 null
             }
             if (fused != null) {
                 Log.i(TAG, "GMS FusedLocation 定位成功: lat=${fused.latitude}, lon=${fused.longitude}")
+                locI("fused_success: elapsed=${elapsedSince(fusedStartMs)}ms, total=${elapsedSince(startMs)}ms, ${fused.locSummary()}")
                 return@withContext fused
             }
+            locW("fused_failed_or_timeout: elapsed=${elapsedSince(fusedStartMs)}ms, timeout=${timeoutMillis}ms")
             Log.w(TAG, "GMS FusedLocation 失败或超时，降级尝试原生 LocationManager...")
         }
 
         // 2. 尝试原生 LocationManager
-        requestNativeLocation(timeoutMillis, highAccuracy)
+        val nativeStartMs = android.os.SystemClock.elapsedRealtime()
+        val native = requestNativeLocation(timeoutMillis, highAccuracy)
+        if (native != null) {
+            locI("native_success_after_system_fallback: elapsed=${elapsedSince(nativeStartMs)}ms, total=${elapsedSince(startMs)}ms, ${native.locSummary()}")
+        } else {
+            locW("native_failed_after_system_fallback: elapsed=${elapsedSince(nativeStartMs)}ms, total=${elapsedSince(startMs)}ms")
+        }
+        native
     }
 
     private suspend fun requestFusedLocation(timeoutMillis: Long, highAccuracy: Boolean): Location? {
+        val startMs = android.os.SystemClock.elapsedRealtime()
         return try {
             val location = suspendCancellableCoroutine<Location?> { cont ->
                 try {
@@ -350,6 +397,7 @@ class LocationManager @Inject constructor(
                         com.google.android.gms.location.Priority.PRIORITY_LOW_POWER
                     }
                     val requestInterval = if (highAccuracy) 1000L else timeoutMillis
+                    locD("fused_request: priority=$priority, interval=${requestInterval}ms, maxUpdates=${if (highAccuracy) 4 else 1}, hasFine=$hasFine")
                     val request = com.google.android.gms.location.LocationRequest.Builder(priority, requestInterval)
                         .setMaxUpdates(if (highAccuracy) 4 else 1)
                         .setMinUpdateIntervalMillis(requestInterval)
@@ -376,6 +424,7 @@ class LocationManager @Inject constructor(
                         override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
                             val locations = result.locations.ifEmpty { listOfNotNull(result.lastLocation) }
                             locations.forEach { loc ->
+                                locD("fused_callback_location: elapsed=${elapsedSince(startMs)}ms, ${loc.locSummary()}")
                                 bestLocation = betterLocation(bestLocation, loc)
                             }
                             val best = bestLocation
@@ -402,23 +451,29 @@ class LocationManager @Inject constructor(
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, "FusedLocation 请求异常", e)
+                    locE("fused_request_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
                     if (cont.isActive) cont.resume(null)
                 }
             }
+            locI("fused_complete: elapsed=${elapsedSince(startMs)}ms, result=${location?.locSummary() ?: "null"}")
             location
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "FusedLocation 异常", e)
+            locE("fused_exception_outer: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
             null
         }
     }
 
     private suspend fun requestNativeLocation(timeoutMillis: Long, highAccuracy: Boolean = false): Location? {
+        val startMs = android.os.SystemClock.elapsedRealtime()
+        locI("native_start: timeout=${timeoutMillis}ms, highAccuracy=$highAccuracy")
         return try {
             val nativeLocManager = context.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
             if (nativeLocManager == null) {
                 Log.w(TAG, "NativeLocation: 无法获取系统 LocationManager")
+                locW("native_no_manager: elapsed=${elapsedSince(startMs)}ms")
                 return null
             }
 
@@ -428,20 +483,26 @@ class LocationManager @Inject constructor(
             } catch (_: SecurityException) { null }
             if (gpsLastKnown != null && shouldUseLastKnown(gpsLastKnown, highAccuracy)) {
                 Log.i(TAG, "NativeLocation: 使用近期的 GPS lastKnown: lat=${gpsLastKnown.latitude}, lon=${gpsLastKnown.longitude}")
+                locI("native_last_known_gps_used: elapsed=${elapsedSince(startMs)}ms, ${gpsLastKnown.locSummary()}")
                 return gpsLastKnown
             }
+            gpsLastKnown?.let { locD("native_last_known_gps_rejected: elapsed=${elapsedSince(startMs)}ms, ${it.locSummary()}") }
 
             val netLastKnown = try {
                 nativeLocManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER)
             } catch (_: SecurityException) { null }
             if (netLastKnown != null && shouldUseLastKnown(netLastKnown, highAccuracy)) {
                 Log.i(TAG, "NativeLocation: 使用近期的 Network lastKnown: lat=${netLastKnown.latitude}, lon=${netLastKnown.longitude}")
+                locI("native_last_known_network_used: elapsed=${elapsedSince(startMs)}ms, ${netLastKnown.locSummary()}")
                 return netLastKnown
             }
+            netLastKnown?.let { locD("native_last_known_network_rejected: elapsed=${elapsedSince(startMs)}ms, ${it.locSummary()}") }
 
             val providers = nativeLocManager.getProviders(true)
+            locI("native_enabled_providers: elapsed=${elapsedSince(startMs)}ms, providers=${providers.joinToString()}")
             if (providers.isEmpty()) {
                 Log.w(TAG, "NativeLocation: 无任何可用的 Location Provider")
+                locW("native_no_enabled_providers: elapsed=${elapsedSince(startMs)}ms")
                 return null
             }
 
@@ -454,8 +515,10 @@ class LocationManager @Inject constructor(
             }
             if (activeLoc != null) {
                 Log.i(TAG, "NativeLocation: 并行定位成功: provider=${activeLoc.provider}, lat=${activeLoc.latitude}, lon=${activeLoc.longitude}")
+                locI("native_parallel_success: elapsed=${elapsedSince(startMs)}ms, ${activeLoc.locSummary()}")
                 return activeLoc
             }
+            locW("native_parallel_failed: elapsed=${elapsedSince(startMs)}ms, timeout=${timeoutMillis}ms")
 
             // 3. 尝试 Passive 定位作为最后原生兜底
             if (providers.contains(android.location.LocationManager.PASSIVE_PROVIDER)) {
@@ -463,14 +526,18 @@ class LocationManager @Inject constructor(
                 val passiveLoc = requestSingleProviderLocation(nativeLocManager, android.location.LocationManager.PASSIVE_PROVIDER, 2000L)
                 if (passiveLoc != null) {
                     Log.i(TAG, "NativeLocation: Passive 定位成功")
+                    locI("native_passive_success: elapsed=${elapsedSince(startMs)}ms, ${passiveLoc.locSummary()}")
                     return passiveLoc
                 }
+                locW("native_passive_failed: elapsed=${elapsedSince(startMs)}ms")
             }
 
             Log.w(TAG, "NativeLocation: 所有并行及兜底定位方式均已失败")
+            locW("native_all_failed: elapsed=${elapsedSince(startMs)}ms")
             null
         } catch (e: Exception) {
             Log.e(TAG, "NativeLocation 发生异常", e)
+            locE("native_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
             null
         }
     }
@@ -495,6 +562,7 @@ class LocationManager @Inject constructor(
         providers: List<String>,
         timeoutMillis: Long
     ): Location? {
+        val startMs = android.os.SystemClock.elapsedRealtime()
         return try {
             suspendCancellableCoroutine<Location?> { cont ->
                 val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -516,6 +584,7 @@ class LocationManager @Inject constructor(
                     override fun onLocationChanged(loc: Location) {
                         bestLocation = betterLocation(bestLocation, loc)
                         Log.i(TAG, "BestParallelLocation: 收到 ${loc.provider}, accuracy=${loc.accuracyOrDefault()}m, best=${bestLocation?.provider}")
+                        locD("best_parallel_callback: elapsed=${elapsedSince(startMs)}ms, candidate=${loc.locSummary()}, best=${bestLocation?.locSummary() ?: "null"}")
                         if (bestLocation.isGoodEnough()) {
                             handler.removeCallbacks(finishRunnable)
                             finish()
@@ -538,6 +607,7 @@ class LocationManager @Inject constructor(
                 try {
                     var registeredAny = false
                     if (providers.contains(android.location.LocationManager.GPS_PROVIDER)) {
+                        locD("best_parallel_register: provider=gps")
                         nativeLocManager.requestLocationUpdates(
                             android.location.LocationManager.GPS_PROVIDER,
                             0L, 0f, listener, android.os.Looper.getMainLooper()
@@ -545,6 +615,7 @@ class LocationManager @Inject constructor(
                         registeredAny = true
                     }
                     if (providers.contains(android.location.LocationManager.NETWORK_PROVIDER)) {
+                        locD("best_parallel_register: provider=network")
                         nativeLocManager.requestLocationUpdates(
                             android.location.LocationManager.NETWORK_PROVIDER,
                             0L, 0f, listener, android.os.Looper.getMainLooper()
@@ -559,14 +630,17 @@ class LocationManager @Inject constructor(
                     }
                 } catch (e: SecurityException) {
                     Log.e(TAG, "requestBestParallelLocation SecurityException", e)
+                    locE("best_parallel_security_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
                     if (cont.isActive) cont.resume(null)
                 } catch (e: Exception) {
                     Log.e(TAG, "requestBestParallelLocation Exception", e)
+                    locE("best_parallel_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
                     if (cont.isActive) cont.resume(null)
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "requestBestParallelLocation error", e)
+            locE("best_parallel_outer_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
             null
         }
     }
@@ -576,6 +650,7 @@ class LocationManager @Inject constructor(
         providers: List<String>,
         timeoutMillis: Long
     ): Location? {
+        val startMs = android.os.SystemClock.elapsedRealtime()
         return try {
             kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
                 suspendCancellableCoroutine<Location?> { cont ->
@@ -588,6 +663,7 @@ class LocationManager @Inject constructor(
                                 if (!hasResumed) {
                                     hasResumed = true
                                     Log.i(TAG, "ParallelLocation: 收到定位数据来自 ${loc.provider}, lat=${loc.latitude}, lon=${loc.longitude}")
+                                    locI("parallel_callback_first: elapsed=${elapsedSince(startMs)}ms, ${loc.locSummary()}")
                                     if (cont.isActive) cont.resume(loc)
                                     try {
                                         nativeLocManager.removeUpdates(this)
@@ -610,6 +686,7 @@ class LocationManager @Inject constructor(
                     try {
                         var registeredAny = false
                         if (providers.contains(android.location.LocationManager.GPS_PROVIDER)) {
+                            locD("parallel_register: provider=gps")
                             nativeLocManager.requestLocationUpdates(
                                 android.location.LocationManager.GPS_PROVIDER,
                                 0L, 0f, listener, android.os.Looper.getMainLooper()
@@ -617,6 +694,7 @@ class LocationManager @Inject constructor(
                             registeredAny = true
                         }
                         if (providers.contains(android.location.LocationManager.NETWORK_PROVIDER)) {
+                            locD("parallel_register: provider=network")
                             nativeLocManager.requestLocationUpdates(
                                 android.location.LocationManager.NETWORK_PROVIDER,
                                 0L, 0f, listener, android.os.Looper.getMainLooper()
@@ -625,19 +703,23 @@ class LocationManager @Inject constructor(
                         }
 
                         if (!registeredAny) {
+                            locW("parallel_no_provider_registered: elapsed=${elapsedSince(startMs)}ms")
                             if (cont.isActive) cont.resume(null)
                         }
                     } catch (e: SecurityException) {
                         Log.e(TAG, "requestParallelLocation SecurityException", e)
+                        locE("parallel_security_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
                         if (cont.isActive) cont.resume(null)
                     } catch (e: Exception) {
                         Log.e(TAG, "requestParallelLocation Exception", e)
+                        locE("parallel_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
                         if (cont.isActive) cont.resume(null)
                     }
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "requestParallelLocation error", e)
+            locE("parallel_outer_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
             null
         }
     }
@@ -647,12 +729,14 @@ class LocationManager @Inject constructor(
         provider: String,
         timeoutMillis: Long
     ): Location? {
+        val startMs = android.os.SystemClock.elapsedRealtime()
         return try {
             kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
                 suspendCancellableCoroutine<Location?> { cont ->
                     try {
                         val listener = object : android.location.LocationListener {
                             override fun onLocationChanged(loc: Location) {
+                                locI("single_provider_callback: provider=$provider, elapsed=${elapsedSince(startMs)}ms, ${loc.locSummary()}")
                                 if (cont.isActive) cont.resume(loc)
                                 try {
                                     nativeLocManager.removeUpdates(this)
@@ -679,15 +763,18 @@ class LocationManager @Inject constructor(
                         )
                     } catch (e: SecurityException) {
                         Log.e(TAG, "requestSingleProviderLocation SecurityException", e)
+                        locE("single_provider_security_exception: provider=$provider, elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
                         if (cont.isActive) cont.resume(null)
                     } catch (e: Exception) {
                         Log.e(TAG, "requestSingleProviderLocation Exception", e)
+                        locE("single_provider_exception: provider=$provider, elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
                         if (cont.isActive) cont.resume(null)
                     }
                 }
             }
         } catch (e: Exception) {
             Log.e(TAG, "requestSingleProviderLocation error", e)
+            locE("single_provider_outer_exception: provider=$provider, elapsed=${elapsedSince(startMs)}ms, message=${e.message.safeLogValue()}", e)
             null
         }
     }
@@ -800,17 +887,22 @@ class LocationManager @Inject constructor(
     }
 
     suspend fun requestSystemOrIpLocation(highAccuracy: Boolean = false): CachedLocation? {
+        val startMs = android.os.SystemClock.elapsedRealtime()
         val totalTimeoutMillis = if (highAccuracy) {
             HIGH_ACCURACY_LOCATION_TOTAL_TIMEOUT_MS
         } else {
             REGULAR_LOCATION_TOTAL_TIMEOUT_MS
         }
+        locI("location_flow_start: highAccuracy=$highAccuracy, totalTimeout=${totalTimeoutMillis}ms")
         val result = withTimeoutOrNull(totalTimeoutMillis) {
             TimedNullableResult(requestSystemOrIpLocationInternal(highAccuracy))
         }
         if (result == null) {
             Log.w(TAG, "定位总流程硬超时: ${totalTimeoutMillis}ms, highAccuracy=$highAccuracy")
             FileLogger.w(TAG, "定位总流程硬超时: ${totalTimeoutMillis}ms, highAccuracy=$highAccuracy")
+            locW("location_flow_timeout: elapsed=${elapsedSince(startMs)}ms, highAccuracy=$highAccuracy")
+        } else {
+            locI("location_flow_complete: elapsed=${elapsedSince(startMs)}ms, highAccuracy=$highAccuracy, result=${result.value?.let { "lat=${it.latitude.fullCoord()}, lon=${it.longitude.fullCoord()}, accuracy=${it.accuracy}m, name=${it.name.safeLogValue()}" } ?: "null"}")
         }
         return result?.value
     }
@@ -820,6 +912,8 @@ class LocationManager @Inject constructor(
             highAccuracy = highAccuracy,
             timeoutMillis = if (highAccuracy) HIGH_ACCURACY_TIMEOUT_MS else 8000L
         )
+        val startMs = android.os.SystemClock.elapsedRealtime()
+        locI("location_flow_internal_start: highAccuracy=$highAccuracy, systemTimeout=${profile.timeoutMillis}ms")
         Log.i(TAG, "定位总入口被调用（系统自带优先+高德兜底，已剔除IP定位）, highAccuracy=$highAccuracy...")
 
         if (hasLocationPermission()) {
@@ -827,8 +921,14 @@ class LocationManager @Inject constructor(
             var sysLoc: Location? = null
             val maxAttempts = if (highAccuracy) 1 else 3
             for (attempt in 1..maxAttempts) {
+                val attemptStartMs = android.os.SystemClock.elapsedRealtime()
+                locI("system_attempt_start: attempt=$attempt/$maxAttempts, timeout=${profile.timeoutMillis}ms")
                 sysLoc = requestSystemLocation(profile.timeoutMillis, profile.highAccuracy)
-                if (sysLoc != null) break
+                if (sysLoc != null) {
+                    locI("system_attempt_success: attempt=$attempt/$maxAttempts, elapsed=${elapsedSince(attemptStartMs)}ms, ${sysLoc.locSummary()}")
+                    break
+                }
+                locW("system_attempt_failed: attempt=$attempt/$maxAttempts, elapsed=${elapsedSince(attemptStartMs)}ms")
                 if (attempt < maxAttempts) {
                     Log.w(TAG, "系统自带定位第 ${attempt} 次失败，等待 1 秒后重试...")
                     kotlinx.coroutines.delay(1000L)
@@ -836,17 +936,20 @@ class LocationManager @Inject constructor(
             }
 
             if (sysLoc != null) {
+                val geocodeStartMs = android.os.SystemClock.elapsedRealtime()
                 val name = reverseGeocode(
                     sysLoc.latitude,
                     sysLoc.longitude,
                     forceRefresh = highAccuracy,
                     accuracy = sysLoc.accuracy
                 )
+                locI("system_reverse_geocode_complete: elapsed=${elapsedSince(geocodeStartMs)}ms, name=${name.safeLogValue()}, location=${sysLoc.locSummary()}")
                 Log.i(TAG, "系统自带定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name")
                 
                 // 若系统定位拿到了经纬度，但地名解析失败，则启动高德定位进行地名补全与二次校准
                 if (name == "未知位置" || name.isBlank()) {
                     Log.w(TAG, "系统定位成功但地址解析为未知，降级启动高德定位以补全位置名...")
+                    locW("system_name_unknown_start_amap_assist: elapsed=${elapsedSince(startMs)}ms")
                     val amapLoc = requestAmapLocation()
                     if (amapLoc != null) {
                         val amapName = resolveLocationName(amapLoc)
@@ -859,6 +962,7 @@ class LocationManager @Inject constructor(
                             )
                             if (distanceToSystem <= ACCEPTABLE_ACCURACY_METERS || sysLoc.accuracyOrDefault() <= ACCEPTABLE_ACCURACY_METERS) {
                                 Log.i(TAG, "高德辅助解析成功，仅采用名称: distanceToSystem=${distanceToSystem}m, name=$amapName")
+                                locI("amap_assist_name_used: distanceToSystem=${distanceToSystem}m, sysAccuracy=${sysLoc.accuracyOrDefault()}m, amap=${amapLoc.locSummary()}, name=${amapName.safeLogValue()}")
                                 return applyAntiJitter(
                                     sysLoc.latitude,
                                     sysLoc.longitude,
@@ -869,6 +973,7 @@ class LocationManager @Inject constructor(
                                 )
                             }
                             Log.i(TAG, "系统定位地址未知且精度较差，采用高德兜底坐标与名称: distanceToSystem=${distanceToSystem}m")
+                            locI("amap_assist_location_used: distanceToSystem=${distanceToSystem}m, sysAccuracy=${sysLoc.accuracyOrDefault()}m, amap=${amapLoc.locSummary()}, name=${amapName.safeLogValue()}")
                             return applyAntiJitter(
                                 amapLoc.latitude,
                                 amapLoc.longitude,
@@ -881,20 +986,25 @@ class LocationManager @Inject constructor(
                     }
                 }
                 
+                locI("system_location_result_used: elapsed=${elapsedSince(startMs)}ms, name=${name.safeLogValue()}, ${sysLoc.locSummary()}")
                 return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name, sysLoc.accuracy, sysLoc.time, highAccuracy)
             }
             Log.w(TAG, "系统自带定位失败或超时，降级尝试高德定位服务作为最终兜底...")
+            locW("system_all_attempts_failed_start_amap_fallback: elapsed=${elapsedSince(startMs)}ms")
 
             // 2. 降级尝试高德定位 SDK 作为兜底
             val amapLoc = requestAmapLocation()
             if (amapLoc != null) {
                 val name = resolveLocationName(amapLoc)
                 Log.i(TAG, "高德兜底定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
+                locI("amap_fallback_used: elapsed=${elapsedSince(startMs)}ms, name=${name.safeLogValue()}, ${amapLoc.locSummary()}")
                 return applyAntiJitter(amapLoc.latitude, amapLoc.longitude, name, amapLoc.accuracy, amapLoc.time, highAccuracy)
             }
             Log.w(TAG, "系统自带定位与高德兜底定位均已失败，已剔除IP定位，直接返回null")
+            locW("location_flow_internal_failed: elapsed=${elapsedSince(startMs)}ms")
         } else {
             Log.w(TAG, "无定位权限，且已剔除IP定位，拒绝自动定位")
+            locW("location_flow_internal_no_permission: elapsed=${elapsedSince(startMs)}ms")
         }
         return null
     }
@@ -907,6 +1017,8 @@ class LocationManager @Inject constructor(
         forceRefresh: Boolean = false,
         accuracy: Float = 0f
     ): String = withContext(Dispatchers.IO) {
+        val startMs = android.os.SystemClock.elapsedRealtime()
+        locI("reverse_geocode_start: lat=${lat.fullCoord()}, lon=${lon.fullCoord()}, forceRefresh=$forceRefresh, accuracy=${accuracy}m")
         val cached = getCachedLocation()
         if (!forceRefresh && cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
             val dist = distanceBetween(lat, lon, cached.latitude, cached.longitude)
@@ -928,18 +1040,22 @@ class LocationManager @Inject constructor(
                     result = cached.name,
                     details = "dist=${dist}m, age=${timeDiff}ms, accuracy=${accuracy}m"
                 )
+                locI("reverse_geocode_cache_hit: elapsed=${elapsedSince(startMs)}ms, dist=${dist}m, age=${timeDiff}ms, result=${cached.name.safeLogValue()}")
                 return@withContext cached.name
             }
         }
 
+        val systemStartMs = android.os.SystemClock.elapsedRealtime()
         val systemResult = try {
             kotlinx.coroutines.withTimeoutOrNull(4000L) {
                 geocoderFallback(lat, lon)
             }
         } catch (e: Exception) {
             Log.w(TAG, "reverseGeocode: 系统 Geocoder 抛出异常", e)
+            locE("reverse_geocode_system_exception: elapsed=${elapsedSince(systemStartMs)}ms, message=${e.message.safeLogValue()}", e)
             null
         }
+        locI("reverse_geocode_system_done: elapsed=${elapsedSince(systemStartMs)}ms, result=${systemResult.safeLogValue()}")
 
         if (systemResult != null && systemResult != "未知位置" && systemResult.isNotBlank()) {
             logReverseGeocodeResult(
@@ -949,12 +1065,15 @@ class LocationManager @Inject constructor(
                 result = systemResult,
                 details = "selected=true"
             )
+            locI("reverse_geocode_selected: source=system_geocoder, total=${elapsedSince(startMs)}ms, result=${systemResult.safeLogValue()}")
             return@withContext systemResult
         }
 
         // 系统 Geocoder 失败，尝试 BigDataCloud Web 逆地理编码 (中国大陆友好，无 Key 免费方案)
         Log.i(TAG, "reverseGeocode: 系统 Geocoder 失败，尝试 BigDataCloud Web 逆地理编码...")
+        val bdcStartMs = android.os.SystemClock.elapsedRealtime()
         val bdcResult = queryBigDataCloud(lat, lon)
+        locI("reverse_geocode_bigdatacloud_done: elapsed=${elapsedSince(bdcStartMs)}ms, result=${bdcResult.safeLogValue()}")
         if (bdcResult != null && bdcResult != "未知位置" && bdcResult.isNotBlank()) {
             Log.i(TAG, "reverseGeocode: BigDataCloud 解析成功: $bdcResult")
             logReverseGeocodeResult(
@@ -964,12 +1083,15 @@ class LocationManager @Inject constructor(
                 result = bdcResult,
                 details = "selected=true"
             )
+            locI("reverse_geocode_selected: source=bigdatacloud, total=${elapsedSince(startMs)}ms, result=${bdcResult.safeLogValue()}")
             return@withContext bdcResult
         }
 
         // 尝试 Nominatim Web 逆地理编码 (与 Breezy Weather 对齐的备用方案)
         Log.i(TAG, "reverseGeocode: BigDataCloud 失败，尝试 Nominatim Web 逆地理编码...")
+        val osmStartMs = android.os.SystemClock.elapsedRealtime()
         val osmResult = queryNominatim(lat, lon)
+        locI("reverse_geocode_nominatim_done: elapsed=${elapsedSince(osmStartMs)}ms, result=${osmResult.safeLogValue()}")
         if (osmResult != null && osmResult != "未知位置" && osmResult.isNotBlank()) {
             Log.i(TAG, "reverseGeocode: Nominatim 解析成功: $osmResult")
             logReverseGeocodeResult(
@@ -979,6 +1101,7 @@ class LocationManager @Inject constructor(
                 result = osmResult,
                 details = "selected=true"
             )
+            locI("reverse_geocode_selected: source=nominatim, total=${elapsedSince(startMs)}ms, result=${osmResult.safeLogValue()}")
             return@withContext osmResult
         }
 
@@ -989,6 +1112,7 @@ class LocationManager @Inject constructor(
             result = "未知位置",
             details = "system=null, bigdatacloud=null, nominatim=null"
         )
+        locW("reverse_geocode_all_failed: total=${elapsedSince(startMs)}ms")
         "未知位置"
     }
 
@@ -1298,10 +1422,12 @@ class LocationManager @Inject constructor(
         result: String,
         details: String
     ) {
+        val message = "reverseGeocode[$source]: coord=${lat.safeCoord()},${lon.safeCoord()}, fullCoord=${lat.fullCoord()},${lon.fullCoord()}, result=${result.safeLogValue()}, $details"
         FileLogger.i(
             TAG,
-            "reverseGeocode[$source]: coord=${lat.safeCoord()},${lon.safeCoord()}, result=${result.safeLogValue()}, $details"
+            message
         )
+        locI(message)
     }
 
     private fun Double.safeCoord(): String {

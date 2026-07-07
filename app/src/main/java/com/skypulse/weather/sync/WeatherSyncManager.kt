@@ -52,6 +52,11 @@ class WeatherSyncManager @Inject constructor(
     private val cityMutexes = ConcurrentHashMap<String, Mutex>()
     private fun getMutexForCity(cityId: String) = cityMutexes.computeIfAbsent(cityId) { Mutex() }
 
+    private fun locI(message: String) = FileLogger.locI(TAG, message)
+    private fun locW(message: String) = FileLogger.locW(TAG, message)
+    private fun locE(message: String) = FileLogger.locE(TAG, message)
+    private fun elapsedSince(startMs: Long): Long = android.os.SystemClock.elapsedRealtime() - startMs
+
     // ============ Public API ============
 
     /**
@@ -83,7 +88,11 @@ class WeatherSyncManager @Inject constructor(
         latitude: Double
     ): SyncResult {
         val mutex = getMutexForCity(cityId)
+        val waitStartMs = android.os.SystemClock.elapsedRealtime()
+        locI("city_mutex_wait_start: cityId=$cityId, lon=$longitude, lat=$latitude")
         return mutex.withLock {
+            locI("city_mutex_acquired: cityId=$cityId, wait=${elapsedSince(waitStartMs)}ms")
+            val startMs = android.os.SystemClock.elapsedRealtime()
             // 只对同一城市、同一坐标的短时间重复请求做去重；定位坐标变化时必须刷新。
             // 获锁后进行二次检查：防止在排队等待期间，前一个请求已经成功刷新了天气，当前请求可直接复用缓存。
             val lastFetch = lastFetchRecordsByCityId[cityId]
@@ -94,17 +103,23 @@ class WeatherSyncManager @Inject constructor(
             ) {
                 Log.i(TAG, "doRefreshWeather: $cityId 排队后检查：5秒内同坐标已获取，跳过重复请求")
                 val cached = repository.getWeatherFromCache(cityId)
+                locI("city_refresh_deduped_after_wait: cityId=$cityId, elapsed=${elapsedSince(startMs)}ms, hasCache=${cached != null}")
                 if (cached != null) return@withLock SyncResult.Success(cached)
             }
             FileLogger.i(TAG, "doRefreshWeather: cityId=$cityId, lon=$longitude, lat=$latitude")
             Log.i(TAG, "refreshWeather: $cityId 开始网络请求 lon=$longitude lat=$latitude")
+            locI("weather_fetch_start: cityId=$cityId, lon=$longitude, lat=$latitude")
+            val fetchStartMs = android.os.SystemClock.elapsedRealtime()
             val result = fetchWithRetry(longitude, latitude)
+            locI("weather_fetch_done: cityId=$cityId, elapsed=${elapsedSince(fetchStartMs)}ms, success=${result.isSuccess}")
             FileLogger.i(TAG, "doRefreshWeather: 网络请求完成, success=${result.isSuccess}")
             Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
             result.fold(
                 onSuccess = { response ->
                     markFetched(cityId, longitude, latitude)
+                    val saveStartMs = android.os.SystemClock.elapsedRealtime()
                     repository.saveWeatherToCache(cityId, response)
+                    locI("weather_cache_saved: cityId=$cityId, elapsed=${elapsedSince(saveStartMs)}ms, total=${elapsedSince(startMs)}ms")
                     FileLogger.i(TAG, "doRefreshWeather: 天气数据已写入 Room, cityId=$cityId, " +
                         "temp=${response.result?.realtime?.temperature}, " +
                         "skycon=${response.result?.realtime?.skycon}")
@@ -112,6 +127,7 @@ class WeatherSyncManager @Inject constructor(
                 },
                 onFailure = { e ->
                     FileLogger.e(TAG, "doRefreshWeather: 网络请求失败 - ${mapError(e)}")
+                    locE("weather_fetch_failed: cityId=$cityId, total=${elapsedSince(startMs)}ms, error=${mapError(e)}")
                     SyncResult.Error(mapError(e))
                 }
             )
@@ -124,9 +140,14 @@ class WeatherSyncManager @Inject constructor(
      * 用于主应用的定位城市刷新（前台）。
      */
     suspend fun refreshWeatherWithLocation(highAccuracy: Boolean = false): SyncResult = withContext(Dispatchers.IO) {
+        val waitStartMs = android.os.SystemClock.elapsedRealtime()
+        locI("location_mutex_wait_start: highAccuracy=$highAccuracy")
         locationMutex.withLock {
+            val startMs = android.os.SystemClock.elapsedRealtime()
+            locI("location_mutex_acquired: wait=${elapsedSince(waitStartMs)}ms, highAccuracy=$highAccuracy")
             val hasLocationPermission = locationManager.hasLocationPermission()
             Log.i(TAG, "refreshWeatherWithLocation: hasPermission=$hasLocationPermission, highAccuracy=$highAccuracy")
+            locI("refresh_with_location_start: hasPermission=$hasLocationPermission, highAccuracy=$highAccuracy")
 
             // 加锁后再次读取 Room 中定位城市信息做新鲜度校验（双重检查）
             val currentBeforeLocation = getCurrentLocationCity()
@@ -138,21 +159,26 @@ class WeatherSyncManager @Inject constructor(
             ) {
                 Log.i(TAG, "refreshWeatherWithLocation: current_location 120秒内已刷新，跳过")
                 val cached = repository.getWeatherFromCache(currentBeforeLocation.id)
+                locI("refresh_with_location_fresh_skip: elapsed=${elapsedSince(startMs)}ms, hasCache=${cached != null}")
                 return@withLock if (cached != null) SyncResult.Success(cached) else SyncResult.RateLimited
             }
 
+            val locateStartMs = android.os.SystemClock.elapsedRealtime()
             val location = if (!hasLocationPermission) {
                 Log.i(TAG, "无定位权限，IP定位已剔除，直接跳过定位")
+                locW("refresh_with_location_no_permission: elapsed=${elapsedSince(startMs)}ms")
                 null
             } else {
                 locationManager.requestSystemOrIpLocation(highAccuracy = highAccuracy)
             }
+            locI("refresh_with_location_locate_done: elapsed=${elapsedSince(locateStartMs)}ms, result=${location?.let { "lat=${it.latitude}, lon=${it.longitude}, accuracy=${it.accuracy}m, name=${it.name}" } ?: "null"}")
 
             if (location != null) {
                 val lon = location.longitude
                 val lat = location.latitude
                 val locationName = location.name
                 Log.i(TAG, "定位成功: lon=$lon, lat=$lat, name=$locationName")
+                locI("refresh_with_location_location_success: elapsed=${elapsedSince(startMs)}ms, lon=$lon, lat=$lat, accuracy=${location.accuracy}m, name=$locationName")
                 val currentCity = if (locationName == UNKNOWN_LOCATION) {
                     Log.w(TAG, "定位成功但地址为空，保留旧城市名, lon=$lon, lat=$lat")
                     var oldName = locationManager.getCachedLocation()?.name
@@ -169,25 +195,31 @@ class WeatherSyncManager @Inject constructor(
                 }
 
                 Log.i(TAG, "开始获取天气: cityId=${currentCity.id}, name=${currentCity.name}")
-                return@withLock doRefreshWeather(currentCity.id, lon, lat)
+                val result = doRefreshWeather(currentCity.id, lon, lat)
+                locI("refresh_with_location_complete: elapsed=${elapsedSince(startMs)}ms, result=${result::class.simpleName}")
+                return@withLock result
             }
 
             val cachedLoc = locationManager.getCachedLocation()
             Log.i(TAG, "定位失败, cachedLocation=${cachedLoc?.name}")
+            locW("refresh_with_location_locate_failed: elapsed=${elapsedSince(startMs)}ms, cached=${cachedLoc?.name}")
             if (cachedLoc != null) {
                 val currentCity = upsertCurrentLocationCity(
                     cachedLoc.name,
                     cachedLoc.longitude,
                     cachedLoc.latitude
                 )
-                return@withLock doRefreshWeather(
+                val result = doRefreshWeather(
                     currentCity.id,
                     cachedLoc.longitude,
                     cachedLoc.latitude
                 )
+                locI("refresh_with_location_cached_complete: elapsed=${elapsedSince(startMs)}ms, result=${result::class.simpleName}")
+                return@withLock result
             }
 
             Log.w(TAG, "refreshWeatherWithLocation: 定位和缓存均失败，不写入默认北京天气")
+            locW("refresh_with_location_failed_no_cache: elapsed=${elapsedSince(startMs)}ms")
             SyncResult.LocationFailed
         }
     }
@@ -199,7 +231,11 @@ class WeatherSyncManager @Inject constructor(
      * 2. 仅更新天气缓存数据
      */
     suspend fun refreshWeatherWithLocationForWidget(): SyncResult = withContext(Dispatchers.IO) {
+        val waitStartMs = android.os.SystemClock.elapsedRealtime()
+        locI("widget_location_mutex_wait_start")
         locationMutex.withLock {
+            val startMs = android.os.SystemClock.elapsedRealtime()
+            locI("widget_location_mutex_acquired: wait=${elapsedSince(waitStartMs)}ms")
             val hasLocationPermission = locationManager.hasLocationPermission()
             val hasBackgroundPermission = locationManager.hasBackgroundLocationPermission()
             FileLogger.i(TAG, "refreshWeatherWithLocationForWidget: hasPermission=$hasLocationPermission, " +
@@ -209,15 +245,19 @@ class WeatherSyncManager @Inject constructor(
             if (isFreshEnough(CURRENT_LOCATION_ID)) {
                 FileLogger.i(TAG, "refreshWeatherWithLocationForWidget: current_location 120秒内已刷新，跳过")
                 val cached = repository.getWeatherFromCache(CURRENT_LOCATION_ID)
+                locI("widget_refresh_fresh_skip: elapsed=${elapsedSince(startMs)}ms, hasCache=${cached != null}")
                 return@withLock if (cached != null) SyncResult.Success(cached) else SyncResult.RateLimited
             }
 
+            val locateStartMs = android.os.SystemClock.elapsedRealtime()
             val location = if (!hasLocationPermission) {
                 FileLogger.i(TAG, "小组件: 无定位权限，IP定位已剔除，直接跳过定位")
+                locW("widget_refresh_no_permission: elapsed=${elapsedSince(startMs)}ms")
                 null
             } else {
                 locationManager.requestSystemOrIpLocation()
             }
+            locI("widget_refresh_locate_done: elapsed=${elapsedSince(locateStartMs)}ms, result=${location?.let { "lat=${it.latitude}, lon=${it.longitude}, accuracy=${it.accuracy}m, name=${it.name}" } ?: "null"}")
 
             if (location != null) {
                 val lon = location.longitude
@@ -230,21 +270,26 @@ class WeatherSyncManager @Inject constructor(
                     val oldCachedName = locationManager.getCachedLocation()?.name
                     locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat, location.time, location.accuracy)
                 }
-                return@withLock doRefreshWeather("current_location", lon, lat)
+                val result = doRefreshWeather("current_location", lon, lat)
+                locI("widget_refresh_complete: elapsed=${elapsedSince(startMs)}ms, result=${result::class.simpleName}")
+                return@withLock result
             }
 
             // 尝试缓存坐标
             val cachedLocation = locationManager.getCachedLocation()
             FileLogger.w(TAG, "小组件定位: 系统/IP定位均失败, cachedLocation=${cachedLocation?.name}")
             if (cachedLocation != null) {
-                return@withLock doRefreshWeather(
+                val result = doRefreshWeather(
                     "current_location",
                     cachedLocation.longitude,
                     cachedLocation.latitude
                 )
+                locI("widget_refresh_cached_complete: elapsed=${elapsedSince(startMs)}ms, result=${result::class.simpleName}")
+                return@withLock result
             }
 
             FileLogger.e(TAG, "小组件定位: 全部失败")
+            locW("widget_refresh_failed_no_cache: elapsed=${elapsedSince(startMs)}ms")
             SyncResult.LocationFailed
         }
     }
@@ -332,18 +377,23 @@ class WeatherSyncManager @Inject constructor(
             if (attempt > 0) {
                 kotlinx.coroutines.delay(1000L * attempt)
             }
+            val attemptStartMs = android.os.SystemClock.elapsedRealtime()
+            locI("weather_fetch_attempt_start: attempt=${attempt + 1}/${MAX_RETRIES + 1}, lon=$lon, lat=$lat")
             val result = repository.getWeather(lon, lat, includeYesterday = true)
             result.fold(
                 onSuccess = { response ->
                     val hourly = response.result?.hourly
                     if (hourly == null || hourly.temperature.isNullOrEmpty()) {
                         lastException = Exception("empty_hourly")
+                        locW("weather_fetch_attempt_empty_hourly: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
                     } else {
+                        locI("weather_fetch_attempt_success: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
                         return Result.success(response)
                     }
                 },
                 onFailure = { e ->
                     lastException = e as? Exception ?: Exception(e)
+                    locW("weather_fetch_attempt_failed: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms, error=${mapError(e)}")
                     if (e is HttpException && e.code() == 429) {
                         return Result.failure(e)
                     }

@@ -126,7 +126,7 @@ fun DonateDialog(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "无广告\n轻量化\n持续维护天气、预警和桌面组件",
+                            text = "无广告\n轻量化\n持续更新\n精美UI设计",
                             style = MaterialTheme.typography.bodySmall.copy(lineHeight = 20.sp),
                             color = IosTextSecondary
                         )

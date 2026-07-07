@@ -58,6 +58,12 @@ object FileLogger {
         }
     }
 
+    private fun getNamedLogFile(prefix: String): File {
+        val dir = logDir ?: return File("/dev/null")
+        val dateStr = dateFormat.format(Date())
+        return File(dir, "${prefix}_$dateStr.txt")
+    }
+
     /**
      * 注册全局崩溃捕获器，将未捕获异常写入日志文件
      */
@@ -118,7 +124,7 @@ object FileLogger {
      */
     @Synchronized
     fun log(tag: String, level: String, message: String) {
-        val dir = logDir ?: return
+        if (logDir == null) return
 
         try {
             val timeStr = timeFormat.format(Date())
@@ -133,11 +139,35 @@ object FileLogger {
         }
     }
 
+    @Synchronized
+    fun location(tag: String, level: String, message: String) {
+        if (logDir == null) return
+
+        try {
+            val timeStr = timeFormat.format(Date())
+            val threadName = Thread.currentThread().name
+            val logLine = "[$timeStr] [$level] [$tag] [thread=$threadName] $message\n"
+
+            val logFile = getNamedLogFile("loca")
+            FileWriter(logFile, true).use { writer ->
+                writer.append(logLine)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FileLogger", "write location log failed: ${e.message}")
+        }
+    }
+
     fun d(tag: String, message: String) = log(tag, "D", message)
     fun i(tag: String, message: String) = log(tag, "I", message)
     fun w(tag: String, message: String) = log(tag, "W", message)
     fun e(tag: String, message: String) = log(tag, "E", message)
     fun e(tag: String, message: String, throwable: Throwable) = log(tag, "E", "$message\n${throwable.stackTraceToString()}")
+
+    fun locD(tag: String, message: String) = location(tag, "D", message)
+    fun locI(tag: String, message: String) = location(tag, "I", message)
+    fun locW(tag: String, message: String) = location(tag, "W", message)
+    fun locE(tag: String, message: String) = location(tag, "E", message)
+    fun locE(tag: String, message: String, throwable: Throwable) = location(tag, "E", "$message\n${throwable.stackTraceToString()}")
 
     /**
      * 清理超过 keepDays 天的日志文件（所有类型：log_ widget_ notif_ crash_）
@@ -148,7 +178,7 @@ object FileLogger {
             if (!dir.exists()) return
 
             val cutoff = System.currentTimeMillis() - (keepDays * 24 * 60 * 60 * 1000L)
-            val prefixes = listOf("log_", "widget_", "notif_", "crash_")
+            val prefixes = listOf("log_", "widget_", "notif_", "loca_", "crash_")
             var deletedCount = 0
             dir.listFiles()?.forEach { file ->
                 if (file.isFile && prefixes.any { file.name.startsWith(it) } && file.lastModified() < cutoff) {
