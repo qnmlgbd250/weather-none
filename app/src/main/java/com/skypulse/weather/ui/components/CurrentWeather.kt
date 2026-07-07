@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -308,24 +309,7 @@ fun CurrentWeather(
                 ),
                 contentAlignment = Alignment.TopEnd
             ) {
-                Text(
-                    text = tempValue,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = SkyPulseDesignSystem.TypographyScale.temperature,
-                        fontWeight = FontWeight.Thin,
-                        letterSpacing = 0.sp
-                    ),
-                    color = TextPrimary
-                )
-                Text(
-                    text = "°",
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontSize = SkyPulseDesignSystem.TypographyScale.temperatureDegree,
-                        fontWeight = FontWeight.Thin
-                    ),
-                    color = TextPrimary,
-                    modifier = Modifier.offset(x = 20.dp, y = 8.dp)
-                )
+                HeroTemperatureText(tempValue = tempValue)
             }
         }
 
@@ -360,6 +344,39 @@ fun CurrentWeather(
             }
         }
 
+    }
+}
+
+@Composable
+private fun HeroTemperatureText(tempValue: String) {
+    val numberStyle = MaterialTheme.typography.displayLarge.copy(
+        fontSize = SkyPulseDesignSystem.TypographyScale.temperature,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 0.sp
+    )
+    val degreeStyle = MaterialTheme.typography.displayLarge.copy(
+        fontSize = SkyPulseDesignSystem.TypographyScale.temperatureDegree,
+        fontWeight = FontWeight.Medium,
+        letterSpacing = 0.sp
+    )
+    val degreeOffsetX = 4.dp
+    val degreeOffsetY = 12.dp
+
+    Layout(
+        content = {
+            Text(text = tempValue, style = numberStyle, color = TextPrimary)
+            Text(text = "°", style = degreeStyle, color = TextPrimary)
+        }
+    ) { measurables, constraints ->
+        val numberPlaceable = measurables[0].measure(constraints)
+        val degreePlaceable = measurables[1].measure(constraints)
+        val degreeX = numberPlaceable.width + degreeOffsetX.roundToPx()
+        val degreeY = degreeOffsetY.roundToPx()
+
+        layout(numberPlaceable.width, maxOf(numberPlaceable.height, degreeY + degreePlaceable.height)) {
+            numberPlaceable.placeRelative(0, 0)
+            degreePlaceable.placeRelative(degreeX, degreeY)
+        }
     }
 }
 

@@ -79,6 +79,8 @@ class WeatherViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "WeatherVM"
+        private const val REFRESH_MIN_VISIBLE_MS = 300L
+        private const val REFRESH_SUCCESS_VISIBLE_MS = 500L
     }
 
     // --- Screen navigation ---
@@ -438,9 +440,9 @@ class WeatherViewModel @Inject constructor(
                     handleSyncResult(result, city, silent = true)
                 }
                 val elapsed = System.currentTimeMillis() - startTime
-                if (elapsed < 1000) delay(1000 - elapsed)
+                if (elapsed < REFRESH_MIN_VISIBLE_MS) delay(REFRESH_MIN_VISIBLE_MS - elapsed)
                 _refreshPhase.value = RefreshPhase.Success
-                delay(1000)
+                delay(REFRESH_SUCCESS_VISIBLE_MS)
                 _refreshPhase.value = RefreshPhase.Idle
             } finally {
                 refreshingCityIdsMutex.withLock {
@@ -535,10 +537,10 @@ class WeatherViewModel @Inject constructor(
             }
 
             val elapsed = System.currentTimeMillis() - startTime
-            if (elapsed < 1000) delay(1000 - elapsed)
+            if (elapsed < REFRESH_MIN_VISIBLE_MS) delay(REFRESH_MIN_VISIBLE_MS - elapsed)
             _isRefreshing.value = false
             _refreshPhase.value = RefreshPhase.Success
-            delay(1000)
+            delay(REFRESH_SUCCESS_VISIBLE_MS)
             _refreshPhase.value = RefreshPhase.Idle
         }
     }
@@ -569,7 +571,7 @@ class WeatherViewModel @Inject constructor(
         viewModelScope.launch {
             val refreshCity = selectedCityForRefresh()
             if (refreshCity != null && shouldSkipRefresh(refreshCity)) return@launch
-            performRefreshWithAnimation(refreshCity, minElapsedMs = 1000L, successDelayMs = 1000L)
+            performRefreshWithAnimation(refreshCity)
         }
     }
 
@@ -599,7 +601,7 @@ class WeatherViewModel @Inject constructor(
             handleSyncResult(result, city, silent)
             result is SyncResult.Success
         } else {
-            refreshCurrentLocation(silent, highAccuracy = !silent)
+            refreshCurrentLocation(silent, highAccuracy = false)
         }
     }
 
