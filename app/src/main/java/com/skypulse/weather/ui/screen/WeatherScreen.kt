@@ -170,7 +170,13 @@ fun WeatherScreen(
     }
 
     CompositionLocalProvider(LocalWeatherTheme provides weatherTheme) {
-        when (currentScreen) {
+        AnimatedContent(
+            targetState = currentScreen,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = { skyPulseScreenTransition() },
+            label = "screen_transition"
+        ) { targetScreen ->
+            when (targetScreen) {
             AppScreen.CityList -> {
                 CityListScreen(
                     cities = savedCities,
@@ -362,8 +368,25 @@ fun WeatherScreen(
                 )
             }
         }
+        }
     }
 }
+
+private fun AnimatedContentTransitionScope<AppScreen>.skyPulseScreenTransition(): ContentTransform {
+    val direction = if (targetState.screenOrder >= initialState.screenOrder) 1 else -1
+    return (slideInHorizontally(animationSpec = tween(220)) { width -> direction * width / 5 } +
+        fadeIn(animationSpec = tween(180))) togetherWith
+        (slideOutHorizontally(animationSpec = tween(220)) { width -> -direction * width / 6 } +
+            fadeOut(animationSpec = tween(160))) using SizeTransform(clip = false)
+}
+
+private val AppScreen.screenOrder: Int
+    get() = when (this) {
+        AppScreen.CityList -> -1
+        AppScreen.CityDetail -> 0
+        AppScreen.Settings -> 1
+        AppScreen.AlertDetail -> 1
+    }
 
 // ==================== Helper Composables ====================
 
