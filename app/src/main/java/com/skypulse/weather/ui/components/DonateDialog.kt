@@ -41,6 +41,7 @@ fun DonateDialog(
         "LAOHE" to "68.8",
         "芳华" to "66",
         "维涅斯" to "50",
+        "*波" to "30",
         "沐沐商务QQ" to "28.88",
         "*啦" to "23.33",
         "Joy" to "20",
