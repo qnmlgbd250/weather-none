@@ -17,7 +17,7 @@ data class WeatherTheme(
     val cardBorderBrush: Brush,
     val cardBorderColor: Color,
     val chartColors: WeatherChartColors,
-    val precipitationIconColor: Color = Color(0xFF0A5AD4),
+    val precipitationIconColor: Color = Color.White,
     val textPrimary: Color = Color.White,
     val textSecondary: Color = TextSecondary,
     val textTertiary: Color = TextTertiary,

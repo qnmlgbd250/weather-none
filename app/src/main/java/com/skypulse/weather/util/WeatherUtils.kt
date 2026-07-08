@@ -149,27 +149,8 @@ object WeatherUtils {
         )
     }
 
-    fun getPrecipitationIconColor(skycon: String?, isDay: Boolean): Color {
-        val isRain = skycon?.let {
-            it.contains("RAIN") || it.contains("STORM") || it == "THUNDER_SHOWER"
-        } == true
-        val isDimDay = skycon?.let {
-            it.contains("CLOUDY") ||
-                it.contains("SNOW") ||
-                it.contains("HAZE") ||
-                it == "FOG" ||
-                it == "DUST" ||
-                it == "SAND" ||
-                it == "WIND"
-        } == true
-
-        return when {
-            !isDay -> Color(0xFFFFFFFF)
-            isRain -> Color(0xFFEAF7FF)
-            isDimDay -> Color(0xFFDDF3FF)
-            else -> Color(0xFF0A5AD4)
-        }
-    }
+    @Suppress("UNUSED_PARAMETER")
+    fun getPrecipitationIconColor(skycon: String?, isDay: Boolean): Color = Color.White
 
     fun getWeatherInfo(skycon: String?, hour: Int = 12): WeatherInfo {
         val isDay = hour in 6..18
