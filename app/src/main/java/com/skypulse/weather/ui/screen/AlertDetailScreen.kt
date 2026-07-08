@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.skypulse.weather.model.AlertContent
+import com.skypulse.weather.model.sortedByPublishTimeDescending
 import com.skypulse.weather.ui.theme.IosCardBg
 import com.skypulse.weather.ui.theme.IosSettingsBg
 import com.skypulse.weather.ui.theme.IosTextPrimary
@@ -32,6 +33,9 @@ internal fun AlertDetailScreen(
     initialSelectedIndex: Int = 0,
     onBack: () -> Unit = {}
 ) {
+    val sortedAlerts = remember(alerts) {
+        alerts.sortedByPublishTimeDescending()
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -53,7 +57,7 @@ internal fun AlertDetailScreen(
             )
         )
 
-        if (alerts.isEmpty()) {
+        if (sortedAlerts.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -62,7 +66,7 @@ internal fun AlertDetailScreen(
             }
         } else {
             val safeInitialIndex = remember(alerts, initialSelectedIndex) {
-                initialSelectedIndex.coerceIn(alerts.indices)
+                initialSelectedIndex.coerceIn(sortedAlerts.indices)
             }
             LazyColumn(
                 state = rememberLazyListState(
@@ -70,7 +74,7 @@ internal fun AlertDetailScreen(
                 ),
                 modifier = Modifier.fillMaxSize()
             ) {
-                itemsIndexed(alerts) { _, alert ->
+                itemsIndexed(sortedAlerts) { _, alert ->
                     val title = alert.title
                         ?.replace(Regex("\\[.*?\\]"), "")
                         ?.replace(Regex("^.*(?:发布|变更|解除|继续|更新)"), "")

@@ -39,7 +39,7 @@ class WeatherSyncManager @Inject constructor(
         private const val LOCATING_NAME = "定位中..."
         private const val UNKNOWN_LOCATION = "未知位置"
         private const val MAX_RETRIES = 2
-        private const val LOCATION_CALIBRATION_MIN_INTERVAL_MS = 10 * 60 * 1000L
+        private const val LOCATION_CALIBRATION_MIN_INTERVAL_MS = 7 * 60 * 1000L
         private const val LOCATION_CALIBRATION_FORCE_INTERVAL_MS = 30 * 60 * 1000L
         private const val LOCATION_CALIBRATION_DISTANCE_METERS = 700f
     }

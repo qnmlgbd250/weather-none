@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import com.skypulse.weather.model.sortedByPublishTimeDescending
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.TextSecondary
 import com.skypulse.weather.util.WeatherUtils
@@ -40,14 +41,17 @@ internal fun WeatherContent(
     val result = state.weather.result
     val realtime = result?.realtime
     val todayTemp = WeatherUtils.todayTemperature(result?.daily)
-    val alerts = result?.alert?.content?.mapNotNull { content ->
+    val alertContents = remember(result?.alert?.content) {
+        result?.alert?.content.orEmpty().sortedByPublishTimeDescending()
+    }
+    val alerts = alertContents.mapNotNull { content ->
         val title = content.title
             ?.replace(Regex("\\[.*?\\]"), "")
             ?.replace(Regex("^.*(?:发布|变更|解除|继续|更新)"), "")
             ?.replace(Regex("预警.*$"), "预警")
             ?.trim()
         if (!title.isNullOrBlank()) AlertItem(title, content.level) else null
-    }.orEmpty()
+    }
 
     val haptic = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
@@ -107,16 +111,10 @@ internal fun WeatherContent(
                 .navigationBarsPadding()
                 .verticalScroll(scrollState)
         ) {
-            if (alerts.isEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            if (alerts.isNotEmpty()) {
-                AlertBanner(alerts = alerts, onClick = { idx ->
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    onAlertClick(idx)
-                })
-            }
+            AlertBannerSlot(alerts = alerts, onClick = { idx ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onAlertClick(idx)
+            })
 
             CurrentWeather(
                 realtime = realtime,

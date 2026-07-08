@@ -49,6 +49,14 @@ data class AlertContent(
     val publishTime: Long? = null
 )
 
+fun List<AlertContent>.sortedByPublishTimeDescending(): List<AlertContent> {
+    return sortedWith(
+        compareByDescending<AlertContent> { it.publishTime ?: Long.MIN_VALUE }
+            .thenBy { it.title.orEmpty() }
+            .thenBy { it.id.orEmpty() }
+    )
+}
+
 // ============ Realtime ============
 
 @JsonClass(generateAdapter = true)

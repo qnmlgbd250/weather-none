@@ -31,6 +31,25 @@ import com.skypulse.weather.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
 @Composable
+internal fun AlertBannerSlot(
+    alerts: List<AlertItem>,
+    modifier: Modifier = Modifier,
+    onClick: (Int) -> Unit = {}
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(36.dp)
+    ) {
+        if (alerts.isNotEmpty()) {
+            Box(modifier = Modifier.padding(top = 8.dp)) {
+                AlertBanner(alerts = alerts, onClick = onClick)
+            }
+        }
+    }
+}
+
+@Composable
 internal fun AlertBanner(alerts: List<AlertItem>, onClick: (Int) -> Unit = {}) {
     if (alerts.isEmpty()) return
 

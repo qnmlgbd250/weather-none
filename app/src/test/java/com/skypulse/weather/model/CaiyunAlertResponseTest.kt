@@ -72,6 +72,21 @@ class CaiyunAlertResponseTest {
     }
 
     @Test
+    fun `toAlertContentList sorts active warnings by publish time descending`() {
+        val response = CaiyunAlertResponse(
+            alerts = listOf(
+                activeAlert(id = "old-alert", publishTime = 1783334400L, title = "旧预警"),
+                activeAlert(id = "new-alert", publishTime = 1783375680L, title = "新预警"),
+                activeAlert(id = "middle-alert", publishTime = 1783350000L, title = "中间预警")
+            )
+        )
+
+        val alerts = response.toAlertContentList()
+
+        assertEquals(listOf("new-alert", "middle-alert", "old-alert"), alerts.map { it.id })
+    }
+
+    @Test
     fun `toAlertContentList drops cancelled warnings`() {
         val response = CaiyunAlertResponse(
             alerts = listOf(
@@ -111,5 +126,20 @@ class CaiyunAlertResponseTest {
         )
 
         assertEquals(0, response.toAlertContentList().size)
+    }
+
+    private fun activeAlert(id: String, publishTime: Long, title: String): CaiyunAlert {
+        return CaiyunAlert(
+            id = id,
+            publishTime = publishTime,
+            status = 1,
+            data = listOf(
+                AlertLocalizedData(
+                    languageCode = "zh-CN",
+                    title = title,
+                    text = "$title 正在生效"
+                )
+            )
+        )
     }
 }

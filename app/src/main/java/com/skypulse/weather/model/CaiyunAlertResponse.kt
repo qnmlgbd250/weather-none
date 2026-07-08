@@ -89,7 +89,7 @@ fun CaiyunAlertResponse.toAlertContentList(): List<AlertContent> {
             areaCode = alert.areaCode,
             publishTime = alert.publishTime
         )
-    }.orEmpty()
+    }.orEmpty().sortedByPublishTimeDescending()
 }
 
 private fun CaiyunAlert.isActiveWarning(localized: AlertLocalizedData): Boolean {

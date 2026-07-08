@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.domain.CitySelectionPolicy
+import com.skypulse.weather.model.sortedByPublishTimeDescending
 import com.skypulse.weather.util.WeatherUtils
 import com.skypulse.weather.ui.components.*
 import com.skypulse.weather.ui.theme.*
@@ -368,7 +369,7 @@ fun WeatherScreen(
 
             AppScreen.AlertDetail -> {
                 val contents = when (val s = uiState) {
-                    is WeatherUiState.Success -> s.weather.result?.alert?.content.orEmpty()
+                    is WeatherUiState.Success -> s.weather.result?.alert?.content.orEmpty().sortedByPublishTimeDescending()
                     else -> emptyList()
                 }
                 AlertDetailScreen(
@@ -477,14 +478,17 @@ private fun WeatherContentBody(
     val result = state.weather.result
     val realtime = result?.realtime
     val todayTemp = WeatherUtils.todayTemperature(result?.daily)
-    val alerts = result?.alert?.content?.mapNotNull { content ->
+    val alertContents = remember(result?.alert?.content) {
+        result?.alert?.content.orEmpty().sortedByPublishTimeDescending()
+    }
+    val alerts = alertContents.mapNotNull { content ->
         val title = content.title
             ?.replace(Regex("\\[.*?\\]"), "")
             ?.replace(Regex("^.*(?:\u53D1\u5E03|\u53D8\u66F4|\u89E3\u9664|\u7EE7\u7EED|\u66F4\u65B0)"), "")
             ?.replace(Regex("\u9884\u8B66.*$"), "\u9884\u8B66")
             ?.trim()
         if (!title.isNullOrBlank()) AlertItem(title, content.level) else null
-    }.orEmpty()
+    }
 
     val haptic = LocalHapticFeedback.current
 
@@ -494,16 +498,10 @@ private fun WeatherContentBody(
             .navigationBarsPadding()
             .verticalScroll(scrollState)
     ) {
-        if (alerts.isEmpty()) {
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        if (alerts.isNotEmpty()) {
-            AlertBanner(alerts = alerts, onClick = { idx ->
-                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onAlertClick(idx)
-            })
-        }
+        AlertBannerSlot(alerts = alerts, onClick = { idx ->
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            onAlertClick(idx)
+        })
 
         CurrentWeather(
             realtime = realtime,
