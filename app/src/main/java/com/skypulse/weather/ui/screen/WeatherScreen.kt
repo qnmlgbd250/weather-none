@@ -3,6 +3,7 @@ package com.skypulse.weather.ui.screen
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -16,6 +17,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,7 +55,7 @@ import kotlinx.coroutines.launch
 
 val LocalSkipCardAnimation = compositionLocalOf { false }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterialApi::class)
 @Composable
 fun WeatherScreen(
     viewModel: WeatherViewModel = hiltViewModel(),
@@ -60,6 +64,7 @@ fun WeatherScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val refreshPhase by viewModel.refreshPhase.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val isLocating by viewModel.isLocating.collectAsStateWithLifecycle()
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
     val savedCities by viewModel.savedCities.collectAsStateWithLifecycle()
@@ -298,6 +303,7 @@ fun WeatherScreen(
                                                     state = contentState,
                                                     scrollState = pageScrollState,
                                                     settings = settings,
+                                                    refreshing = isRefreshing || refreshPhase != RefreshPhase.Idle,
                                                     onRefresh = { viewModel.refresh() },
                                                     onAlertClick = { viewModel.navigateToAlertDetail(0) }
                                                 )
@@ -468,10 +474,12 @@ private fun CityDotBar(
 }
 
 @Composable
+@OptIn(ExperimentalMaterialApi::class)
 private fun WeatherContentBody(
     state: WeatherUiState.Success,
     scrollState: ScrollState,
     settings: WeatherSettings,
+    refreshing: Boolean,
     onRefresh: () -> Unit = {},
     onAlertClick: (Int) -> Unit = {}
 ) {
@@ -491,100 +499,119 @@ private fun WeatherContentBody(
     }
 
     val haptic = LocalHapticFeedback.current
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = refreshing,
+        onRefresh = onRefresh
+    )
+    val pullOffset by animateDpAsState(
+        targetValue = if (!refreshing) {
+            (pullRefreshState.progress.coerceIn(0f, 1f) * 24f).dp
+        } else {
+            0.dp
+        },
+        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
+        label = "pull_refresh_content_offset"
+    )
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .navigationBarsPadding()
-            .verticalScroll(scrollState)
+            .pullRefresh(pullRefreshState)
     ) {
-        AlertBannerSlot(alerts = alerts, onClick = { idx ->
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-            onAlertClick(idx)
-        })
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .verticalScroll(scrollState)
+                .offset(y = pullOffset)
+        ) {
+            AlertBannerSlot(alerts = alerts, onClick = { idx ->
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onAlertClick(idx)
+            })
 
-        CurrentWeather(
-            realtime = realtime,
-            todayHigh = todayTemp?.max,
-            todayLow = todayTemp?.min,
-            onRefresh = onRefresh
-        )
+            CurrentWeather(
+                realtime = realtime,
+                todayHigh = todayTemp?.max,
+                todayLow = todayTemp?.min
+            )
 
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-        result?.forecastKeypoint?.let { keypoint ->
-            GlassCard(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
-                Text(
-                    text = keypoint,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(16.dp)
+            result?.forecastKeypoint?.let { keypoint ->
+                GlassCard(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
+                    Text(
+                        text = keypoint,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
+            }
+
+            val minutelyData = result?.minutely?.precipitation_2h
+            val showMinutely = !minutelyData.isNullOrEmpty() && minutelyData.any { it != 0.0 }
+
+            if (showMinutely) {
+                MinutelyPrecipitationCard(
+                    minutely = result?.minutely,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
+                )
+                Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
+            }
+
+            HourlyForecastCard(
+                hourly = result?.hourly,
+                showAqi = settings.showHourlyAqi,
+                showUv = settings.showHourlyUv,
+                showWind = settings.showHourlyWind,
+                showWindGust = settings.showHourlyWindGust,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
+            )
+
+            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
+
+            DailyForecastCard(
+                daily = result?.daily,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
+            )
+
+            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
+
+            if (settings.showCardDetail) {
+                WeatherDetailCards(
+                    realtime = realtime,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
+            }
+
+            if (settings.showCardSunriseSunset) {
+                SunriseSunsetCard(
+                    astro = result?.daily?.astro,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
                 )
             }
-            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
-        }
 
-        val minutelyData = result?.minutely?.precipitation_2h
-        val showMinutely = !minutelyData.isNullOrEmpty() && minutelyData.any { it != 0.0 }
-
-        if (showMinutely) {
-            MinutelyPrecipitationCard(
-                minutely = result?.minutely,
+            Text(
+                text = "\u6c14\u8c61\u6570\u636e\u6765\u81ea\u5f69\u4e91\u5929\u6c14",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary.copy(alpha = 0.4f),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
+                    .padding(top = 22.dp, bottom = 22.dp),
+                textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
         }
-
-        HourlyForecastCard(
-            hourly = result?.hourly,
-            showAqi = settings.showHourlyAqi,
-            showUv = settings.showHourlyUv,
-            showWind = settings.showHourlyWind,
-            showWindGust = settings.showHourlyWindGust,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
-        )
-
-        Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
-
-        DailyForecastCard(
-            daily = result?.daily,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
-        )
-
-        Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
-
-        if (settings.showCardDetail) {
-            WeatherDetailCards(
-                realtime = realtime,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
-        }
-
-        if (settings.showCardSunriseSunset) {
-            SunriseSunsetCard(
-                astro = result?.daily?.astro,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
-            )
-        }
-
-        Text(
-            text = "\u6c14\u8c61\u6570\u636e\u6765\u81ea\u5f69\u4e91\u5929\u6c14",
-            style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary.copy(alpha = 0.4f),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 22.dp, bottom = 22.dp),
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
     }
 }

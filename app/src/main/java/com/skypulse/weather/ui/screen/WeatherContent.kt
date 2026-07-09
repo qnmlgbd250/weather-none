@@ -31,7 +31,6 @@ internal fun WeatherContent(
     refreshPhase: RefreshPhase = RefreshPhase.Idle,
     cityCount: Int = 1,
     currentCityIndex: Int = 0,
-    onRefresh: () -> Unit = {},
     onListClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onAlertClick: (Int) -> Unit = {},
@@ -119,8 +118,7 @@ internal fun WeatherContent(
             CurrentWeather(
                 realtime = realtime,
                 todayHigh = todayTemp?.max,
-                todayLow = todayTemp?.min,
-                onRefresh = onRefresh
+                todayLow = todayTemp?.min
             )
 
             Spacer(modifier = Modifier.height(20.dp))

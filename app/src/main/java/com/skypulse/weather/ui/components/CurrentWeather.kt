@@ -251,10 +251,8 @@ fun CurrentWeather(
     realtime: RealtimeWeather?,
     todayHigh: Double?,
     todayLow: Double?,
-    onRefresh: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
     val cardAlpha by animateFloatAsState(
@@ -293,20 +291,7 @@ fun CurrentWeather(
             contentAlignment = Alignment.Center
         ) {
             Box(
-                modifier = Modifier.then(
-                    if (onRefresh != null) {
-                        Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                onRefresh()
-                            }
-                        )
-                    } else {
-                        Modifier
-                    }
-                ),
+                modifier = Modifier,
                 contentAlignment = Alignment.TopEnd
             ) {
                 HeroTemperatureText(tempValue = tempValue)
