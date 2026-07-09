@@ -36,8 +36,8 @@ object WeatherUtils {
                     Color(0xFF0F3F6E).copy(alpha = 0.20f)
                 }
                 skycon.contains("PARTLY_CLOUDY") -> {
-                    // Partly Cloudy: Clean flat white panel with slightly lower opacity
-                    Color(0xFFFFFFFF).copy(alpha = 0.20f)
+                    // Partly cloudy: blue-gray veil keeps cards distinct on bright cloud layers.
+                    Color(0xFF16456B).copy(alpha = 0.24f)
                 }
                 skycon.contains("CLOUDY") -> {
                     // Cloudy: Muted flat white panel
@@ -113,7 +113,7 @@ object WeatherUtils {
         val chartColors = if (isDay) {
             WeatherChartColors(
                 clear = Color(0xFFFFF9C4).copy(alpha = 0.85f) to Color(0xFFFFF9C4).copy(alpha = 0.20f),
-                partlyCloudy = Color(0xFFE1F5FE).copy(alpha = 0.75f) to Color(0xFFE1F5FE).copy(alpha = 0.15f),
+                partlyCloudy = Color(0xFFFFF4B8).copy(alpha = 0.72f) to Color(0xFFFFF4B8).copy(alpha = 0.14f),
                 cloudy = Color(0xFFCFD8DC).copy(alpha = 0.70f) to Color(0xFFCFD8DC).copy(alpha = 0.10f),
                 rain = Color(0xFF4FC3F7).copy(alpha = 0.70f) to Color(0xFF4FC3F7).copy(alpha = 0.15f),
                 snow = Color(0xFFFFFFFF).copy(alpha = 0.85f) to Color(0xFFFFFFFF).copy(alpha = 0.20f),

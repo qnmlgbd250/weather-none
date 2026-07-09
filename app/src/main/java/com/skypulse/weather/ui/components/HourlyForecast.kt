@@ -313,8 +313,8 @@ private fun HourlyTemperatureChart(
                     skycon.contains("HEAVY_RAIN") || skycon.contains("HEAVY_SNOW") -> chartColors.rain
                     skycon.contains("RAIN") || skycon.contains("SNOW") -> chartColors.rain
                     skycon.contains("LIGHT_RAIN") || skycon.contains("LIGHT_SNOW") -> chartColors.rain
-                    skycon.contains("CLOUDY") -> chartColors.cloudy
                     skycon.contains("PARTLY_CLOUDY") -> chartColors.partlyCloudy
+                    skycon.contains("CLOUDY") -> chartColors.cloudy
                     skycon.contains("HAZE") || skycon == "FOG" || skycon == "DUST" || skycon == "SAND" -> chartColors.haze
                     skycon == "WIND" -> chartColors.wind
                     skycon.contains("CLEAR") -> chartColors.clear
