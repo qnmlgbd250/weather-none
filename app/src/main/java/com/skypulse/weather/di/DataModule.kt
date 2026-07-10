@@ -1,6 +1,5 @@
 package com.skypulse.weather.di
 
-import com.skypulse.weather.data.GeocodingService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

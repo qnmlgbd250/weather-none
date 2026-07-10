@@ -181,7 +181,7 @@ class WeatherSyncManager @Inject constructor(
                 locW("refresh_with_location_no_permission: elapsed=${elapsedSince(startMs)}ms")
                 null
             } else {
-                locationManager.requestSystemOrIpLocation(highAccuracy = highAccuracy)
+                locationManager.requestBestLocation(highAccuracy = highAccuracy)
             }
             locI("refresh_with_location_locate_done: elapsed=${elapsedSince(locateStartMs)}ms, result=${location?.let { "lat=${it.latitude}, lon=${it.longitude}, accuracy=${it.accuracy}m, name=${it.name}" } ?: "null"}")
 
@@ -287,7 +287,7 @@ class WeatherSyncManager @Inject constructor(
                 return@withLock SyncResult.LocationFailed
             }
 
-            val location = locationManager.requestSystemOrIpLocation(highAccuracy = false)
+            val location = locationManager.requestBestLocation(highAccuracy = false)
             lastLocationCalibrationMillis = System.currentTimeMillis()
             if (location == null) {
                 locW("location_calibration_failed: elapsed=${elapsedSince(startMs)}ms")
@@ -349,7 +349,7 @@ class WeatherSyncManager @Inject constructor(
                 locW("widget_refresh_no_permission: elapsed=${elapsedSince(startMs)}ms")
                 null
             } else {
-                locationManager.requestSystemOrIpLocation()
+                locationManager.requestBestLocation()
             }
             locI("widget_refresh_locate_done: elapsed=${elapsedSince(locateStartMs)}ms, result=${location?.let { "lat=${it.latitude}, lon=${it.longitude}, accuracy=${it.accuracy}m, name=${it.name}" } ?: "null"}")
 
@@ -371,7 +371,7 @@ class WeatherSyncManager @Inject constructor(
 
             // 尝试缓存坐标
             val cachedLocation = locationManager.getCachedLocation()
-            FileLogger.w(TAG, "小组件定位: 系统/IP定位均失败, cachedLocation=${cachedLocation?.name}")
+            FileLogger.w(TAG, "小组件定位: 定位均失败, cachedLocation=${cachedLocation?.name}")
             if (cachedLocation != null) {
                 val result = doRefreshWeather(
                     "current_location",
