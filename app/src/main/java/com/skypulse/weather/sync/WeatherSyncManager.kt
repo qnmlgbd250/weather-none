@@ -2,6 +2,7 @@ package com.skypulse.weather.sync
 
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
+import com.skypulse.weather.data.LocationTrustPolicy
 import com.skypulse.weather.data.local.database.WeatherDao
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
@@ -244,21 +245,33 @@ class WeatherSyncManager @Inject constructor(
     suspend fun refreshCurrentLocationFast(): SyncResult = withContext(Dispatchers.IO) {
         val startMs = android.os.SystemClock.elapsedRealtime()
         locI("current_location_fast_start")
+        val cached = locationManager.getCachedLocation()
         val currentCity = getCurrentLocationCity()
-        if (currentCity != null && !currentCity.isUnresolvedCurrentLocation()) {
+        if (currentCity != null && !currentCity.isUnresolvedCurrentLocation() && canUseFastCurrentLocation(cached)) {
             locI("current_location_fast_city_coords: elapsed=${elapsedSince(startMs)}ms, cityId=${currentCity.id}, lon=${currentCity.longitude}, lat=${currentCity.latitude}")
             return@withContext doRefreshWeather(currentCity.id, currentCity.longitude, currentCity.latitude)
         }
+        if (currentCity != null && !currentCity.isUnresolvedCurrentLocation()) {
+            locW("current_location_fast_needs_confirmation: elapsed=${elapsedSince(startMs)}ms, cityId=${currentCity.id}, cachedAccuracy=${cached?.accuracy}m")
+        }
 
-        val cached = locationManager.getCachedLocation()
-        if (cached != null) {
+        if (cached != null && canUseFastCurrentLocation(cached)) {
             val city = upsertCurrentLocationCity(cached.name, cached.longitude, cached.latitude)
             locI("current_location_fast_cached_coords: elapsed=${elapsedSince(startMs)}ms, cityId=${city.id}, lon=${cached.longitude}, lat=${cached.latitude}, name=${cached.name}")
             return@withContext doRefreshWeather(city.id, cached.longitude, cached.latitude)
         }
+        if (cached != null) {
+            locW("current_location_fast_cached_needs_confirmation: elapsed=${elapsedSince(startMs)}ms, accuracy=${cached.accuracy}m, name=${cached.name}")
+        }
 
         locW("current_location_fast_no_trusted_coords: elapsed=${elapsedSince(startMs)}ms")
-        refreshWeatherWithLocation(highAccuracy = false)
+        refreshWeatherWithLocation(highAccuracy = true)
+    }
+
+    private fun canUseFastCurrentLocation(cached: LocationManager.CachedLocation?): Boolean {
+        if (cached == null) return true
+        if (cached.accuracy <= 0f) return true
+        return LocationTrustPolicy.isTrustedCachedAccuracy(cached.accuracy)
     }
 
     /**

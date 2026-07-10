@@ -212,6 +212,24 @@ class LocationManager @Inject constructor(
             "accuracy=${accuracyOrDefault()}m, age=${ageMs}ms, time=$time"
     }
 
+    private fun Location.isStrongFirstFix(): Boolean {
+        return LocationTrustPolicy.isStrongFirstFix(provider, accuracyOrDefault())
+    }
+
+    private fun AMapLocation.isStrongFirstFix(): Boolean {
+        return LocationTrustPolicy.isStrongFirstFix(null, accuracy)
+    }
+
+    private fun hasTrustedCachedLocation(): Boolean {
+        val cached = getCachedLocation() ?: return false
+        if (cached.accuracy <= 0f) return true
+        return LocationTrustPolicy.isTrustedCachedAccuracy(cached.accuracy)
+    }
+
+    private fun shouldUseHighAccuracyAmapResult(location: AMapLocation): Boolean {
+        return hasTrustedCachedLocation() || location.isStrongFirstFix()
+    }
+
     private fun AMapLocation.locSummary(): String {
         return "lat=${latitude.fullCoord()}, lon=${longitude.fullCoord()}, accuracy=${accuracy}m, " +
             "city=${city.safeLogValue()}, district=${district.safeLogValue()}, " +
@@ -359,10 +377,14 @@ class LocationManager @Inject constructor(
                 locW("fused_exception: elapsed=${elapsedSince(fusedStartMs)}ms, message=${e.message.safeLogValue()}")
                 null
             }
-            if (fused != null) {
+            if (fused != null && (!highAccuracy || fused.isStrongFirstFix())) {
                 Log.i(TAG, "GMS FusedLocation 定位成功: lat=${fused.latitude}, lon=${fused.longitude}")
                 locI("fused_success: elapsed=${elapsedSince(fusedStartMs)}ms, total=${elapsedSince(startMs)}ms, ${fused.locSummary()}")
                 return@withContext fused
+            }
+            if (fused != null) {
+                locW("fused_high_accuracy_not_strong_enough_try_native: elapsed=${elapsedSince(fusedStartMs)}ms, ${fused.locSummary()}")
+                Log.w(TAG, "GMS FusedLocation 高精度结果可信度不足，继续尝试原生定位: accuracy=${fused.accuracyOrDefault()}m")
             }
             locW("fused_failed_or_timeout: elapsed=${elapsedSince(fusedStartMs)}ms, timeout=${timeoutMillis}ms")
             Log.w(TAG, "GMS FusedLocation 失败或超时，降级尝试原生 LocationManager...")
@@ -371,12 +393,16 @@ class LocationManager @Inject constructor(
         // 2. 尝试原生 LocationManager
         val nativeStartMs = android.os.SystemClock.elapsedRealtime()
         val native = requestNativeLocation(timeoutMillis, highAccuracy)
-        if (native != null) {
+        if (native != null && (!highAccuracy || native.isStrongFirstFix())) {
             locI("native_success_after_system_fallback: elapsed=${elapsedSince(nativeStartMs)}ms, total=${elapsedSince(startMs)}ms, ${native.locSummary()}")
+            return@withContext native
+        } else if (native != null) {
+            locW("native_high_accuracy_not_strong_enough: elapsed=${elapsedSince(nativeStartMs)}ms, total=${elapsedSince(startMs)}ms, ${native.locSummary()}")
+            Log.w(TAG, "原生定位高精度结果可信度不足，交给高德兜底确认: accuracy=${native.accuracyOrDefault()}m")
         } else {
             locW("native_failed_after_system_fallback: elapsed=${elapsedSince(nativeStartMs)}ms, total=${elapsedSince(startMs)}ms")
         }
-        native
+        null
     }
 
     private suspend fun requestFusedLocation(timeoutMillis: Long, highAccuracy: Boolean): Location? {
@@ -995,6 +1021,11 @@ class LocationManager @Inject constructor(
             // 2. 降级尝试高德定位 SDK 作为兜底
             val amapLoc = requestAmapLocation()
             if (amapLoc != null) {
+                if (highAccuracy && !shouldUseHighAccuracyAmapResult(amapLoc)) {
+                    Log.w(TAG, "高德高精度结果可信度不足，拒绝写入首次当前位置: accuracy=${amapLoc.accuracy}m")
+                    locW("amap_fallback_rejected_low_confidence_first_fix: elapsed=${elapsedSince(startMs)}ms, ${amapLoc.locSummary()}")
+                    return null
+                }
                 val name = resolveLocationName(amapLoc)
                 Log.i(TAG, "高德兜底定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
                 locI("amap_fallback_used: elapsed=${elapsedSince(startMs)}ms, name=${name.safeLogValue()}, ${amapLoc.locSummary()}")
