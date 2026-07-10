@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -58,6 +59,7 @@ fun DailyForecastCard(
     val globalMax = allTemps.maxOrNull() ?: 1.0
 
     val itemWidth = DAY_WIDTH.dp
+    val horizontalEdgeGuard = rememberHorizontalScrollEdgeGuard()
 
     GlassCard(
         modifier = modifier.alpha(cardAlpha)
@@ -75,6 +77,8 @@ fun DailyForecastCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .nestedScroll(horizontalEdgeGuard)
+                    .disableCityPagerWhilePressed()
                     .horizontalScroll(rememberScrollState())
             ) {
                 Spacer(modifier = Modifier.width(12.dp))

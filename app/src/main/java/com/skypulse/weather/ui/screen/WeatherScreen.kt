@@ -251,6 +251,10 @@ fun WeatherScreen(
                                 val isScrolled by remember(activeScrollState) {
                                     derivedStateOf { (activeScrollState?.value ?: 0) > 0 }
                                 }
+                                var cityPagerScrollEnabled by remember { mutableStateOf(true) }
+                                val setCityPagerScrollEnabled = remember {
+                                    { enabled: Boolean -> cityPagerScrollEnabled = enabled }
+                                }
 
                                 Column(
                                     modifier = Modifier
@@ -274,6 +278,7 @@ fun WeatherScreen(
                                     )
 
                                     CompositionLocalProvider(
+                                        LocalCityPagerScrollEnabled provides setCityPagerScrollEnabled,
                                         LocalSkipCardAnimation provides (
                                             pagerState.isScrollInProgress ||
                                                 justEnteredCityDetail.value ||
@@ -283,6 +288,7 @@ fun WeatherScreen(
                                         HorizontalPager(
                                             state = pagerState,
                                             modifier = Modifier.fillMaxSize(),
+                                            userScrollEnabled = cityPagerScrollEnabled,
                                             key = { page -> savedCities.getOrNull(page)?.id ?: page.toString() }
                                         ) { page ->
                                             val city = savedCities.getOrNull(page)

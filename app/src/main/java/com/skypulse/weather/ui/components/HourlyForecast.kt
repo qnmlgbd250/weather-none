@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -232,10 +233,13 @@ private fun HourlyTemperatureChart(
     val sidePad = SIDE_PADDING.dp
     val totalWidth = (temperatures.size * HOUR_WIDTH).dp + sidePad * 2
     val chartHeight = 120.dp
+    val horizontalEdgeGuard = rememberHorizontalScrollEdgeGuard()
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .nestedScroll(horizontalEdgeGuard)
+            .disableCityPagerWhilePressed()
             .horizontalScroll(rememberScrollState())
     ) {
         Canvas(
