@@ -271,9 +271,9 @@ class SystemLocationProvider @Inject constructor(
             age <= RECENT_LAST_KNOWN_MS && location.accuracyOrDefault() <= GOOD_ACCURACY_METERS
         } else {
             val maxAge = if (location.provider == android.location.LocationManager.GPS_PROVIDER) {
-                10 * 60 * 1000L
+                20 * 60 * 1000L
             } else {
-                5 * 60 * 1000L
+                15 * 60 * 1000L
             }
             age <= maxAge
         }

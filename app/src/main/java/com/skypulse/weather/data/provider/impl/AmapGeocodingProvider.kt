@@ -25,9 +25,9 @@ class AmapGeocodingProvider @Inject constructor(
     }
 
     override suspend fun reverseGeocode(latitude: Double, longitude: Double): String? = withContext(Dispatchers.IO) {
-        val apiKey = BuildConfig.AMAP_API_KEY
+        val apiKey = BuildConfig.AMAP_WEB_API_KEY
         if (apiKey.isBlank()) {
-            Log.e(TAG, "AMAP_API_KEY is blank, skip Web Geocoding")
+            Log.e(TAG, "AMAP_WEB_API_KEY is blank, skip Web Geocoding")
             return@withContext null
         }
 

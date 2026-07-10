@@ -19,6 +19,11 @@ val amapApiKey = providers.gradleProperty("AMAP_API_KEY")
     .get()
 val escapedAmapApiKey = amapApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
+val amapWebApiKey = providers.gradleProperty("AMAP_WEB_API_KEY")
+    .orElse(localProperties.getProperty("AMAP_WEB_API_KEY", ""))
+    .get()
+val escapedAmapWebApiKey = amapWebApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
 val caiyunToken = providers.gradleProperty("CAIYUN_TOKEN")
     .orElse(localProperties.getProperty("CAIYUN_TOKEN", ""))
     .get()
@@ -54,8 +59,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 34
-        versionCode = 781
-        versionName = "3.2.7"
+        versionCode = 782
+        versionName = "3.2.8"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -63,6 +68,7 @@ android {
 
         manifestPlaceholders["AMAP_API_KEY"] = amapApiKey
         buildConfigField("String", "AMAP_API_KEY", "\"$escapedAmapApiKey\"")
+        buildConfigField("String", "AMAP_WEB_API_KEY", "\"$escapedAmapWebApiKey\"")
         buildConfigField("String", "CAIYUN_TOKEN", "\"$escapedCaiyunToken\"")
         buildConfigField("String", "T_MAP_KEY", "\"$escapedTMapKey\"")
         buildConfigField("String", "XIAOMI_APP_KEY", "\"$escapedXiaomiAppKey\"")
