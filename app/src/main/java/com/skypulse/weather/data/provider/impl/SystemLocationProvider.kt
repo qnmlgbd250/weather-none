@@ -16,6 +16,7 @@ import com.google.android.gms.location.Priority
 import com.skypulse.weather.data.provider.ILocationProvider
 import com.skypulse.weather.data.provider.model.SimpleLocation
 import com.skypulse.weather.util.FileLogger
+import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -92,7 +93,7 @@ class SystemLocationProvider @Inject constructor(
             FileLogger.locI(TAG, "native_success_after_system_fallback: elapsed=${elapsedSince(nativeStartMs)}ms, total=${elapsedSince(startMs)}ms, ${native.locSummary()}")
             native.toSimpleLocation()
         } else {
-            FileLogger.locW(TAG, "native_failed_after_system_fallback: elapsed=${nativeStartMs}ms, total=${elapsedSince(startMs)}ms")
+            FileLogger.locW(TAG, "native_failed_after_system_fallback: elapsed=${elapsedSince(nativeStartMs)}ms, total=${elapsedSince(startMs)}ms")
             null
         }
     }
@@ -153,6 +154,7 @@ class SystemLocationProvider @Inject constructor(
                     }
 
                     cont.invokeOnCancellation {
+                        finished = true
                         handler.removeCallbacksAndMessages(null)
                         try {
                             fusedLocationClient.removeLocationUpdates(callback)
@@ -253,6 +255,8 @@ class SystemLocationProvider @Inject constructor(
             Log.w(TAG, "NativeLocation: 所有并行及兜底定位方式均已失败")
             FileLogger.locW(TAG, "native_all_failed: elapsed=${elapsedSince(startMs)}ms")
             null
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "NativeLocation 发生异常", e)
             FileLogger.locE(TAG, "native_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message}", e)
@@ -287,17 +291,19 @@ class SystemLocationProvider @Inject constructor(
                 var bestLocation: Location? = null
                 var finished = false
                 lateinit var listener: android.location.LocationListener
+                lateinit var finishRunnable: Runnable
 
                 fun finish() {
                     if (finished) return
                     finished = true
+                    handler.removeCallbacks(finishRunnable)
                     try {
                         nativeLocManager.removeUpdates(listener)
                     } catch (_: Exception) {}
                     if (cont.isActive) cont.resume(bestLocation)
                 }
 
-                val finishRunnable = Runnable { finish() }
+                finishRunnable = Runnable { finish() }
                 listener = object : android.location.LocationListener {
                     override fun onLocationChanged(loc: Location) {
                         bestLocation = betterLocation(bestLocation, loc)
@@ -316,6 +322,7 @@ class SystemLocationProvider @Inject constructor(
                 }
 
                 cont.invokeOnCancellation {
+                    finished = true
                     handler.removeCallbacks(finishRunnable)
                     try {
                         nativeLocManager.removeUpdates(listener)
@@ -356,6 +363,8 @@ class SystemLocationProvider @Inject constructor(
                     if (cont.isActive) cont.resume(null)
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "requestBestParallelLocation error", e)
             FileLogger.locE(TAG, "best_parallel_outer_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message}", e)
@@ -372,14 +381,13 @@ class SystemLocationProvider @Inject constructor(
         return try {
             kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
                 suspendCancellableCoroutine<Location?> { cont ->
+                    val lock = Any()
+                    var finished = false
                     val listener = object : android.location.LocationListener {
-                        @Volatile
-                        private var hasResumed = false
-
                         override fun onLocationChanged(loc: Location) {
-                            synchronized(this) {
-                                if (!hasResumed) {
-                                    hasResumed = true
+                            synchronized(lock) {
+                                if (!finished) {
+                                    finished = true
                                     Log.i(TAG, "ParallelLocation: 收到定位数据来自 ${loc.provider}, lat=${loc.latitude}, lon=${loc.longitude}")
                                     FileLogger.locI(TAG, "parallel_callback_first: elapsed=${elapsedSince(startMs)}ms, ${loc.locSummary()}")
                                     if (cont.isActive) cont.resume(loc)
@@ -396,6 +404,9 @@ class SystemLocationProvider @Inject constructor(
                     }
 
                     cont.invokeOnCancellation {
+                        synchronized(lock) {
+                            finished = true
+                        }
                         try {
                             nativeLocManager.removeUpdates(listener)
                         } catch (_: Exception) {}
@@ -435,6 +446,8 @@ class SystemLocationProvider @Inject constructor(
                     }
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "requestParallelLocation error", e)
             FileLogger.locE(TAG, "parallel_outer_exception: elapsed=${elapsedSince(startMs)}ms, message=${e.message}", e)
@@ -452,13 +465,19 @@ class SystemLocationProvider @Inject constructor(
             kotlinx.coroutines.withTimeoutOrNull(timeoutMillis) {
                 suspendCancellableCoroutine<Location?> { cont ->
                     try {
+                        val lock = Any()
+                        var finished = false
                         val listener = object : android.location.LocationListener {
                             override fun onLocationChanged(loc: Location) {
-                                FileLogger.locI(TAG, "single_provider_callback: provider=$provider, elapsed=${elapsedSince(startMs)}ms, ${loc.locSummary()}")
-                                if (cont.isActive) cont.resume(loc)
-                                try {
-                                    nativeLocManager.removeUpdates(this)
-                                } catch (_: Exception) {}
+                                synchronized(lock) {
+                                    if (finished) return
+                                    finished = true
+                                    FileLogger.locI(TAG, "single_provider_callback: provider=$provider, elapsed=${elapsedSince(startMs)}ms, ${loc.locSummary()}")
+                                    if (cont.isActive) cont.resume(loc)
+                                    try {
+                                        nativeLocManager.removeUpdates(this)
+                                    } catch (_: Exception) {}
+                                }
                             }
                             @Deprecated("Deprecated in API")
                             override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
@@ -467,6 +486,9 @@ class SystemLocationProvider @Inject constructor(
                         }
 
                         cont.invokeOnCancellation {
+                            synchronized(lock) {
+                                finished = true
+                            }
                             try {
                                 nativeLocManager.removeUpdates(listener)
                             } catch (_: Exception) {}
@@ -490,6 +512,8 @@ class SystemLocationProvider @Inject constructor(
                     }
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "requestSingleProviderLocation error", e)
             FileLogger.locE(TAG, "single_provider_outer_exception: provider=$provider, elapsed=${elapsedSince(startMs)}ms, message=${e.message}", e)

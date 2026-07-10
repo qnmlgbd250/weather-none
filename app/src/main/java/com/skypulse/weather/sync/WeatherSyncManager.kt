@@ -9,7 +9,9 @@ import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.util.FileLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import retrofit2.HttpException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -39,10 +41,22 @@ class WeatherSyncManager @Inject constructor(
         private const val LOCATING_NAME = "定位中..."
         private const val UNKNOWN_LOCATION = "未知位置"
         private const val MAX_RETRIES = 2
+        private const val WEATHER_FETCH_ATTEMPT_TIMEOUT_MS = 12_000L
+        private const val WEATHER_FETCH_TOTAL_TIMEOUT_MS = 40_000L
+        private const val WIDGET_WEATHER_FETCH_MAX_RETRIES = 0
+        private const val WIDGET_WEATHER_FETCH_ATTEMPT_TIMEOUT_MS = 6_000L
+        private const val WIDGET_WEATHER_FETCH_TOTAL_TIMEOUT_MS = 7_000L
         private const val LOCATION_CALIBRATION_MIN_INTERVAL_MS = 7 * 60 * 1000L
         private const val LOCATION_CALIBRATION_FORCE_INTERVAL_MS = 30 * 60 * 1000L
         private const val LOCATION_CALIBRATION_DISTANCE_METERS = 700f
     }
+
+    private data class FetchOptions(
+        val maxRetries: Int,
+        val attemptTimeoutMillis: Long,
+        val totalTimeoutMillis: Long,
+        val retryDelayMillis: Long = 1_000L
+    )
 
     private data class FetchRecord(
         val timeMillis: Long,
@@ -93,7 +107,12 @@ class WeatherSyncManager @Inject constructor(
     private suspend fun doRefreshWeather(
         cityId: String,
         longitude: Double,
-        latitude: Double
+        latitude: Double,
+        fetchOptions: FetchOptions = FetchOptions(
+            maxRetries = MAX_RETRIES,
+            attemptTimeoutMillis = WEATHER_FETCH_ATTEMPT_TIMEOUT_MS,
+            totalTimeoutMillis = WEATHER_FETCH_TOTAL_TIMEOUT_MS
+        )
     ): SyncResult {
         val mutex = getMutexForCity(cityId)
         val waitStartMs = android.os.SystemClock.elapsedRealtime()
@@ -119,7 +138,7 @@ class WeatherSyncManager @Inject constructor(
             locI("weather_fetch_start: cityId=$cityId, lon=$longitude, lat=$latitude")
             weatherI("weather_fetch_start: cityId=$cityId, lon=$longitude, lat=$latitude")
             val fetchStartMs = android.os.SystemClock.elapsedRealtime()
-            val result = fetchWithRetry(longitude, latitude)
+            val result = fetchWithRetry(longitude, latitude, fetchOptions)
             locI("weather_fetch_done: cityId=$cityId, elapsed=${elapsedSince(fetchStartMs)}ms, success=${result.isSuccess}")
             weatherI("weather_fetch_done: cityId=$cityId, elapsed=${elapsedSince(fetchStartMs)}ms, success=${result.isSuccess}")
             FileLogger.i(TAG, "doRefreshWeather: 网络请求完成, success=${result.isSuccess}")
@@ -364,7 +383,16 @@ class WeatherSyncManager @Inject constructor(
                     val oldCachedName = locationManager.getCachedLocation()?.name
                     locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat, location.time, location.accuracy)
                 }
-                val result = doRefreshWeather("current_location", lon, lat)
+                val result = doRefreshWeather(
+                    "current_location",
+                    lon,
+                    lat,
+                    fetchOptions = FetchOptions(
+                        maxRetries = WIDGET_WEATHER_FETCH_MAX_RETRIES,
+                        attemptTimeoutMillis = WIDGET_WEATHER_FETCH_ATTEMPT_TIMEOUT_MS,
+                        totalTimeoutMillis = WIDGET_WEATHER_FETCH_TOTAL_TIMEOUT_MS
+                    )
+                )
                 locI("widget_refresh_complete: elapsed=${elapsedSince(startMs)}ms, result=${result::class.simpleName}")
                 return@withLock result
             }
@@ -376,7 +404,12 @@ class WeatherSyncManager @Inject constructor(
                 val result = doRefreshWeather(
                     "current_location",
                     cachedLocation.longitude,
-                    cachedLocation.latitude
+                    cachedLocation.latitude,
+                    fetchOptions = FetchOptions(
+                        maxRetries = WIDGET_WEATHER_FETCH_MAX_RETRIES,
+                        attemptTimeoutMillis = WIDGET_WEATHER_FETCH_ATTEMPT_TIMEOUT_MS,
+                        totalTimeoutMillis = WIDGET_WEATHER_FETCH_TOTAL_TIMEOUT_MS
+                    )
                 )
                 locI("widget_refresh_cached_complete: elapsed=${elapsedSince(startMs)}ms, result=${result::class.simpleName}")
                 return@withLock result
@@ -495,41 +528,70 @@ class WeatherSyncManager @Inject constructor(
 
     private suspend fun fetchWithRetry(
         lon: Double,
-        lat: Double
+        lat: Double,
+        options: FetchOptions
     ): Result<WeatherResponse> {
+        val fetchStartMs = android.os.SystemClock.elapsedRealtime()
         var lastException: Exception? = null
-        repeat(MAX_RETRIES + 1) { attempt ->
-            if (attempt > 0) {
-                kotlinx.coroutines.delay(1000L * attempt)
-            }
-            val attemptStartMs = android.os.SystemClock.elapsedRealtime()
-            locI("weather_fetch_attempt_start: attempt=${attempt + 1}/${MAX_RETRIES + 1}, lon=$lon, lat=$lat")
-            weatherI("weather_fetch_attempt_start: attempt=${attempt + 1}/${MAX_RETRIES + 1}, lon=$lon, lat=$lat")
-            val result = repository.getWeather(lon, lat, includeYesterday = true)
-            result.fold(
-                onSuccess = { response ->
-                    val hourly = response.result?.hourly
-                    if (hourly == null || hourly.temperature.isNullOrEmpty()) {
-                        lastException = Exception("empty_hourly")
-                        locW("weather_fetch_attempt_empty_hourly: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
-                        weatherW("weather_fetch_attempt_empty_hourly: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
-                    } else {
-                        locI("weather_fetch_attempt_success: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
-                        weatherI("weather_fetch_attempt_success: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
-                        return Result.success(response)
-                    }
-                },
-                onFailure = { e ->
-                    lastException = e as? Exception ?: Exception(e)
-                    locW("weather_fetch_attempt_failed: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms, error=${mapError(e)}")
-                    weatherW("weather_fetch_attempt_failed: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms, error=${mapError(e)}")
-                    if (e is HttpException && e.code() == 429) {
-                        return Result.failure(e)
-                    }
+        val timedResult = withTimeoutOrNull(options.totalTimeoutMillis) {
+            repeat(options.maxRetries + 1) { attempt ->
+                val remainingBeforeDelay = options.totalTimeoutMillis - elapsedSince(fetchStartMs)
+                if (remainingBeforeDelay <= 0L) {
+                    locW("weather_fetch_budget_exhausted_before_attempt: attempt=${attempt + 1}, total=${elapsedSince(fetchStartMs)}ms")
+                    weatherW("weather_fetch_budget_exhausted_before_attempt: attempt=${attempt + 1}, total=${elapsedSince(fetchStartMs)}ms")
+                    return@withTimeoutOrNull Result.failure(lastException ?: Exception("weather_fetch_timeout"))
                 }
-            )
+
+                if (attempt > 0) {
+                    val delayMillis = options.retryDelayMillis * attempt
+                    if (remainingBeforeDelay <= delayMillis + 300L) {
+                        locW("weather_fetch_skip_retry_no_budget: attempt=${attempt + 1}, remaining=${remainingBeforeDelay}ms")
+                        weatherW("weather_fetch_skip_retry_no_budget: attempt=${attempt + 1}, remaining=${remainingBeforeDelay}ms")
+                        return@withTimeoutOrNull Result.failure(lastException ?: Exception("weather_fetch_timeout"))
+                    }
+                    delay(delayMillis)
+                }
+
+                val remainingForAttempt = options.totalTimeoutMillis - elapsedSince(fetchStartMs)
+                if (remainingForAttempt <= 0L) {
+                    locW("weather_fetch_budget_exhausted_after_delay: attempt=${attempt + 1}, total=${elapsedSince(fetchStartMs)}ms")
+                    weatherW("weather_fetch_budget_exhausted_after_delay: attempt=${attempt + 1}, total=${elapsedSince(fetchStartMs)}ms")
+                    return@withTimeoutOrNull Result.failure(lastException ?: Exception("weather_fetch_timeout"))
+                }
+
+                val attemptStartMs = android.os.SystemClock.elapsedRealtime()
+                locI("weather_fetch_attempt_start: attempt=${attempt + 1}/${options.maxRetries + 1}, lon=$lon, lat=$lat")
+                weatherI("weather_fetch_attempt_start: attempt=${attempt + 1}/${options.maxRetries + 1}, lon=$lon, lat=$lat")
+                val attemptTimeoutMillis = minOf(options.attemptTimeoutMillis, remainingForAttempt)
+                val result = withTimeoutOrNull(attemptTimeoutMillis) {
+                    repository.getWeather(lon, lat, includeYesterday = true)
+                } ?: Result.failure(Exception("weather_fetch_timeout"))
+                result.fold(
+                    onSuccess = { response ->
+                        val hourly = response.result?.hourly
+                        if (hourly == null || hourly.temperature.isNullOrEmpty()) {
+                            lastException = Exception("empty_hourly")
+                            locW("weather_fetch_attempt_empty_hourly: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
+                            weatherW("weather_fetch_attempt_empty_hourly: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
+                        } else {
+                            locI("weather_fetch_attempt_success: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
+                            weatherI("weather_fetch_attempt_success: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms")
+                            return@withTimeoutOrNull Result.success(response)
+                        }
+                    },
+                    onFailure = { e ->
+                        lastException = e as? Exception ?: Exception(e)
+                        locW("weather_fetch_attempt_failed: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms, error=${mapError(e)}")
+                        weatherW("weather_fetch_attempt_failed: attempt=${attempt + 1}, elapsed=${elapsedSince(attemptStartMs)}ms, error=${mapError(e)}")
+                        if (e is HttpException && e.code() == 429) {
+                            return@withTimeoutOrNull Result.failure(e)
+                        }
+                    }
+                )
+            }
+            Result.failure(lastException ?: Exception("未知错误"))
         }
-        return Result.failure(lastException ?: Exception("未知错误"))
+        return timedResult ?: Result.failure(Exception("weather_fetch_timeout"))
     }
 
     private fun mapError(e: Throwable): String = when {
