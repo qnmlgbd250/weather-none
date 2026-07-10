@@ -66,7 +66,8 @@ fun DonateDialog(
         "*岭" to "4",
         "*年" to "3.88",
         "*风" to "3",
-        "*然" to "3"
+        "*然" to "3",
+        "*植" to "2.5"
     )
     AlertDialog(
         onDismissRequest = onDismiss,
