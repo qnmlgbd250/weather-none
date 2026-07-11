@@ -44,8 +44,6 @@ class SettingsRepository @Inject constructor(
         prefs.registerOnSharedPreferenceChangeListener(listener)
     }
 
-    fun currentSettings(): WeatherSettings = _settings.value
-
     fun setRainAlert(enabled: Boolean) = updateBoolean(KEY_RAIN_ALERT, enabled)
     fun setWarningAlert(enabled: Boolean) = updateBoolean(KEY_WARNING_ALERT, enabled)
     fun setTempChangeAlert(enabled: Boolean) = updateBoolean(KEY_TEMP_CHANGE_ALERT, enabled)

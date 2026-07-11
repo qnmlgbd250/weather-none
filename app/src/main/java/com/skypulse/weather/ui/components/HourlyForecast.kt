@@ -22,12 +22,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.model.HourlyForecast
-import com.skypulse.weather.model.HourlySkycon
-import com.skypulse.weather.model.HourlyValue
 import com.skypulse.weather.model.HourlyWind
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
-import com.skypulse.weather.ui.theme.TextTertiary
 import com.skypulse.weather.util.WeatherUtils
 
 private const val HOUR_WIDTH = 64
@@ -52,12 +49,6 @@ private object HourlyParamColors {
     val UvStrong = Color(0xFFEF9A9A)       // 强 7-9 柔粉红
     val UvVeryStrong = Color(0xFFCE93D8)   // 极强 10+ 柔紫
 
-    // Wind
-    val WindCalm = Color(0xFFB0BEC5)       // 0-2级 柔灰蓝
-    val WindModerate = Color(0xFF80CBC4)   // 3-4级 柔青
-    val WindFresh = Color(0xFF4DB6AC)      // 5-6级 青绿
-    val WindStrong = Color(0xFFFFB74D)     // 7-8级 柔橙
-    val WindGale = Color(0xFFE57373)       // 9+级 柔红
 }
 
 private fun aqiLabel(aqi: Double?): String {
@@ -117,18 +108,6 @@ private fun windLabel(wind: HourlyWind?): String {
     val level = WeatherUtils.formatWindSpeed(wind.speed)
     if (dir.isEmpty() && level == "--") return ""
     return "$dir$level"
-}
-
-private fun windColor(wind: HourlyWind?): Color {
-    if (wind?.speed == null) return TextDisabled
-    val speed = wind.speed
-    return when {
-        speed < 12 -> HourlyParamColors.WindCalm
-        speed < 29 -> HourlyParamColors.WindModerate
-        speed < 50 -> HourlyParamColors.WindFresh
-        speed < 75 -> HourlyParamColors.WindStrong
-        else -> HourlyParamColors.WindGale
-    }
 }
 
 private fun gustLabel(speed: Double?): String {

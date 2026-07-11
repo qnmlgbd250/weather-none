@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import com.skypulse.weather.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
 
+internal data class AlertItem(val title: String, val level: String?)
+
 @Composable
 internal fun AlertBannerSlot(
     alerts: List<AlertItem>,

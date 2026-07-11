@@ -1,7 +1,6 @@
 package com.skypulse.weather.sync
 
 import android.util.Log
-import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.util.FileLogger
@@ -21,7 +20,6 @@ import javax.inject.Singleton
 @Singleton
 class RefreshManager @Inject constructor(
     private val syncManager: WeatherSyncManager,
-    private val locationManager: LocationManager,
     private val cityRepository: CityRepository,
     private val weatherRepository: WeatherRepository,
 ) {
