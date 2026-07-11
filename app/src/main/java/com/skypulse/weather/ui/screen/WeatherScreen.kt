@@ -2,8 +2,9 @@ package com.skypulse.weather.ui.screen
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -26,12 +27,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -64,7 +67,6 @@ fun WeatherScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val refreshPhase by viewModel.refreshPhase.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val isLocating by viewModel.isLocating.collectAsStateWithLifecycle()
     val currentScreen by viewModel.currentScreen.collectAsStateWithLifecycle()
     val savedCities by viewModel.savedCities.collectAsStateWithLifecycle()
@@ -309,7 +311,6 @@ fun WeatherScreen(
                                                     state = contentState,
                                                     scrollState = pageScrollState,
                                                     settings = settings,
-                                                    refreshing = isRefreshing || refreshPhase != RefreshPhase.Idle,
                                                     onRefresh = { viewModel.refresh() },
                                                     onAlertClick = { viewModel.navigateToAlertDetail(0) }
                                                 )
@@ -394,6 +395,21 @@ fun WeatherScreen(
         }
         }
     }
+}
+
+private fun dampedPullOffsetPx(
+    progress: Float,
+    maxOffsetPx: Float
+): Float {
+    val clampedProgress = progress.coerceAtLeast(0f)
+    if (clampedProgress <= 1f) {
+        return maxOffsetPx * 0.72f * clampedProgress
+    }
+
+    val extraProgress = (clampedProgress - 1f).coerceAtMost(2f)
+    val dampedExtra = 1f - kotlin.math.exp(-extraProgress * 1.35f)
+    return (maxOffsetPx * 0.72f + maxOffsetPx * 0.28f * dampedExtra)
+        .coerceAtMost(maxOffsetPx)
 }
 
 private fun AnimatedContentTransitionScope<AppScreen>.skyPulseScreenTransition(): ContentTransform {
@@ -485,7 +501,6 @@ private fun WeatherContentBody(
     state: WeatherUiState.Success,
     scrollState: ScrollState,
     settings: WeatherSettings,
-    refreshing: Boolean,
     onRefresh: () -> Unit = {},
     onAlertClick: (Int) -> Unit = {}
 ) {
@@ -506,18 +521,30 @@ private fun WeatherContentBody(
 
     val haptic = LocalHapticFeedback.current
     val pullRefreshState = rememberPullRefreshState(
-        refreshing = refreshing,
+        refreshing = false,
         onRefresh = onRefresh
     )
-    val pullOffset by animateDpAsState(
-        targetValue = if (!refreshing) {
-            (pullRefreshState.progress.coerceIn(0f, 1f) * 24f).dp
-        } else {
-            0.dp
-        },
-        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
-        label = "pull_refresh_content_offset"
+    val maxPullOffsetPx = with(LocalDensity.current) { 40.dp.toPx() }
+    val pullOffsetPx = dampedPullOffsetPx(
+        progress = pullRefreshState.progress,
+        maxOffsetPx = maxPullOffsetPx
     )
+    val displayedPullOffsetPx = remember { Animatable(0f) }
+
+    LaunchedEffect(pullOffsetPx) {
+        val currentOffset = displayedPullOffsetPx.value
+        if (pullOffsetPx >= currentOffset) {
+            displayedPullOffsetPx.snapTo(pullOffsetPx)
+        } else {
+            displayedPullOffsetPx.animateTo(
+                targetValue = pullOffsetPx,
+                animationSpec = tween(
+                    durationMillis = 260,
+                    easing = LinearOutSlowInEasing
+                )
+            )
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -529,7 +556,7 @@ private fun WeatherContentBody(
                 .fillMaxSize()
                 .navigationBarsPadding()
                 .verticalScroll(scrollState)
-                .offset(y = pullOffset)
+                .graphicsLayer { translationY = displayedPullOffsetPx.value }
         ) {
             AlertBannerSlot(alerts = alerts, onClick = { idx ->
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
