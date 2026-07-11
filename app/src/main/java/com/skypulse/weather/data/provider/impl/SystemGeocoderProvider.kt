@@ -3,7 +3,6 @@ package com.skypulse.weather.data.provider.impl
 import android.content.Context
 import android.location.Geocoder
 import android.util.Log
-import com.skypulse.weather.data.LocationNameNormalizer
 import com.skypulse.weather.data.provider.IGeocodingProvider
 import com.skypulse.weather.util.FileLogger
 import dagger.hilt.android.qualifiers.ApplicationContext

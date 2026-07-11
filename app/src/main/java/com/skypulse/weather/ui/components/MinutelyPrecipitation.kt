@@ -26,7 +26,6 @@ import com.skypulse.weather.ui.theme.PrecipBarTop
 import com.skypulse.weather.ui.theme.SkyPulseDesignSystem
 import com.skypulse.weather.ui.theme.TextPrimary
 import com.skypulse.weather.ui.theme.TextSecondary
-import com.skypulse.weather.ui.theme.TextTertiary
 import kotlin.math.pow
 import com.skypulse.weather.ui.screen.LocalSkipCardAnimation
 

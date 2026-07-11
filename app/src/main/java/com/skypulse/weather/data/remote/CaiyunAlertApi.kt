@@ -2,7 +2,6 @@ package com.skypulse.weather.data.remote
 
 import com.skypulse.weather.model.CaiyunAlertResponse
 import retrofit2.http.GET
-import retrofit2.http.Headers
 import retrofit2.http.Query
 
 /**

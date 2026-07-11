@@ -8,7 +8,7 @@ import org.json.JSONObject
  * Manages notification deduplication to avoid sending repeated alerts.
  *
  * Strategy:
- * - Each notification type uses a unique key (e.g. "warning_{title}" or "rain").
+ * - Each notification type uses a unique key (e.g. "warning_{eventKey}" or "rain").
  * - Before sending, check if an identical notification was already sent recently.
  * - Different types have different dedup windows:
  *   - Rain alerts: 2 hours (short-lived weather changes)
@@ -25,7 +25,6 @@ class NotificationDeduplicator(context: Context) {
     companion object {
         // Dedup windows in milliseconds
         private const val RAIN_WINDOW_MS = 2 * 60 * 60 * 1000L       // 2 hours
-        private const val WARNING_WINDOW_MS = 6 * 60 * 60 * 1000L    // 6 hours
         private const val WARNING_EVENT_RETENTION_MS = 30L * 24 * 60 * 60 * 1000L // 30 days
         private const val TEMP_CHANGE_WINDOW_MS = 12 * 60 * 60 * 1000L // 12 hours
         private const val WIND_WINDOW_MS = 2 * 60 * 60 * 1000L       // 2 hours
@@ -45,15 +44,6 @@ class NotificationDeduplicator(context: Context) {
      */
     fun shouldNotifyRain(): Boolean {
         return shouldNotify(KEY_RAIN, RAIN_WINDOW_MS)
-    }
-
-    /**
-     * Returns true if this specific warning alert should be sent (not a duplicate).
-     * Uses the cleaned title as the dedup key.
-     */
-    fun shouldNotifyWarning(title: String): Boolean {
-        val key = KEY_WARNING_PREFIX + normalizeKey(title)
-        return shouldNotify(key, WARNING_WINDOW_MS)
     }
 
     /**
@@ -96,7 +86,6 @@ class NotificationDeduplicator(context: Context) {
         val records = loadRecords()
         val maxWindow = maxOf(
             RAIN_WINDOW_MS,
-            WARNING_WINDOW_MS,
             WARNING_EVENT_RETENTION_MS,
             TEMP_CHANGE_WINDOW_MS,
             WIND_WINDOW_MS,
@@ -128,11 +117,6 @@ class NotificationDeduplicator(context: Context) {
             // Still within dedup window — skip
             false
         }
-    }
-
-    private fun normalizeKey(title: String): String {
-        // Normalize the title to a stable key: trim, lowercase, collapse whitespace
-        return title.trim().lowercase().replace(Regex("\\s+"), "_")
     }
 
     private fun loadRecords(): MutableMap<String, Long> {

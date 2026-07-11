@@ -103,7 +103,6 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         private const val TAG = "WidgetProvider"
         private const val WORK_NAME = "weather_widget_periodic"
         private const val WORK_NAME_ONETIME = "weather_widget_onetime"
-        private const val ONETIME_THROTTLE_MS = 10 * 60 * 1000L // 10 分钟节流
 
         /** Lightweight periodic refresh for location-aware widgets. */
         fun enqueueWorker(context: Context) {

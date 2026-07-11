@@ -1,7 +1,6 @@
 package com.skypulse.weather.repository
 
 import android.content.Context
-import android.util.Log
 import com.skypulse.weather.data.local.database.CityDao
 import com.skypulse.weather.data.local.database.CityEntity
 import com.skypulse.weather.model.City

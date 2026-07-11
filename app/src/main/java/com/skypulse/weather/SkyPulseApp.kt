@@ -1,7 +1,6 @@
 package com.skypulse.weather
 
 import android.app.Application
-import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.skypulse.weather.notification.WeatherNotificationScheduler
