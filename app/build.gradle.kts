@@ -29,10 +29,6 @@ val caiyunToken = providers.gradleProperty("CAIYUN_TOKEN")
     .get()
 val escapedCaiyunToken = caiyunToken.replace("\\", "\\\\").replace("\"", "\\\"")
 
-val tMapKey = providers.gradleProperty("T_MAP_KEY")
-    .orElse(localProperties.getProperty("T_MAP_KEY", ""))
-    .get()
-val escapedTMapKey = tMapKey.replace("\\", "\\\\").replace("\"", "\\\"")
 
 val xiaomiAppKey = providers.gradleProperty("XIAOMI_APP_KEY")
     .orElse(localProperties.getProperty("XIAOMI_APP_KEY", ""))
@@ -70,7 +66,6 @@ android {
         buildConfigField("String", "AMAP_API_KEY", "\"$escapedAmapApiKey\"")
         buildConfigField("String", "AMAP_WEB_API_KEY", "\"$escapedAmapWebApiKey\"")
         buildConfigField("String", "CAIYUN_TOKEN", "\"$escapedCaiyunToken\"")
-        buildConfigField("String", "T_MAP_KEY", "\"$escapedTMapKey\"")
         buildConfigField("String", "XIAOMI_APP_KEY", "\"$escapedXiaomiAppKey\"")
         buildConfigField("String", "XIAOMI_SIGN", "\"$escapedXiaomiSign\"")
         buildConfigField("String", "WEATHER_BASE_URL", "\"${weatherBaseUrl.replace("\"", "\\\"")}\"")
