@@ -69,6 +69,7 @@ class LocationManager @Inject constructor(
         private const val KEY_PENDING_NAME = "pending_name"
         private const val KEY_PENDING_TIME = "pending_time"
         private const val KEY_PENDING_ACCURACY = "pending_accuracy"
+        private const val KEY_LAST_DISTRICT = "last_district"
 
         private const val HIGH_ACCURACY_TIMEOUT_MS = 9000L
         private const val REGULAR_LOCATION_TOTAL_TIMEOUT_MS = 18_000L
@@ -127,13 +128,83 @@ class LocationManager @Inject constructor(
     ) {
         val normalizedName = name.takeIf { it.isNotBlank() } ?: return
         if (latitude == 0.0 || longitude == 0.0) return
+        val displayName = normalizeDisplayName(normalizedName)
+        locI("save_cached_location: raw=${normalizedName.safeLogValue()}, display=${displayName.safeLogValue()}")
         cachePrefs.edit()
             .putFloat(KEY_CACHED_LAT, latitude.toFloat())
             .putFloat(KEY_CACHED_LON, longitude.toFloat())
-            .putString(KEY_CACHED_NAME, normalizedName)
+            .putString(KEY_CACHED_NAME, displayName)
             .putLong(KEY_CACHED_TIME, time)
             .putFloat(KEY_CACHED_ACCURACY, accuracy)
             .apply()
+    }
+
+    /**
+     * 显示名后处理：确保名称包含区级信息。
+     *
+     * 当高德 SDK 偶发返回 null 的 district 时，逆地理编码可能只返回街道名（如"新安五路52区"）。
+     * 此方法会尝试从缓存的上次有效区名中提取区级信息并拼接在前面。
+     */
+    private fun normalizeDisplayName(name: String): String {
+        val existing = extractDistrict(name)
+        if (existing != null) {
+            saveLastDistrict(existing)
+            return name
+        }
+
+        val lastDistrict = getLastDistrict() ?: return name
+        val normalized = "$lastDistrict $name"
+        locI("normalize_display_name: prepended district, $name → $normalized")
+        return normalized
+    }
+
+    /**
+     * 从名称中提取区/县级行政区划名称。
+     *
+     * 匹配规则：
+     * - 以"区"或"县"或"旗"结尾的中文地名
+     * - 排除数字+区（如"52区"）、字母+区等非行政区划
+     * - 排除已有后缀词（工业区、开发区、保税区等，由 hasNonAdministrativeZoneSuffix 处理）
+     */
+    private fun extractDistrict(name: String): String? {
+        val suffixes = listOf("区", "县", "旗")
+        for (suffix in suffixes) {
+            val idx = name.lastIndexOf(suffix)
+            if (idx <= 0) continue
+
+            val before = name.substring(0, idx)
+            // 取最后一个有意义的段（按空格分隔，避免匹配到省/市级前缀）
+            val segment = before.split(Regex("\\s+")).lastOrNull { it.isNotBlank() } ?: before
+
+            // 排除：最后一个字不是中文字符
+            if (segment.isEmpty()) continue
+            val lastChar = segment.last()
+            if (lastChar.code < 0x4e00 || lastChar.code > 0x9fff) continue
+
+            // 排除非行政区划后缀词
+            val candidate = segment + suffix
+            if (hasNonAdministrativeZoneSuffix(candidate)) continue
+
+            return candidate
+        }
+        return null
+    }
+
+    /** 非行政区划的"X区"后缀词 */
+    private fun hasNonAdministrativeZoneSuffix(name: String): Boolean {
+        val zoneSuffixes = listOf(
+            "生活区", "工业区", "开发区", "保税区", "园区", "小区", "校区", "厂区",
+            "片区", "港区", "库区", "景区", "矿区", "病区", "馆区", "院区", "展区"
+        )
+        return zoneSuffixes.any { name.endsWith(it) }
+    }
+
+    private fun saveLastDistrict(district: String) {
+        cachePrefs.edit().putString(KEY_LAST_DISTRICT, district).apply()
+    }
+
+    private fun getLastDistrict(): String? {
+        return cachePrefs.getString(KEY_LAST_DISTRICT, null)?.takeIf { it.isNotBlank() }
     }
 
     private fun getPendingLocation(): PendingLocation? {
