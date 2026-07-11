@@ -74,6 +74,9 @@ class LocationManager @Inject constructor(
         private const val REGULAR_LOCATION_TOTAL_TIMEOUT_MS = 18_000L
         private const val HIGH_ACCURACY_LOCATION_TOTAL_TIMEOUT_MS = 13_500L
         private const val ACCEPTABLE_ACCURACY_METERS = 120f
+        private const val AMAP_RETRY_TIMEOUT_MS = 5_000L
+        private const val AMAP_RETRY_MIN_REMAINING_MS = 7_000L
+        private const val FAR_DISTANCE_THRESHOLD_METERS = 300f
 
         private var privacyAgreed = false
 
@@ -341,6 +344,43 @@ class LocationManager @Inject constructor(
                 )
             }
 
+            // L1: AMAP 首次超时后，尝试短超时重试一次
+            val amapElapsed = elapsedSince(startMs)
+            val remainingAfterAmap = totalTimeoutMillis - amapElapsed
+            if (!highAccuracy && remainingAfterAmap >= AMAP_RETRY_MIN_REMAINING_MS) {
+                val retryStartMs = android.os.SystemClock.elapsedRealtime()
+                locI("amap_retry_start: attempt=2, timeout=${AMAP_RETRY_TIMEOUT_MS}ms, remaining=${remainingAfterAmap}ms")
+                val amapRetryLoc = amapLocationProvider.requestLocation(
+                    highAccuracy = false,
+                    timeoutMillis = AMAP_RETRY_TIMEOUT_MS
+                )
+                if (amapRetryLoc != null) {
+                    val directName = resolveLocationName(amapRetryLoc)
+                    val name = if (directName != "未知位置" && directName.isNotBlank()) {
+                        directName
+                    } else {
+                        reverseGeocode(
+                            amapRetryLoc.latitude,
+                            amapRetryLoc.longitude,
+                            forceRefresh = false,
+                            accuracy = amapRetryLoc.accuracy
+                        )
+                    }
+                    locI("amap_retry_success: elapsed=${elapsedSince(retryStartMs)}ms, total=${elapsedSince(startMs)}ms, ${amapRetryLoc.locSummary()}")
+                    return applyAntiJitter(
+                        amapRetryLoc.latitude,
+                        amapRetryLoc.longitude,
+                        name,
+                        amapRetryLoc.accuracy,
+                        amapRetryLoc.time,
+                        highAccuracy
+                    )
+                }
+                locW("amap_retry_failed: elapsed=${elapsedSince(retryStartMs)}ms, total=${elapsedSince(startMs)}ms")
+            } else if (!highAccuracy) {
+                locW("amap_retry_skip_no_time: remaining=${remainingAfterAmap}ms")
+            }
+
             Log.w(TAG, "高德主定位失败或超时，降级尝试系统定位服务...")
             locW("amap_primary_failed_start_system_fallback: elapsed=${elapsedSince(startMs)}ms")
 
@@ -369,16 +409,38 @@ class LocationManager @Inject constructor(
             }
 
             if (sysLoc != null) {
+                // L2: 智能选择逆地理编码坐标
+                // 当 System 坐标与 AMAP 缓存坐标偏差大时，根据时间新鲜度决定用谁做逆地理编码
+                val cachedAmapLoc = getCachedLocation()
+                var geocodeLat = sysLoc.latitude
+                var geocodeLon = sysLoc.longitude
+                var geocodeSource = "system"
+
+                if (cachedAmapLoc != null && !highAccuracy) {
+                    val dist = distanceBetween(sysLoc.latitude, sysLoc.longitude, cachedAmapLoc.latitude, cachedAmapLoc.longitude)
+                    if (dist > FAR_DISTANCE_THRESHOLD_METERS) {
+                        val amapCacheAge = System.currentTimeMillis() - cachedAmapLoc.time
+                        val sysLocAge = System.currentTimeMillis() - sysLoc.time
+                        val useAmapCoords = amapCacheAge < sysLocAge
+                        locI("system_fallback_smart_geocode: dist=${dist}m, amapCacheAge=${amapCacheAge}ms, sysLocAge=${sysLocAge}ms, usingAmapCoords=$useAmapCoords")
+                        if (useAmapCoords) {
+                            geocodeLat = cachedAmapLoc.latitude
+                            geocodeLon = cachedAmapLoc.longitude
+                            geocodeSource = "amap_cached"
+                        }
+                    }
+                }
+
                 val geocodeStartMs = android.os.SystemClock.elapsedRealtime()
                 val name = reverseGeocode(
-                    sysLoc.latitude,
-                    sysLoc.longitude,
+                    geocodeLat,
+                    geocodeLon,
                     forceRefresh = highAccuracy,
                     accuracy = sysLoc.accuracy
                 )
-                locI("system_reverse_geocode_complete: elapsed=${elapsedSince(geocodeStartMs)}ms, name=${name.safeLogValue()}, location=${sysLoc.locSummary()}")
-                Log.i(TAG, "系统自带定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name")
-                locI("system_fallback_used: elapsed=${elapsedSince(startMs)}ms, name=${name.safeLogValue()}, ${sysLoc.locSummary()}")
+                locI("system_reverse_geocode_complete: elapsed=${elapsedSince(geocodeStartMs)}ms, name=${name.safeLogValue()}, geocodeSource=$geocodeSource, location=${sysLoc.locSummary()}")
+                Log.i(TAG, "系统自带定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name, geocodeSource=$geocodeSource")
+                locI("system_fallback_used: elapsed=${elapsedSince(startMs)}ms, name=${name.safeLogValue()}, geocodeSource=$geocodeSource, ${sysLoc.locSummary()}")
                 return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name, sysLoc.accuracy, sysLoc.time, highAccuracy)
             }
             Log.w(TAG, "高德主定位与系统兜底定位均已失败，直接返回null")
