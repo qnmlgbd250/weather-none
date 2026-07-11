@@ -3,6 +3,7 @@ package com.skypulse.weather.sync
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
 import com.skypulse.weather.data.local.database.WeatherDao
+import com.skypulse.weather.data.remote.SkyconCalibrator
 import com.skypulse.weather.model.City
 import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.CityRepository
@@ -32,6 +33,7 @@ class WeatherSyncManager @Inject constructor(
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
     private val locationManager: LocationManager,
+    private val skyconCalibrator: SkyconCalibrator,
     @Suppress("unused") private val weatherDao: WeatherDao
 ) {
 
@@ -144,7 +146,14 @@ class WeatherSyncManager @Inject constructor(
             FileLogger.i(TAG, "doRefreshWeather: 网络请求完成, success=${result.isSuccess}")
             Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
             result.fold(
-                onSuccess = { response ->
+                onSuccess = { rawResponse ->
+                    // 当前定位城市：校准彩云的"阴天"偏差
+                    val response = if (cityId == CURRENT_LOCATION_ID) {
+                        calibrateSkyconIfNeeded(rawResponse, longitude, latitude)
+                    } else {
+                        rawResponse
+                    }
+
                     markFetched(cityId, longitude, latitude)
                     val saveStartMs = android.os.SystemClock.elapsedRealtime()
                     repository.saveWeatherToCache(cityId, response)
@@ -465,6 +474,29 @@ class WeatherSyncManager @Inject constructor(
     }
 
 
+
+    /**
+     * 校准彩云天气的"阴天"偏差。
+     * 仅在 skycon == "CLOUDY" 时触发小米天气请求。
+     * 校准成功则覆盖 skycon，失败则保持原值。
+     */
+    private suspend fun calibrateSkyconIfNeeded(
+        response: WeatherResponse,
+        longitude: Double,
+        latitude: Double
+    ): WeatherResponse {
+        val originalSkycon = response.result?.realtime?.skycon
+        val calibratedSkycon = skyconCalibrator.calibrateIfNeeded(originalSkycon, longitude, latitude)
+        if (calibratedSkycon == originalSkycon) {
+            return response
+        }
+        weatherI("skycon_calibrated: $originalSkycon → $calibratedSkycon, lon=$longitude, lat=$latitude")
+        return response.copy(
+            result = response.result?.copy(
+                realtime = response.result.realtime?.copy(skycon = calibratedSkycon)
+            )
+        )
+    }
 
     private fun markFetched(cityId: String, longitude: Double, latitude: Double) {
         lastFetchRecordsByCityId[cityId] = FetchRecord(
