@@ -9,6 +9,7 @@ import com.skypulse.weather.model.WeatherResponse
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.util.FileLogger
+import com.skypulse.weather.util.WeatherUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -486,11 +487,12 @@ class WeatherSyncManager @Inject constructor(
         latitude: Double
     ): WeatherResponse {
         val originalSkycon = response.result?.realtime?.skycon
-        val calibratedSkycon = skyconCalibrator.calibrateIfNeeded(originalSkycon, longitude, latitude)
+        val isDay = WeatherUtils.isCurrentlyDay(response.result?.daily)
+        val calibratedSkycon = skyconCalibrator.calibrateIfNeeded(originalSkycon, longitude, latitude, isDay)
         if (calibratedSkycon == originalSkycon) {
             return response
         }
-        weatherI("skycon_calibrated: $originalSkycon → $calibratedSkycon, lon=$longitude, lat=$latitude")
+        weatherI("skycon_calibrated: $originalSkycon → $calibratedSkycon, isDay=$isDay, lon=$longitude, lat=$latitude")
         return response.copy(
             result = response.result?.copy(
                 realtime = response.result.realtime?.copy(skycon = calibratedSkycon)

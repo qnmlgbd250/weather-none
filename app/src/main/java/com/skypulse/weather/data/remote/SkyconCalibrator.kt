@@ -38,12 +38,14 @@ class SkyconCalibrator @Inject constructor(
      * @param skycon 彩云返回的 skycon 值
      * @param longitude 经度
      * @param latitude 纬度
+     * @param isDay 是否处于白天，用于选择 DAY/NIGHT skycon
      * @return 校准后的 skycon 值；若无需校准或校准失败，返回原值
      */
     suspend fun calibrateIfNeeded(
         skycon: String?,
         longitude: Double,
-        latitude: Double
+        latitude: Double,
+        isDay: Boolean
     ): String? {
         // 仅在彩云返回 CLOUDY 时触发校准
         if (skycon != "CLOUDY") {
@@ -60,12 +62,14 @@ class SkyconCalibrator @Inject constructor(
 
         val calibrated = when (xiaomiWeather) {
             CODE_CLEAR -> {
-                FileLogger.i(TAG, "校准生效: CLOUDY → CLEAR_DAY (小米=$xiaomiWeather/晴)")
-                "CLEAR_DAY"
+                val calibratedSkycon = if (isDay) "CLEAR_DAY" else "CLEAR_NIGHT"
+                FileLogger.i(TAG, "校准生效: CLOUDY → $calibratedSkycon (小米=$xiaomiWeather/晴, isDay=$isDay)")
+                calibratedSkycon
             }
             CODE_CLOUDY -> {
-                FileLogger.i(TAG, "校准生效: CLOUDY → PARTLY_CLOUDY_DAY (小米=$xiaomiWeather/多云)")
-                "PARTLY_CLOUDY_DAY"
+                val calibratedSkycon = if (isDay) "PARTLY_CLOUDY_DAY" else "PARTLY_CLOUDY_NIGHT"
+                FileLogger.i(TAG, "校准生效: CLOUDY → $calibratedSkycon (小米=$xiaomiWeather/多云, isDay=$isDay)")
+                calibratedSkycon
             }
             CODE_OVERCAST -> {
                 FileLogger.i(TAG, "校准保持: CLOUDY (小米=$xiaomiWeather/阴，两源一致)")
