@@ -40,8 +40,8 @@ object WeatherUtils {
                     Color(0xFF16456B).copy(alpha = 0.24f)
                 }
                 skycon.contains("CLOUDY") -> {
-                    // Cloudy: Muted flat white panel
-                    Color(0xFFFFFFFF).copy(alpha = 0.18f)
+                    // Cloudy: 明亮阴天，微蓝底色透出更清澈的毛玻璃感
+                    Color(0xFFB0C4D8).copy(alpha = 0.22f)
                 }
                 skycon.contains("RAIN") || skycon.contains("STORM") -> {
                     // Rainy / Stormy: Flat slate-blue panel to contrast rain
@@ -114,7 +114,7 @@ object WeatherUtils {
             WeatherChartColors(
                 clear = Color(0xFFFFF9C4).copy(alpha = 0.85f) to Color(0xFFFFF9C4).copy(alpha = 0.20f),
                 partlyCloudy = Color(0xFFFFF4B8).copy(alpha = 0.72f) to Color(0xFFFFF4B8).copy(alpha = 0.14f),
-                cloudy = Color(0xFFCFD8DC).copy(alpha = 0.70f) to Color(0xFFCFD8DC).copy(alpha = 0.10f),
+                cloudy = Color(0xFFB0CCE0).copy(alpha = 0.70f) to Color(0xFFB0CCE0).copy(alpha = 0.10f),
                 rain = Color(0xFF4FC3F7).copy(alpha = 0.70f) to Color(0xFF4FC3F7).copy(alpha = 0.15f),
                 snow = Color(0xFFFFFFFF).copy(alpha = 0.85f) to Color(0xFFFFFFFF).copy(alpha = 0.20f),
                 wind = Color(0xFF4DB6AC).copy(alpha = 0.65f) to Color(0xFF4DB6AC).copy(alpha = 0.10f),
@@ -204,7 +204,8 @@ object WeatherUtils {
         if (!isDay) return false
         return skycon == null ||
                skycon.contains("CLEAR") ||
-               skycon.contains("PARTLY_CLOUDY")
+               skycon.contains("PARTLY_CLOUDY") ||
+               skycon.contains("CLOUDY")
     }
 
     fun getTemperatureColor(temp: Double?): Color {

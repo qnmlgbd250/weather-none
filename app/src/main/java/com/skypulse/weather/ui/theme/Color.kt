@@ -78,13 +78,13 @@ val PartialCloudNightGradient = listOf(
     Color(0xFF375590)
 )
 
-// Cloudy (Day) ── rich slate indigo-gray overcast sky
+// Cloudy (Day) ── 明亮清透的阴天天蓝，饱和度提升告别灰蒙蒙
 val CloudyGradient = listOf(
-    Color(0xFF4B5A66),  // 深邃灰蓝
-    Color(0xFF576875),
-    Color(0xFF647685),
-    Color(0xFF738694),
-    Color(0xFF8195A3)   // 底部淡雅灰蓝
+    Color(0xFF4A6B8A),  // 顶部清澈中蓝
+    Color(0xFF5A80A0),
+    Color(0xFF6B93B2),
+    Color(0xFF7DA4C1),
+    Color(0xFF90B5CF)   // 底部明亮天蓝
 )
 
 // Cloudy (Night) ── dark blue-gray
