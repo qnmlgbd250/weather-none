@@ -222,6 +222,22 @@ fun SettingsScreen(
                         locked = !isPremium,
                         onLockedClick = { showMembershipDialog = true }
                     )
+                    if (!isPremium) {
+                        IosDivider()
+                        SimpleItem(
+                            title = "多城市天气",
+                            titleColor = IosTextSecondary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Lock,
+                                    contentDescription = "会员功能",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                )
+                            },
+                            onClick = { showMembershipDialog = true }
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -404,6 +420,7 @@ private fun SimpleItem(
     title: String,
     subtitle: String? = null,
     titleColor: Color = IosTextPrimary,
+    trailing: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
 ) {
     Row(
@@ -430,6 +447,10 @@ private fun SimpleItem(
                     lineHeight = 16.sp
                 )
             }
+        }
+        if (trailing != null) {
+            Spacer(modifier = Modifier.width(8.dp))
+            trailing()
         }
     }
 }
