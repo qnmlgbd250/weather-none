@@ -17,3 +17,4 @@ scripts/tools/
 # Build artifacts
 *.apk
 
+scripts/generate_code.py
