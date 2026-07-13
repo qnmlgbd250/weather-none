@@ -55,8 +55,8 @@ android {
         applicationId = "com.skypulse.weather"
         minSdk = 26
         targetSdk = 35
-        versionCode = 794
-        versionName = "3.2.20"
+        versionCode = 798
+        versionName = "3.2.24"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -169,6 +169,9 @@ dependencies {
 
     // DataStore
     implementation(libs.datastore.preferences)
+
+    // Security — EncryptedSharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

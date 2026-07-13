@@ -76,9 +76,17 @@ fun WeatherScreen(
     val selectedCityId by viewModel.selectedCityId.collectAsStateWithLifecycle()
     val onboardingReady by viewModel.onboardingReady.collectAsStateWithLifecycle()
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+    val isPremium by settingsViewModel.isPremium.collectAsStateWithLifecycle()
+    // 会员城市过滤：免费用户只展示定位城市
+    val effectiveCities by remember {
+        derivedStateOf {
+            if (isPremium) savedCities else savedCities.filter { it.isCurrentLocation }
+        }
+    }
+
     val currentCityIndex by remember {
         derivedStateOf {
-            CitySelectionPolicy.currentIndex(savedCities, selectedCityId)
+            CitySelectionPolicy.currentIndex(effectiveCities, selectedCityId)
         }
     }
 
@@ -223,12 +231,12 @@ fun WeatherScreen(
                             is WeatherUiState.Success -> {
                                 val pagerState = rememberPagerState(
                                     initialPage = currentCityIndex,
-                                    pageCount = { savedCities.size }
+                                    pageCount = { effectiveCities.size }
                                 )
 
                                 // Sync from ViewModel selection to PagerState
-                                LaunchedEffect(selectedCityId, savedCities) {
-                                    val targetIndex = savedCities.indexOfFirst { it.id == selectedCityId }
+                                LaunchedEffect(selectedCityId, effectiveCities) {
+                                    val targetIndex = effectiveCities.indexOfFirst { it.id == selectedCityId }
                                     if (targetIndex >= 0 && targetIndex != pagerState.currentPage) {
                                         pagerState.scrollToPage(targetIndex)
                                     }
@@ -236,8 +244,8 @@ fun WeatherScreen(
 
                                 // Sync from PagerState swiping to ViewModel
                                 LaunchedEffect(pagerState.currentPage) {
-                                    if (pagerState.currentPage < savedCities.size) {
-                                        val targetCity = savedCities[pagerState.currentPage]
+                                    if (pagerState.currentPage < effectiveCities.size) {
+                                        val targetCity = effectiveCities[pagerState.currentPage]
                                         if (targetCity.id != selectedCityId) {
                                             viewModel.navigateToCityDetail(targetCity.id)
                                         }
@@ -245,7 +253,7 @@ fun WeatherScreen(
                                 }
 
                                 val scrollStates = remember { mutableStateMapOf<String, ScrollState>() }
-                                val activeCityId = savedCities.getOrNull(pagerState.currentPage)?.id ?: "current_location"
+                                val activeCityId = effectiveCities.getOrNull(pagerState.currentPage)?.id ?: "current_location"
                                 val activeScrollState = scrollStates[activeCityId]
                                 val isScrolled by remember(activeScrollState) {
                                     derivedStateOf { (activeScrollState?.value ?: 0) > 0 }
@@ -266,12 +274,16 @@ fun WeatherScreen(
                                         locationName = state.locationName,
                                         isLocating = isLocating,
                                         refreshPhase = refreshPhase,
-                                        onListClick = { viewModel.navigateToCityList() },
+                                        onListClick = if (isPremium) {
+                                            { viewModel.navigateToCityList() }
+                                        } else {
+                                            null
+                                        },
                                         onSettingsClick = { viewModel.navigateToSettings() }
                                     )
 
                                     CityDotBar(
-                                        cityCount = savedCities.size,
+                                        cityCount = effectiveCities.size,
                                         currentIndex = pagerState.currentPage,
                                         isScrolled = isScrolled
                                     )
@@ -287,10 +299,10 @@ fun WeatherScreen(
                                         HorizontalPager(
                                             state = pagerState,
                                             modifier = Modifier.fillMaxSize(),
-                                            userScrollEnabled = cityPagerScrollEnabled,
-                                            key = { page -> savedCities.getOrNull(page)?.id ?: page.toString() }
+                                            userScrollEnabled = cityPagerScrollEnabled && isPremium,
+                                            key = { page -> effectiveCities.getOrNull(page)?.id ?: page.toString() }
                                         ) { page ->
-                                            val city = savedCities.getOrNull(page)
+                                            val city = effectiveCities.getOrNull(page)
                                             val contentState = remember(city, cityWeatherMap, state.locationName) {
                                                 val weather = city?.let { cityWeatherMap[it.id]?.weather }
                                                 if (city != null && weather != null) {
@@ -308,6 +320,7 @@ fun WeatherScreen(
                                                     state = contentState,
                                                     scrollState = pageScrollState,
                                                     settings = settings,
+                                                    isPremium = isPremium,
                                                     onRefresh = { viewModel.refresh() },
                                                     onAlertClick = { viewModel.navigateToAlertDetail(0) }
                                                 )
@@ -373,7 +386,11 @@ fun WeatherScreen(
                     onShowHourlyWindChange = { settingsViewModel.setShowHourlyWind(it) },
                     onShowHourlyWindGustChange = { settingsViewModel.setShowHourlyWindGust(it) },
                     onShowCardDetailChange = { settingsViewModel.setShowCardDetail(it) },
-                    onShowCardSunriseSunsetChange = { settingsViewModel.setShowCardSunriseSunset(it) }
+                    onShowCardSunriseSunsetChange = { settingsViewModel.setShowCardSunriseSunset(it) },
+                    isPremium = isPremium,
+                    activatedAt = settingsViewModel.getActivatedAt(),
+                    deviceId = settingsViewModel.getDeviceId(),
+                    onActivateCode = { code -> settingsViewModel.activateCode(code) }
                 )
             }
 
@@ -498,6 +515,7 @@ private fun WeatherContentBody(
     state: WeatherUiState.Success,
     scrollState: ScrollState,
     settings: WeatherSettings,
+    isPremium: Boolean = true,
     onRefresh: () -> Unit = {},
     onAlertClick: (Int) -> Unit = {}
 ) {
@@ -595,10 +613,10 @@ private fun WeatherContentBody(
 
             HourlyForecastCard(
                 hourly = result?.hourly,
-                showAqi = settings.showHourlyAqi,
-                showUv = settings.showHourlyUv,
-                showWind = settings.showHourlyWind,
-                showWindGust = settings.showHourlyWindGust,
+                showAqi = isPremium && settings.showHourlyAqi,
+                showUv = isPremium && settings.showHourlyUv,
+                showWind = isPremium && settings.showHourlyWind,
+                showWindGust = isPremium && settings.showHourlyWindGust,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)
@@ -615,7 +633,7 @@ private fun WeatherContentBody(
 
             Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
 
-            if (settings.showCardDetail) {
+            if (isPremium && settings.showCardDetail) {
                 WeatherDetailCards(
                     realtime = realtime,
                     modifier = Modifier.fillMaxWidth()
@@ -623,7 +641,7 @@ private fun WeatherContentBody(
                 Spacer(modifier = Modifier.height(SkyPulseDesignSystem.Spacing.sectionGap))
             }
 
-            if (settings.showCardSunriseSunset) {
+            if (isPremium && settings.showCardSunriseSunset) {
                 SunriseSunsetCard(
                     astro = result?.daily?.astro,
                     modifier = Modifier

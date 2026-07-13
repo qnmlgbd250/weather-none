@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,8 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
+import com.skypulse.weather.data.ActivationResult
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.ui.components.DonateDialog
+import com.skypulse.weather.ui.components.MembershipDialog
+import com.skypulse.weather.ui.components.VipBadge
+import com.skypulse.weather.ui.components.VipStatusCard
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.UpdateCheckResult
 
@@ -55,10 +60,15 @@ fun SettingsScreen(
     onShowHourlyWindChange: (Boolean) -> Unit,
     onShowHourlyWindGustChange: (Boolean) -> Unit,
     onShowCardDetailChange: (Boolean) -> Unit,
-    onShowCardSunriseSunsetChange: (Boolean) -> Unit
+    onShowCardSunriseSunsetChange: (Boolean) -> Unit,
+    isPremium: Boolean = false,
+    activatedAt: Long = 0L,
+    deviceId: String = "",
+    onActivateCode: (String) -> ActivationResult = { _ -> ActivationResult.INVALID_CODE }
 ) {
     val context = LocalContext.current
     var showDonateDialog by remember { mutableStateOf(false) }
+    var showMembershipDialog by remember { mutableStateOf(false) }
 
     val isChecking = updateState is UpdateCheckResult.Checking
     val infiniteTransition = rememberInfiniteTransition(label = "refresh")
@@ -89,6 +99,13 @@ fun SettingsScreen(
     }
     if (showDonateDialog) {
         DonateDialog(onDismiss = { showDonateDialog = false })
+    }
+    if (showMembershipDialog) {
+        MembershipDialog(
+            onDismiss = { showMembershipDialog = false },
+            onActivate = onActivateCode,
+            deviceId = deviceId
+        )
     }
 
     Box(
@@ -121,6 +138,25 @@ fun SettingsScreen(
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // VIP / 会员激活
+                if (isPremium) {
+                    Box(modifier = Modifier.padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)) {
+                        VipStatusCard(activatedAt = activatedAt)
+                    }
+                } else {
+                    SectionHeader("会员")
+                    IosCard {
+                        SimpleItem(
+                            title = "激活会员",
+                            subtitle = "¥19.9 解锁高级显示，联系作者并提供设备 ID 获取专属激活码",
+                            titleColor = IosAccentBlue,
+                            onClick = { showMembershipDialog = true }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
                 // Notification settings
                 SectionHeader("通知设置")
                 IosCard {
@@ -140,13 +176,37 @@ fun SettingsScreen(
                 // Hourly display settings
                 SectionHeader("逐小时显示")
                 IosCard {
-                    ToggleItem("空气质量", settings.showHourlyAqi, onShowHourlyAqiChange)
+                    ToggleItem(
+                        title = "空气质量",
+                        checked = settings.showHourlyAqi,
+                        onCheckedChange = onShowHourlyAqiChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                     IosDivider()
-                    ToggleItem("紫外线", settings.showHourlyUv, onShowHourlyUvChange)
+                    ToggleItem(
+                        title = "紫外线",
+                        checked = settings.showHourlyUv,
+                        onCheckedChange = onShowHourlyUvChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                     IosDivider()
-                    ToggleItem("风力", settings.showHourlyWind, onShowHourlyWindChange)
+                    ToggleItem(
+                        title = "风力",
+                        checked = settings.showHourlyWind,
+                        onCheckedChange = onShowHourlyWindChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                     IosDivider()
-                    ToggleItem("阵风", settings.showHourlyWindGust, onShowHourlyWindGustChange)
+                    ToggleItem(
+                        title = "阵风",
+                        checked = settings.showHourlyWindGust,
+                        onCheckedChange = onShowHourlyWindGustChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -154,9 +214,21 @@ fun SettingsScreen(
                 // Card display settings
                 SectionHeader("卡片显示")
                 IosCard {
-                    ToggleItem("气象详情", settings.showCardDetail, onShowCardDetailChange)
+                    ToggleItem(
+                        title = "气象详情",
+                        checked = settings.showCardDetail,
+                        onCheckedChange = onShowCardDetailChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                     IosDivider()
-                    ToggleItem("日出日落", settings.showCardSunriseSunset, onShowCardSunriseSunsetChange)
+                    ToggleItem(
+                        title = "日出日落",
+                        checked = settings.showCardSunriseSunset,
+                        onCheckedChange = onShowCardSunriseSunsetChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -290,32 +362,51 @@ private fun SectionHeader(title: String) {
 private fun ToggleItem(
     title: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    locked: Boolean = false,
+    onLockedClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(SkyPulseDesignSystem.TouchTarget.listRow)
-            .clickable { onCheckedChange(!checked) }
+            .clickable {
+                if (locked) onLockedClick?.invoke()
+                else onCheckedChange(!checked)
+            }
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = IosTextPrimary,
+            color = if (locked) IosTextSecondary else IosTextPrimary,
             modifier = Modifier.weight(1f)
         )
+        if (locked) {
+            Icon(
+                imageVector = Icons.Outlined.Lock,
+                contentDescription = "会员功能",
+                modifier = Modifier.size(18.dp),
+                tint = IosTextSecondary.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
+            checked = if (locked) false else checked,
+            onCheckedChange = if (locked) null else onCheckedChange,
+            enabled = !locked,
             modifier = Modifier.scale(0.8f),
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = IosAccentBlue,
                 uncheckedThumbColor = Color.White,
                 uncheckedTrackColor = IosSwitchOff,
-                uncheckedBorderColor = Color.Transparent
+                uncheckedBorderColor = Color.Transparent,
+                disabledCheckedThumbColor = Color.White,
+                disabledCheckedTrackColor = IosSwitchOff,
+                disabledUncheckedThumbColor = Color.White,
+                disabledUncheckedTrackColor = IosSwitchOff
             )
         )
     }
@@ -325,20 +416,34 @@ private fun ToggleItem(
 @Composable
 private fun SimpleItem(
     title: String,
+    subtitle: String? = null,
+    titleColor: Color = IosTextPrimary,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(SkyPulseDesignSystem.TouchTarget.listRow)
+            .defaultMinSize(minHeight = SkyPulseDesignSystem.TouchTarget.listRow)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp, vertical = if (subtitle != null) 12.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = IosTextPrimary
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = titleColor
+            )
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = IosTextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+            }
+        }
     }
 }

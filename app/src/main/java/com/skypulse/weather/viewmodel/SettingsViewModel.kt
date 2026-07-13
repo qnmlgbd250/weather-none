@@ -2,6 +2,8 @@ package com.skypulse.weather.viewmodel
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import com.skypulse.weather.data.ActivationResult
+import com.skypulse.weather.data.MembershipRepository
 import com.skypulse.weather.data.SettingsRepository
 import com.skypulse.weather.data.WeatherSettings
 import com.skypulse.weather.notification.WeatherNotificationScheduler
@@ -13,10 +15,21 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val membershipRepository: MembershipRepository
 ) : ViewModel() {
 
     val settings: StateFlow<WeatherSettings> = settingsRepository.settings
+
+    val isPremium: StateFlow<Boolean> = membershipRepository.isPremium
+
+    fun activateCode(code: String): ActivationResult {
+        return membershipRepository.activateCode(code)
+    }
+
+    fun getDeviceId(): String = membershipRepository.getDeviceId()
+
+    fun getActivatedAt(): Long = membershipRepository.getActivatedAt()
 
     fun setRainAlert(enabled: Boolean) = updateAlertSetting {
         settingsRepository.setRainAlert(enabled)
