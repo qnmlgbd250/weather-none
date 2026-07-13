@@ -1,6 +1,7 @@
 package com.skypulse.weather.ui.components
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -25,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.skypulse.weather.R
 import com.skypulse.weather.data.ActivationResult
 import com.skypulse.weather.ui.theme.IosAccentBlue
 import com.skypulse.weather.ui.theme.IosCardBg
@@ -95,8 +99,36 @@ fun MembershipDialog(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // 付款二维码
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = Color.White,
+                            shadowElevation = 2.dp
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.qr_wechat),
+                                contentDescription = "微信收款码",
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .size(142.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                        Text(
+                            text = "微信扫一扫",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = IosTextSecondary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
                     Text(
-                        text = "请将下方设备 ID 发给开发者，获取本设备的专属激活码。",
+                        text = "扫码付款后，将设备 ID 发给开发者获取专属激活码。",
                         style = MaterialTheme.typography.bodySmall,
                         color = IosTextSecondary,
                         lineHeight = 20.sp

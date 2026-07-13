@@ -33,14 +33,11 @@ import androidx.core.net.toUri
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.data.ActivationResult
 import com.skypulse.weather.data.WeatherSettings
-import com.skypulse.weather.ui.components.DonateDialog
 import com.skypulse.weather.ui.components.MembershipDialog
 import com.skypulse.weather.ui.components.VipBadge
 import com.skypulse.weather.ui.components.VipStatusCard
 import com.skypulse.weather.ui.theme.*
 import com.skypulse.weather.viewmodel.UpdateCheckResult
-
-private const val GITHUB_URL = "https://github.com/qnmlgbd250/weather-none"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +64,6 @@ fun SettingsScreen(
     onActivateCode: (String) -> ActivationResult = { _ -> ActivationResult.INVALID_CODE }
 ) {
     val context = LocalContext.current
-    var showDonateDialog by remember { mutableStateOf(false) }
     var showMembershipDialog by remember { mutableStateOf(false) }
 
     val isChecking = updateState is UpdateCheckResult.Checking
@@ -96,9 +92,6 @@ fun SettingsScreen(
             }
             else -> {}
         }
-    }
-    if (showDonateDialog) {
-        DonateDialog(onDismiss = { showDonateDialog = false })
     }
     if (showMembershipDialog) {
         MembershipDialog(
@@ -239,13 +232,6 @@ fun SettingsScreen(
                     SimpleItem("检查更新") {
                         if (!isChecking) onCheckUpdate()
                     }
-                    IosDivider()
-                    SimpleItem("捐赠") { showDonateDialog = true }
-                    IosDivider()
-                    SimpleItem("GitHub") {
-                        val intent = Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri())
-                        context.startActivity(intent)
-                    }
                 }
 
                 // Update result
@@ -300,7 +286,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.weight(1f))
 
                 Text(
-                    text = "QQ群：758426293",
+                    text = "QQ群：758426293   邮箱：1096005725@qq.com",
                     style = MaterialTheme.typography.bodySmall,
                     color = IosTextSecondary,
                     modifier = Modifier
