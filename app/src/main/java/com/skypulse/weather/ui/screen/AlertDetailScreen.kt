@@ -72,7 +72,9 @@ internal fun AlertDetailScreen(
                 state = rememberLazyListState(
                     initialFirstVisibleItemIndex = safeInitialIndex
                 ),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .navigationBarsPadding()
             ) {
                 itemsIndexed(sortedAlerts) { _, alert ->
                     val title = alert.title

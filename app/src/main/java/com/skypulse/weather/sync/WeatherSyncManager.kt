@@ -219,8 +219,8 @@ class WeatherSyncManager @Inject constructor(
                 val lon = location.longitude
                 val lat = location.latitude
                 val locationName = location.name
-                Log.i(TAG, "定位成功: lon=$lon, lat=$lat, name=$locationName")
-                locI("refresh_with_location_location_success: elapsed=${elapsedSince(startMs)}ms, lon=$lon, lat=$lat, accuracy=${location.accuracy}m, name=$locationName")
+                Log.i(TAG, "定位成功: lon=$lon, lat=$lat, name=$locationName, isReliableName=${location.isReliableName}")
+                locI("refresh_with_location_location_success: elapsed=${elapsedSince(startMs)}ms, lon=$lon, lat=$lat, accuracy=${location.accuracy}m, name=$locationName, isReliableName=${location.isReliableName}")
                 val currentCity = if (locationName == UNKNOWN_LOCATION) {
                     Log.w(TAG, "定位成功但地址为空，保留旧城市名, lon=$lon, lat=$lat")
                     var oldName = locationManager.getCachedLocation()?.name
@@ -229,11 +229,14 @@ class WeatherSyncManager @Inject constructor(
                     if (oldName == LOCATING_NAME || oldName.isBlank()) {
                         oldName = "当前位置"
                     }
-                    locationManager.saveCachedLocation(oldName, lon, lat, location.time, location.accuracy)
+                    locationManager.saveCachedLocation(oldName, lon, lat, location.time, location.accuracy, isReliableName = true)
                     upsertCurrentLocationCity(oldName, lon, lat)
                 } else {
-                    locationManager.saveCachedLocation(locationName, lon, lat, location.time, location.accuracy)
-                    upsertCurrentLocationCity(locationName, lon, lat)
+                    // saveCachedLocation 内部会在 isReliableName=false 时沿用上一次正常名称
+                    locationManager.saveCachedLocation(locationName, lon, lat, location.time, location.accuracy, location.isReliableName)
+                    // 读回实际保存的名称（可能已被替换为 lastGoodName），保证 Room 一致
+                    val savedName = locationManager.getCachedLocation()?.name ?: locationName
+                    upsertCurrentLocationCity(savedName, lon, lat)
                 }
 
                 Log.i(TAG, "开始获取天气: cityId=${currentCity.id}, name=${currentCity.name}")
@@ -332,8 +335,10 @@ class WeatherSyncManager @Inject constructor(
             } else {
                 location.name
             }
-            locationManager.saveCachedLocation(cityName, location.longitude, location.latitude, location.time, location.accuracy)
-            val city = upsertCurrentLocationCity(cityName, location.longitude, location.latitude)
+            // 传递 isReliableName，不可靠时 saveCachedLocation 会沿用上一次正常名称
+            locationManager.saveCachedLocation(cityName, location.longitude, location.latitude, location.time, location.accuracy, location.isReliableName)
+            val savedName = locationManager.getCachedLocation()?.name ?: cityName
+            val city = upsertCurrentLocationCity(savedName, location.longitude, location.latitude)
             locI("location_calibration_location_saved: elapsed=${elapsedSince(startMs)}ms, shouldRefreshWeather=$shouldRefreshWeather, lon=${location.longitude}, lat=${location.latitude}, accuracy=${location.accuracy}m, name=$cityName")
 
             if (shouldRefreshWeather) {
@@ -385,13 +390,13 @@ class WeatherSyncManager @Inject constructor(
             if (location != null) {
                 val lon = location.longitude
                 val lat = location.latitude
-                FileLogger.i(TAG, "小组件定位成功: lon=$lon, lat=$lat, name=${location.name}")
+                FileLogger.i(TAG, "小组件定位成功: lon=$lon, lat=$lat, name=${location.name}, isReliableName=${location.isReliableName}")
                 // 只更新定位缓存，不更新 Room 城市记录
                 if (location.name != "未知位置") {
-                    locationManager.saveCachedLocation(location.name, lon, lat, location.time, location.accuracy)
+                    locationManager.saveCachedLocation(location.name, lon, lat, location.time, location.accuracy, location.isReliableName)
                 } else {
                     val oldCachedName = locationManager.getCachedLocation()?.name
-                    locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat, location.time, location.accuracy)
+                    locationManager.saveCachedLocation(oldCachedName ?: "未知位置", lon, lat, location.time, location.accuracy, isReliableName = true)
                 }
                 val result = doRefreshWeather(
                     "current_location",

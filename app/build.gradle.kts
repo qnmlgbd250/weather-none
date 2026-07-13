@@ -49,14 +49,14 @@ val alertBaseUrl = providers.gradleProperty("ALERT_BASE_URL")
 
 android {
     namespace = "com.skypulse.weather"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.skypulse.weather"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 788
-        versionName = "3.2.14"
+        targetSdk = 35
+        versionCode = 792
+        versionName = "3.2.18"
 
         vectorDrawables {
             useSupportLibrary = true

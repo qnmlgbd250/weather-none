@@ -148,7 +148,9 @@ fun CityListScreen(
             // Content
             if (isSearchActive) {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding(),
                     contentPadding = PaddingValues(horizontal = 16.dp)
                 ) {
                     if (isSearching) {
@@ -197,7 +199,9 @@ fun CityListScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding(),
                     contentPadding = PaddingValues(
                         horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal,
                         vertical = SkyPulseDesignSystem.Spacing.sectionGap

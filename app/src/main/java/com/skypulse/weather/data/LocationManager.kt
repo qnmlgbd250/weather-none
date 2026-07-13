@@ -34,7 +34,9 @@ class LocationManager @Inject constructor(
         val longitude: Double,
         val name: String,
         val time: Long = 0L,
-        val accuracy: Float = 0f
+        val accuracy: Float = 0f,
+        /** 当 name 来源于高德 SDK 直接返回的城市/区/街道字段时为 true；仅来自逆地理编码时为 false。 */
+        val isReliableName: Boolean = true
     )
 
     private data class PendingLocation(
@@ -69,6 +71,7 @@ class LocationManager @Inject constructor(
         private const val KEY_PENDING_NAME = "pending_name"
         private const val KEY_PENDING_TIME = "pending_time"
         private const val KEY_PENDING_ACCURACY = "pending_accuracy"
+        private const val KEY_LAST_GOOD_NAME = "last_good_name"
 
         private const val HIGH_ACCURACY_TIMEOUT_MS = 9000L
         private const val REGULAR_LOCATION_TOTAL_TIMEOUT_MS = 18_000L
@@ -123,17 +126,45 @@ class LocationManager @Inject constructor(
         longitude: Double,
         latitude: Double,
         time: Long = System.currentTimeMillis(),
-        accuracy: Float = 0f
+        accuracy: Float = 0f,
+        isReliableName: Boolean = true
     ) {
         val normalizedName = name.takeIf { it.isNotBlank() } ?: return
         if (latitude == 0.0 || longitude == 0.0) return
+
+        val displayName: String
+        if (isReliableName) {
+            // 高德 SDK 返回了有效的城市/区/街道字段，视为可靠结果，更新缓存
+            displayName = normalizedName
+            saveLastGoodName(normalizedName)
+            locI("save_cached_location: reliable, display=${displayName.safeLogValue()}")
+        } else {
+            // 高德 SDK 返回全 null，逆地理编码结果可能不完整，沿用上一次正常名称
+            val lastGood = getLastGoodName()
+            if (lastGood != null) {
+                displayName = lastGood
+                locI("save_cached_location: unreliable, reused_last_good=${displayName.safeLogValue()}, raw=${normalizedName.safeLogValue()}")
+            } else {
+                displayName = normalizedName
+                locI("save_cached_location: unreliable, no_last_good, fallback_raw=${displayName.safeLogValue()}")
+            }
+        }
+
         cachePrefs.edit()
             .putFloat(KEY_CACHED_LAT, latitude.toFloat())
             .putFloat(KEY_CACHED_LON, longitude.toFloat())
-            .putString(KEY_CACHED_NAME, normalizedName)
+            .putString(KEY_CACHED_NAME, displayName)
             .putLong(KEY_CACHED_TIME, time)
             .putFloat(KEY_CACHED_ACCURACY, accuracy)
             .apply()
+    }
+
+    private fun saveLastGoodName(name: String) {
+        cachePrefs.edit().putString(KEY_LAST_GOOD_NAME, name).apply()
+    }
+
+    private fun getLastGoodName(): String? {
+        return cachePrefs.getString(KEY_LAST_GOOD_NAME, null)?.takeIf { it.isNotBlank() }
     }
 
     private fun getPendingLocation(): PendingLocation? {
@@ -209,7 +240,8 @@ class LocationManager @Inject constructor(
         name: String,
         accuracy: Float = 0f,
         time: Long = System.currentTimeMillis(),
-        highAccuracy: Boolean = false
+        highAccuracy: Boolean = false,
+        isReliableName: Boolean = true
     ): CachedLocation {
         val cached = getCachedLocation()
         if (cached != null && cached.name.isNotBlank() && cached.name != "未知位置") {
@@ -229,7 +261,7 @@ class LocationManager @Inject constructor(
                         Log.i(TAG, "低可信大距离定位已二次确认：dist=${dist}m, pendingDist=${distanceToPending}m, accuracy=${accuracy}m, name=$name")
                         FileLogger.i(TAG, "低可信大距离定位已二次确认：dist=${dist}m, pendingDist=${distanceToPending}m, accuracy=${accuracy}m, name=$name")
                         clearPendingLocation()
-                        return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
+                        return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy, isReliableName = isReliableName)
                     }
                     if (LocationJumpGuard.isPendingExpired(pendingAge)) {
                         clearPendingLocation()
@@ -262,7 +294,7 @@ class LocationManager @Inject constructor(
             if (isReliableFineUpdate) {
                 Log.i(TAG, "前台高精度定位放行：dist=${dist}m, accuracy=${accuracy}m, name=$name")
                 clearPendingLocation()
-                return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
+                return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy, isReliableName = isReliableName)
             }
 
             // 3. 常规微小防抖动
@@ -272,7 +304,7 @@ class LocationManager @Inject constructor(
             }
         }
         clearPendingLocation()
-        return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy)
+        return CachedLocation(latitude = lat, longitude = lon, name = name, time = time, accuracy = accuracy, isReliableName = isReliableName)
     }
 
     suspend fun requestBestLocation(highAccuracy: Boolean = false): CachedLocation? {
@@ -332,15 +364,18 @@ class LocationManager @Inject constructor(
                         accuracy = amapLoc.accuracy
                     )
                 }
-                Log.i(TAG, "高德主定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name")
-                locI("amap_primary_used: elapsed=${elapsedSince(amapStartMs)}ms, total=${elapsedSince(startMs)}ms, directName=${directName.safeLogValue()}, name=${name.safeLogValue()}, ${amapLoc.locSummary()}")
+                // 高德 SDK 返回了城市或区级字段 → 名称可靠；全 null → 仅逆地理编码，可能不完整
+                val isReliableName = !amapLoc.cityName.isNullOrBlank() || !amapLoc.districtName.isNullOrBlank()
+                Log.i(TAG, "高德主定位成功: lat=${amapLoc.latitude}, lon=${amapLoc.longitude}, name=$name, isReliableName=$isReliableName")
+                locI("amap_primary_used: elapsed=${elapsedSince(amapStartMs)}ms, total=${elapsedSince(startMs)}ms, directName=${directName.safeLogValue()}, name=${name.safeLogValue()}, isReliableName=$isReliableName, ${amapLoc.locSummary()}")
                 return applyAntiJitter(
                     amapLoc.latitude,
                     amapLoc.longitude,
                     name,
                     amapLoc.accuracy,
                     amapLoc.time,
-                    highAccuracy
+                    highAccuracy,
+                    isReliableName
                 )
             }
 
@@ -366,14 +401,16 @@ class LocationManager @Inject constructor(
                             accuracy = amapRetryLoc.accuracy
                         )
                     }
-                    locI("amap_retry_success: elapsed=${elapsedSince(retryStartMs)}ms, total=${elapsedSince(startMs)}ms, ${amapRetryLoc.locSummary()}")
+                    val isReliableName = !amapRetryLoc.cityName.isNullOrBlank() || !amapRetryLoc.districtName.isNullOrBlank()
+                    locI("amap_retry_success: elapsed=${elapsedSince(retryStartMs)}ms, total=${elapsedSince(startMs)}ms, isReliableName=$isReliableName, ${amapRetryLoc.locSummary()}")
                     return applyAntiJitter(
                         amapRetryLoc.latitude,
                         amapRetryLoc.longitude,
                         name,
                         amapRetryLoc.accuracy,
                         amapRetryLoc.time,
-                        highAccuracy
+                        highAccuracy,
+                        isReliableName
                     )
                 }
                 locW("amap_retry_failed: elapsed=${elapsedSince(retryStartMs)}ms, total=${elapsedSince(startMs)}ms")
@@ -441,7 +478,8 @@ class LocationManager @Inject constructor(
                 locI("system_reverse_geocode_complete: elapsed=${elapsedSince(geocodeStartMs)}ms, name=${name.safeLogValue()}, geocodeSource=$geocodeSource, location=${sysLoc.locSummary()}")
                 Log.i(TAG, "系统自带定位成功: lat=${sysLoc.latitude}, lon=${sysLoc.longitude}, name=$name, geocodeSource=$geocodeSource")
                 locI("system_fallback_used: elapsed=${elapsedSince(startMs)}ms, name=${name.safeLogValue()}, geocodeSource=$geocodeSource, ${sysLoc.locSummary()}")
-                return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name, sysLoc.accuracy, sysLoc.time, highAccuracy)
+                // 系统定位仅靠逆地理编码获取名称，无高德 SDK 字段校验，标记为不可靠
+                return applyAntiJitter(sysLoc.latitude, sysLoc.longitude, name, sysLoc.accuracy, sysLoc.time, highAccuracy, isReliableName = false)
             }
             Log.w(TAG, "高德主定位与系统兜底定位均已失败，直接返回null")
             locW("location_flow_internal_failed: elapsed=${elapsedSince(startMs)}ms")
