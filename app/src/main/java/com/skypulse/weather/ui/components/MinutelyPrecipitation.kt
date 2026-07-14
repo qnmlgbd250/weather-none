@@ -135,12 +135,12 @@ private fun MinutelyBarChart(
                     cornerRadius = corner
                 )
 
-                // Shadow + blue fill for bars with precipitation
+                // Soft halo + blue fill for bars with precipitation
                 if (visualRatio > 0f) {
-                    val shadowAlpha = (0.15f + 0.25f * visualRatio).coerceIn(0.15f, 0.4f)
+                    val shadowAlpha = (0.08f + 0.14f * visualRatio).coerceIn(0.08f, 0.22f)
                     val shadowColor = PrecipBarShadow.copy(alpha = shadowAlpha)
-                    for (s in 1..3) {
-                        val expand = s * 0.8f
+                    for (s in 1..2) {
+                        val expand = s * 0.6f
                         drawRoundRect(
                             color = shadowColor,
                             topLeft = Offset(left - expand, fillTop - expand * 0.5f),
@@ -165,16 +165,6 @@ private fun MinutelyBarChart(
                         topLeft = Offset(left, fillTop),
                         size = Size(barW, fillH),
                         cornerRadius = corner
-                    )
-
-                    // Subtle highlight on left edge (light reflection)
-                    val highlightWidth = barW * 0.25f
-                    val highlightAlpha = (0.2f + 0.3f * visualRatio).coerceIn(0.2f, 0.5f)
-                    drawRoundRect(
-                        color = Color.White.copy(alpha = highlightAlpha),
-                        topLeft = Offset(left, fillTop + fillH * 0.05f),
-                        size = Size(highlightWidth, fillH * 0.9f),
-                        cornerRadius = CornerRadius(highlightWidth / 2f)
                     )
                 }
             }
