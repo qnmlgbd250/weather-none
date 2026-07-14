@@ -21,11 +21,14 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.skypulse.weather.R
@@ -128,9 +131,16 @@ fun MembershipDialog(
                     }
 
                     Text(
-                        text = "扫码付款后，将设备 ID 发给开发者获取专属激活码。",
+                        text = buildAnnotatedString {
+                            append("付款¥19.9成功后，联系作者激活")
+                            withStyle(SpanStyle(color = Color(0xFFFFC125), fontWeight = FontWeight.Bold)) {
+                                append("永久会员")
+                            }
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = IosTextSecondary,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
                         lineHeight = 20.sp
                     )
 

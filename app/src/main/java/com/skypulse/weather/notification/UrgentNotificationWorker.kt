@@ -12,6 +12,7 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.skypulse.weather.R
+import com.skypulse.weather.data.MembershipRepository
 import com.skypulse.weather.repository.CityRepository
 import com.skypulse.weather.repository.WeatherRepository
 import com.skypulse.weather.sync.RefreshPolicy
@@ -34,6 +35,7 @@ class UrgentNotificationWorker @AssistedInject constructor(
     private val repository: WeatherRepository,
     private val cityRepository: CityRepository,
     private val refreshManager: RefreshManager,
+    private val membershipRepository: MembershipRepository,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -60,6 +62,8 @@ class UrgentNotificationWorker @AssistedInject constructor(
                 return Result.success()
             }
 
+            val prefs = context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, Context.MODE_PRIVATE)
+            val isPremium = membershipRepository.isPremium.value
             val cities = cityRepository.getCities()
             val city = cities.firstOrNull { it.isCurrentLocation } ?: cities.firstOrNull()
                 ?: return Result.success()
@@ -116,8 +120,7 @@ class UrgentNotificationWorker @AssistedInject constructor(
                 effectivePrecip > 0 -> "毛毛雨"
                 else -> "降水"
             }
-            if (context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, Context.MODE_PRIVATE)
-                    .getBoolean("rain_alert", true)) {
+            if (isPremium && prefs.getBoolean("rain_alert", true)) {
                 if (hasMinutelyRain) {
                     if (dedup.shouldNotifyRain()) {
                         val title = buildNotificationTitle("短临降水提醒", precipIntensityDesc)
@@ -132,8 +135,7 @@ class UrgentNotificationWorker @AssistedInject constructor(
             }
 
             // Weather warning alert — dedup by title
-            if (context.getSharedPreferences(WeatherNotificationScheduler.PREFS_NAME, Context.MODE_PRIVATE)
-                    .getBoolean("warning_alert", true)) {
+            if (isPremium && prefs.getBoolean("warning_alert", true)) {
                 alerts?.forEach { alert ->
                     if (alert.status != "active") return@forEach
 

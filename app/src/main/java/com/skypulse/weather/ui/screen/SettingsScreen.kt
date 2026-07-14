@@ -26,7 +26,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
@@ -141,7 +145,13 @@ fun SettingsScreen(
                     IosCard {
                         SimpleItem(
                             title = "激活会员",
-                            subtitle = "¥19.9 解锁高级显示，联系作者并提供设备 ID 获取专属激活码",
+                            subtitle = buildAnnotatedString {
+                                append("¥19.9成为")
+                                withStyle(SpanStyle(color = Color(0xFFFFC125), fontWeight = FontWeight.Bold)) {
+                                    append("永久会员")
+                                }
+                                append("解锁所有高级功能")
+                            },
                             titleColor = IosAccentBlue,
                             onClick = { showMembershipDialog = true }
                         )
@@ -153,15 +163,33 @@ fun SettingsScreen(
                 // Notification settings
                 SectionHeader("通知设置")
                 IosCard {
-                    ToggleItem("短临降水提醒", settings.rainAlert, onRainAlertChange)
+                    ToggleItem(
+                        title = "短临降水提醒",
+                        checked = settings.rainAlert,
+                        onCheckedChange = onRainAlertChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                     IosDivider()
-                    ToggleItem("气象预警", settings.warningAlert, onWarningAlertChange)
+                    ToggleItem(
+                        title = "气象预警",
+                        checked = settings.warningAlert,
+                        onCheckedChange = onWarningAlertChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                     IosDivider()
                     ToggleItem("变温提醒", settings.tempChangeAlert, onTempChangeAlertChange)
                     IosDivider()
                     ToggleItem("大风提醒", settings.windAlert, onWindAlertChange)
                     IosDivider()
-                    ToggleItem("极端天气", settings.typhoonAlert, onTyphoonAlertChange)
+                    ToggleItem(
+                        title = "极端天气",
+                        checked = settings.typhoonAlert,
+                        onCheckedChange = onTyphoonAlertChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -418,7 +446,7 @@ private fun ToggleItem(
 @Composable
 private fun SimpleItem(
     title: String,
-    subtitle: String? = null,
+    subtitle: AnnotatedString? = null,
     titleColor: Color = IosTextPrimary,
     trailing: (@Composable () -> Unit)? = null,
     onClick: () -> Unit
