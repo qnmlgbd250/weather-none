@@ -77,6 +77,18 @@ fun WeatherScreen(
     val onboardingReady by viewModel.onboardingReady.collectAsStateWithLifecycle()
     val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
     val isPremium by settingsViewModel.isPremium.collectAsStateWithLifecycle()
+    // 免费用户定位名称截断到区/县级（取空格前第一段）
+    val effectiveLocationName by remember {
+        derivedStateOf {
+            val fullName = when (val s = uiState) {
+                is WeatherUiState.Success -> s.locationName
+                else -> ""
+            }
+            if (isPremium || fullName.isBlank()) fullName
+            else fullName.split(Regex("\\s+")).firstOrNull()?.takeIf { it.isNotBlank() } ?: fullName
+        }
+    }
+
     // 会员城市过滤：免费用户只展示定位城市
     val effectiveCities by remember {
         derivedStateOf {
@@ -271,7 +283,7 @@ fun WeatherScreen(
                                     Spacer(modifier = Modifier.height(12.dp))
 
                                     LocationHeader(
-                                        locationName = state.locationName,
+                                        locationName = effectiveLocationName,
                                         isLocating = isLocating,
                                         refreshPhase = refreshPhase,
                                         onListClick = if (isPremium) {
@@ -303,12 +315,12 @@ fun WeatherScreen(
                                             key = { page -> effectiveCities.getOrNull(page)?.id ?: page.toString() }
                                         ) { page ->
                                             val city = effectiveCities.getOrNull(page)
-                                            val contentState = remember(city, cityWeatherMap, state.locationName) {
+                                            val contentState = remember(city, cityWeatherMap, effectiveLocationName) {
                                                 val weather = city?.let { cityWeatherMap[it.id]?.weather }
                                                 if (city != null && weather != null) {
                                                     WeatherUiState.Success(
                                                         weather = weather,
-                                                        locationName = if (city.isCurrentLocation) state.locationName else city.name
+                                                        locationName = if (city.isCurrentLocation) effectiveLocationName else city.name
                                                     )
                                                 } else {
                                                     null
