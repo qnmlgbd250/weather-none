@@ -1,4 +1,4 @@
-package com.skypulse.weather.widget
+﻿package com.skypulse.weather.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -271,6 +271,15 @@ object WeatherWidgetUpdater {
     }
 
     /** Build an opaque, flat weather gradient sized to the actual widget dimensions. */
+    /**
+     * Build an opaque, flat weather gradient sized to the actual widget dimensions.
+     *
+     * Layer structure (bottom → top):
+     *   1. Radial gradient base – center biased upward for natural sky depth
+     *   2. Top highlight – focused light simulating zenith sun / moon glow
+     *   3. Bottom shadow – subtle ground-level darkening for contrast
+     *   4. Rain streaks (optional) – decorative rain lines for rainy weather
+     */
     private fun buildGradientBitmap(context: Context, skycon: String?, width: Int, height: Int, isDay: Boolean = true): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -280,26 +289,37 @@ object WeatherWidgetUpdater {
         val isRain = isRainSkycon(skycon)
         val gradientColors = weatherWidgetGradient(skycon, isDay)
 
+        // ── Layer 1: Radial gradient base ──
+        // Center biased to upper-third for natural sky depth; colors fan out from zenith
+        val cx = width * 0.48f
+        val cy = height * 0.32f
+        val gradRadius = maxOf(width, height) * 0.82f
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), gradientColors, null, Shader.TileMode.CLAMP)
+            shader = RadialGradient(cx, cy, gradRadius, gradientColors, null, Shader.TileMode.CLAMP)
             canvas.drawRoundRect(rect, radius, radius, this)
         }
 
+        // ── Layer 2: Top highlight ──
+        // Focused zenith glow that fades quickly, simulating overhead skylight
+        val highlightAlpha = if (isDay) 48 else 22
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
-                0f, 0f, 0f, height * 0.5f,
-                intArrayOf(Color.argb(if (isDay) 32 else 18, 255, 255, 255), Color.TRANSPARENT),
-                null,
+                0f, 0f, 0f, height * 0.38f,
+                intArrayOf(Color.argb(highlightAlpha, 255, 255, 255), Color.TRANSPARENT),
+                floatArrayOf(0f, 1f),
                 Shader.TileMode.CLAMP
             )
             canvas.drawRoundRect(rect, radius, radius, this)
         }
 
+        // ── Layer 3: Bottom shadow ──
+        // Subtle ground-level darkening to anchor text and add depth
+        val shadowAlpha = if (isDay) 38 else 56
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
-                0f, height * 0.58f, 0f, height.toFloat(),
-                intArrayOf(Color.TRANSPARENT, Color.argb(if (isDay) 34 else 48, 0, 0, 0)),
-                null,
+                0f, height * 0.55f, 0f, height.toFloat(),
+                intArrayOf(Color.TRANSPARENT, Color.argb(shadowAlpha, 0, 0, 0)),
+                floatArrayOf(0f, 1f),
                 Shader.TileMode.CLAMP
             )
             canvas.drawRoundRect(rect, radius, radius, this)
@@ -310,6 +330,7 @@ object WeatherWidgetUpdater {
         }
 
         return bitmap
+
     }
 
     private fun isRainSkycon(skycon: String?): Boolean {
