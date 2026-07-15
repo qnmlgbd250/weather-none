@@ -1,5 +1,6 @@
 package com.skypulse.weather.ui.screen
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Animatable
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -115,7 +117,6 @@ fun WeatherScreen(
 
     val showOnboarding by viewModel.showOnboarding.collectAsStateWithLifecycle()
     var allPermissionsHandled by rememberSaveable { mutableStateOf(false) }
-    var locationSkipped by rememberSaveable { mutableStateOf(false) }
     var homeBootstrapStarted by rememberSaveable { mutableStateOf(false) }
 
     var backgroundTimestamp by remember { mutableLongStateOf(0L) }
@@ -144,8 +145,8 @@ fun WeatherScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(onboardingReady, allPermissionsHandled, locationSkipped) {
-        if (!onboardingReady || homeBootstrapStarted || locationSkipped) return@LaunchedEffect
+    LaunchedEffect(onboardingReady, allPermissionsHandled) {
+        if (!onboardingReady || homeBootstrapStarted) return@LaunchedEffect
         if (showOnboarding) {
             if (!allPermissionsHandled) return@LaunchedEffect
             viewModel.completeOnboarding()
@@ -153,12 +154,6 @@ fun WeatherScreen(
         homeBootstrapStarted = true
         viewModel.ensureCurrentLocationCitySync()
         viewModel.fetchWeather()
-    }
-
-    LaunchedEffect(locationSkipped, savedCities) {
-        if (locationSkipped && savedCities.isEmpty()) {
-            viewModel.navigateToCityList()
-        }
     }
 
     val skycon = when (val s = uiState) {
@@ -188,12 +183,12 @@ fun WeatherScreen(
         return
     }
 
-    if (showOnboarding && !allPermissionsHandled && !locationSkipped) {
+    if (showOnboarding && !allPermissionsHandled) {
+        val context = LocalContext.current
         PermissionOnboardingScreen(
             onFinished = { allPermissionsHandled = true },
-            onSkip = {
-                locationSkipped = true
-                viewModel.completeOnboarding()
+            onPermissionDenied = {
+                (context as? Activity)?.finish()
             }
         )
         return

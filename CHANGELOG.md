@@ -62,3 +62,7 @@
 ## [3.2.33] - 2026-07-14
 
 - 增加会员权益展示项
+
+## [3.2.37] - 2026-07-15
+
+- Remove no-location mode; require location permission

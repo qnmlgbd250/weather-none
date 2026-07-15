@@ -116,7 +116,7 @@ if (Test-Path $releaseApkSrc) {
 # 6. Upload to cloud clipboard
 Write-Host "[4/4] Uploading to cloud clipboard ..." -ForegroundColor Cyan
 try {
-    $uploadResult = & cmd /c "curl.exe -s -X POST -F `"file=@$apkDst`" `"$uploadUrl`" 2>&1"
+    $uploadResult = & cmd /c "curl.exe -s -X POST -H `"x-room-password: 888`" -F `"file=@$apkDst`" `"$uploadUrl`" 2>&1"
     Write-Host "  Upload complete: $uploadResult" -ForegroundColor Green
 } catch {
     Write-Warning "Upload failed: $_"

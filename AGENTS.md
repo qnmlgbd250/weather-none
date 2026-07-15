@@ -23,6 +23,7 @@
 
 ## 发版规则
 - **默认发版**: 每次代码改动完成并验证后，执行 `scripts\release.ps1` 发布到云剪贴板（内含 bump 版本 → 构建 → 上传）；除非用户明确要求暂不发版
+- **云剪贴板密码**: `888`
 - **GitHub 发版**: 仅在用户主动要求时才推送到 GitHub 并创建 Release（直接发布，非 draft）
 - **GitHub Token**: GitHub 发版必须从 `local.properties` 读取 GitHub token，不得硬编码到源码、脚本输出或 Release 描述中
 - **GitHub 包体完整性**: GitHub 发版上传 APK 前必须记录本地 APK 文件大小和 SHA-256；上传后必须从 GitHub Release 下载该 APK 资产并重新计算文件大小和 SHA-256，二者完全一致才算发版成功；如不一致，删除损坏资产后重新上传并再次校验
@@ -32,6 +33,8 @@
 
 ## Git 操作规范
 - **git操作**: 除非用户主动要求提交/推送（必须每次对话明确提出发版-不能根据上下文内容自己推测），否则不要提交/推送代码到远程仓库
+- **提交信息**: git commit message 不得添加 Co-Authored-By 行或其他 AI 协作者标记
+- **提交语言**: 所有 Git 提交描述（commit message）必须使用英文
 
 
 ## 包体命名

@@ -437,7 +437,7 @@ class WeatherSyncManager @Inject constructor(
     }
 
     /**
-     * 获取天气：优先用定位城市的坐标，没有则用手动添加的城市坐标，最后兜底北京。
+     * 获取天气：优先用定位城市的坐标，没有则用定位缓存坐标。
      */
     suspend fun refreshWeatherDefault(): SyncResult = withContext(Dispatchers.IO) {
         val currentCity = getCurrentLocationCity()
@@ -455,12 +455,7 @@ class WeatherSyncManager @Inject constructor(
             return@withContext doRefreshWeather(city.id, cachedLocation.longitude, cachedLocation.latitude)
         }
 
-        val firstCity = cityRepository.getCities().firstOrNull { !it.isCurrentLocation }
-        if (firstCity != null) {
-            return@withContext doRefreshWeather(firstCity.id, firstCity.longitude, firstCity.latitude)
-        }
-
-        Log.w(TAG, "refreshWeatherDefault: 无定位缓存且无手动城市，不使用北京兜底")
+        Log.w(TAG, "refreshWeatherDefault: 无定位缓存，无法获取天气")
         SyncResult.LocationFailed
     }
 
