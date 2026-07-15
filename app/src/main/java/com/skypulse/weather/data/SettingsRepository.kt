@@ -21,7 +21,8 @@ data class WeatherSettings(
     val showHourlyWind: Boolean = true,
     val showHourlyWindGust: Boolean = false,
     val showCardDetail: Boolean = true,
-    val showCardSunriseSunset: Boolean = true
+    val showCardSunriseSunset: Boolean = true,
+    val showCardMinutely: Boolean = true
 )
 
 @Singleton
@@ -55,6 +56,7 @@ class SettingsRepository @Inject constructor(
     fun setShowHourlyWindGust(enabled: Boolean) = updateBoolean(KEY_SHOW_HOURLY_WIND_GUST, enabled)
     fun setShowCardDetail(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_DETAIL, enabled)
     fun setShowCardSunriseSunset(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_SUNRISE_SUNSET, enabled)
+    fun setShowCardMinutely(enabled: Boolean) = updateBoolean(KEY_SHOW_CARD_MINUTELY, enabled)
 
     private fun updateBoolean(key: String, enabled: Boolean) {
         prefs.edit().putBoolean(key, enabled).apply()
@@ -72,7 +74,8 @@ class SettingsRepository @Inject constructor(
         showHourlyWind = prefs.getBoolean(KEY_SHOW_HOURLY_WIND, true),
         showHourlyWindGust = prefs.getBoolean(KEY_SHOW_HOURLY_WIND_GUST, false),
         showCardDetail = prefs.getBoolean(KEY_SHOW_CARD_DETAIL, true),
-        showCardSunriseSunset = prefs.getBoolean(KEY_SHOW_CARD_SUNRISE_SUNSET, true)
+        showCardSunriseSunset = prefs.getBoolean(KEY_SHOW_CARD_SUNRISE_SUNSET, true),
+        showCardMinutely = prefs.getBoolean(KEY_SHOW_CARD_MINUTELY, true)
     )
 
     companion object {
@@ -87,5 +90,6 @@ class SettingsRepository @Inject constructor(
         private const val KEY_SHOW_HOURLY_WIND_GUST = "show_hourly_wind_gust"
         private const val KEY_SHOW_CARD_DETAIL = "show_card_detail"
         private const val KEY_SHOW_CARD_SUNRISE_SUNSET = "show_card_sunrise_sunset"
+        private const val KEY_SHOW_CARD_MINUTELY = "show_card_minutely"
     }
 }

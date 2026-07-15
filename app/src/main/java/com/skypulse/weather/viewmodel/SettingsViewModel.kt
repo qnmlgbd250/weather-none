@@ -57,6 +57,7 @@ class SettingsViewModel @Inject constructor(
     fun setShowHourlyWindGust(enabled: Boolean) = settingsRepository.setShowHourlyWindGust(enabled)
     fun setShowCardDetail(enabled: Boolean) = settingsRepository.setShowCardDetail(enabled)
     fun setShowCardSunriseSunset(enabled: Boolean) = settingsRepository.setShowCardSunriseSunset(enabled)
+    fun setShowCardMinutely(enabled: Boolean) = settingsRepository.setShowCardMinutely(enabled)
 
     private fun updateAlertSetting(update: () -> Unit) {
         update()

@@ -399,6 +399,7 @@ fun WeatherScreen(
                     onShowHourlyWindGustChange = { settingsViewModel.setShowHourlyWindGust(it) },
                     onShowCardDetailChange = { settingsViewModel.setShowCardDetail(it) },
                     onShowCardSunriseSunsetChange = { settingsViewModel.setShowCardSunriseSunset(it) },
+                    onShowCardMinutelyChange = { settingsViewModel.setShowCardMinutely(it) },
                     isPremium = isPremium,
                     activatedAt = settingsViewModel.getActivatedAt(),
                     deviceId = settingsViewModel.getDeviceId(),
@@ -613,7 +614,7 @@ private fun WeatherContentBody(
             val minutelyData = result?.minutely?.precipitation_2h
             val showMinutely = !minutelyData.isNullOrEmpty() && minutelyData.any { it != 0.0 }
 
-            if (showMinutely) {
+            if (isPremium && settings.showCardMinutely && showMinutely) {
                 MinutelyPrecipitationCard(
                     minutely = result?.minutely,
                     modifier = Modifier

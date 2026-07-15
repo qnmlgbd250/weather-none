@@ -62,6 +62,7 @@ fun SettingsScreen(
     onShowHourlyWindGustChange: (Boolean) -> Unit,
     onShowCardDetailChange: (Boolean) -> Unit,
     onShowCardSunriseSunsetChange: (Boolean) -> Unit,
+    onShowCardMinutelyChange: (Boolean) -> Unit,
     isPremium: Boolean = false,
     activatedAt: Long = 0L,
     deviceId: String = "",
@@ -235,6 +236,14 @@ fun SettingsScreen(
                 // Card display settings
                 SectionHeader("卡片显示")
                 IosCard {
+                    ToggleItem(
+                        title = "分钟级降水",
+                        checked = settings.showCardMinutely,
+                        onCheckedChange = onShowCardMinutelyChange,
+                        locked = !isPremium,
+                        onLockedClick = { showMembershipDialog = true }
+                    )
+                    IosDivider()
                     ToggleItem(
                         title = "气象详情",
                         checked = settings.showCardDetail,
