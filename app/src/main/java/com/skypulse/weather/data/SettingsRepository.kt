@@ -1,4 +1,4 @@
-package com.skypulse.weather.data
+﻿package com.skypulse.weather.data
 
 import android.content.Context
 import android.content.SharedPreferences

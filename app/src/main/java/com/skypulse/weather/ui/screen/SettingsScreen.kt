@@ -290,6 +290,20 @@ fun SettingsScreen(
                         )
                         IosDivider()
                         SimpleItem(
+                            title = "15日预报",
+                            titleColor = IosTextSecondary,
+                            trailing = {
+                                Icon(
+                                    imageVector = Icons.Outlined.Lock,
+                                    contentDescription = "会员功能",
+                                    modifier = Modifier.size(18.dp),
+                                    tint = IosTextSecondary.copy(alpha = 0.5f)
+                                )
+                            },
+                            onClick = { showMembershipDialog = true }
+                        )
+                        IosDivider()
+                        SimpleItem(
                             title = "AI天气校准",
                             titleColor = IosTextSecondary,
                             trailing = {

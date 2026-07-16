@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.screen
+﻿package com.skypulse.weather.ui.screen
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
@@ -634,6 +634,7 @@ private fun WeatherContentBody(
 
             DailyForecastCard(
                 daily = result?.daily,
+                isPremium = isPremium,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = SkyPulseDesignSystem.Spacing.screenHorizontal)

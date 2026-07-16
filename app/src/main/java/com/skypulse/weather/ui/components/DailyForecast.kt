@@ -35,11 +35,22 @@ private const val DAY_WIDTH = 64
 @Composable
 fun DailyForecastCard(
     daily: DailyForecast?,
+    isPremium: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     if (daily?.temperature.isNullOrEmpty()) return
     val forecast = daily ?: return
-    val temperatures = forecast.temperature ?: return
+    val allTemperatures = forecast.temperature ?: return
+    
+    // Free users: limit to 5 days (including yesterday)
+    val startIndex = if (isPremium) 0 else {
+        val yesterdayIndex = allTemperatures.indexOfFirst { WeatherUtils.isYesterday(it.date) }
+        if (yesterdayIndex >= 0) yesterdayIndex else 0
+    }
+    val endIndex = if (isPremium) allTemperatures.size else {
+        minOf(startIndex + 5, allTemperatures.size)
+    }
+    val temperatures = allTemperatures.subList(startIndex, endIndex)
 
     val skipAnimation = LocalSkipCardAnimation.current
     var visible by remember { mutableStateOf(false) }
@@ -84,12 +95,13 @@ fun DailyForecastCard(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 temperatures.forEachIndexed { index, temp ->
-                    val skycon = forecast.skycon?.getOrNull(index)?.value
+                    val originalIndex = startIndex + index
+                    val skycon = forecast.skycon?.getOrNull(originalIndex)?.value
                     val isPast = WeatherUtils.isYesterday(temp.date)
                     DailyColumn(
                         dateStr = temp.date,
                         skycon = skycon,
-                        precipProb = forecast.precipitation?.getOrNull(index)?.probability,
+                        precipProb = forecast.precipitation?.getOrNull(originalIndex)?.probability,
                         maxTemp = temp.max,
                         minTemp = temp.min,
                         globalMin = globalMin,
@@ -136,13 +148,18 @@ private fun DailyColumn(
         // --- Date + Weekday ---
         Text(
             text = weekday,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 15.sp),
-            color = TextPrimary
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
+            color = TextPrimary,
+            maxLines = 1,
+            textAlign = TextAlign.Center
         )
+
         Text(
             text = dateLabel,
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
-            color = TextTertiary
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+            color = TextSecondary,
+            maxLines = 1,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -150,12 +167,13 @@ private fun DailyColumn(
         // --- Weather icon ---
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clipToBounds(),
+                .size(36.dp),
             contentAlignment = Alignment.Center
         ) {
             WeatherIcon(iconType = weatherInfo.icon, size = 36.dp, animated = false)
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
 
         // --- Weather description ---
         Text(
