@@ -1,4 +1,4 @@
-package com.skypulse.weather.data.remote
+﻿package com.skypulse.weather.data.remote
 
 import com.skypulse.weather.BuildConfig
 import com.skypulse.weather.util.FileLogger
@@ -9,12 +9,13 @@ import javax.inject.Singleton
 /**
  * 实况天气 skycon 校准器。
  *
- * 解决彩云天气在"阴天"（CLOUDY）上的系统性偏差：
- * 当彩云返回 CLOUDY 时，调用小米天气（中国气象局数据）进行校准。
- * 若气象局判定为"晴"或"多云"，则覆盖彩云的 skycon。
+ * 解决彩云天气在"阴天"（CLOUDY）和"多云"（PARTLY_CLOUDY_DAY/NIGHT）上的系统性偏差：
+ * - 当彩云返回 CLOUDY 时，调用小米天气（中国气象局数据）进行校准。
+ * - 当彩云返回 PARTLY_CLOUDY_DAY 或 PARTLY_CLOUDY_NIGHT 时，同样进行校准。
+ * 若气象局判定为"晴"或不同天气，则覆盖彩云的 skycon。
  *
  * 校准范围：仅当前定位城市。
- * 校准条件：skycon == "CLOUDY" 时才触发请求。
+ * 校准条件：skycon == "CLOUDY" 或 skycon == "PARTLY_CLOUDY_DAY/NIGHT" 时才触发请求。
  * 容错策略：小米 API 超时或失败时，保持彩云原始值不变。
  */
 @Singleton
@@ -47,8 +48,12 @@ class SkyconCalibrator @Inject constructor(
         latitude: Double,
         isDay: Boolean
     ): String? {
-        // 仅在彩云返回 CLOUDY 时触发校准
-        if (skycon != "CLOUDY") {
+        // 仅在彩云返回 CLOUDY 或 PARTLY_CLOUDY_DAY/NIGHT 时触发校准
+        val needsCalibration = skycon == "CLOUDY" || 
+            skycon == "PARTLY_CLOUDY_DAY" || 
+            skycon == "PARTLY_CLOUDY_NIGHT"
+        
+        if (!needsCalibration) {
             return skycon
         }
 
@@ -56,27 +61,45 @@ class SkyconCalibrator @Inject constructor(
 
         val xiaomiWeather = fetchXiaomiWeather(longitude, latitude)
         if (xiaomiWeather == null) {
-            FileLogger.w(TAG, "校准失败: 小米天气请求失败，保持原值 CLOUDY")
+            FileLogger.w(TAG, "校准失败: 小米天气请求失败，保持原值 $skycon")
             return skycon
         }
 
         val calibrated = when (xiaomiWeather) {
             CODE_CLEAR -> {
+                // 小米判定为"晴"，覆盖彩云的"阴天"或"多云"
                 val calibratedSkycon = if (isDay) "CLEAR_DAY" else "CLEAR_NIGHT"
-                FileLogger.i(TAG, "校准生效: CLOUDY → $calibratedSkycon (小米=$xiaomiWeather/晴, isDay=$isDay)")
+                FileLogger.i(TAG, "校准生效: $skycon → $calibratedSkycon (小米=$xiaomiWeather/晴, isDay=$isDay)")
                 calibratedSkycon
             }
             CODE_CLOUDY -> {
-                val calibratedSkycon = if (isDay) "PARTLY_CLOUDY_DAY" else "PARTLY_CLOUDY_NIGHT"
-                FileLogger.i(TAG, "校准生效: CLOUDY → $calibratedSkycon (小米=$xiaomiWeather/多云, isDay=$isDay)")
-                calibratedSkycon
+                // 小米判定为"多云"
+                if (skycon == "CLOUDY") {
+                    // 彩云是"阴天"，小米是"多云"，修正为多云
+                    val calibratedSkycon = if (isDay) "PARTLY_CLOUDY_DAY" else "PARTLY_CLOUDY_NIGHT"
+                    FileLogger.i(TAG, "校准生效: CLOUDY → $calibratedSkycon (小米=$xiaomiWeather/多云, isDay=$isDay)")
+                    calibratedSkycon
+                } else {
+                    // 彩云已经是"多云"，小米也确认是"多云"，保持不变
+                    FileLogger.i(TAG, "校准保持: $skycon (小米=$xiaomiWeather/多云，两源一致)")
+                    skycon
+                }
             }
             CODE_OVERCAST -> {
-                FileLogger.i(TAG, "校准保持: CLOUDY (小米=$xiaomiWeather/阴，两源一致)")
-                skycon
+                // 小米判定为"阴"
+                if (skycon == "CLOUDY") {
+                    // 彩云是"阴天"，小米也确认是"阴"，保持不变
+                    FileLogger.i(TAG, "校准保持: CLOUDY (小米=$xiaomiWeather/阴，两源一致)")
+                    skycon
+                } else {
+                    // 彩云是"多云"，小米是"阴"，修正为阴天
+                    FileLogger.i(TAG, "校准生效: $skycon → CLOUDY (小米=$xiaomiWeather/阴, isDay=$isDay)")
+                    "CLOUDY"
+                }
             }
             else -> {
-                FileLogger.i(TAG, "校准保持: CLOUDY (小米=$xiaomiWeather/其他天气)")
+                // 小米是其他天气（雨、雪等），保持彩云原值
+                FileLogger.i(TAG, "校准保持: $skycon (小米=$xiaomiWeather/其他天气)")
                 skycon
             }
         }

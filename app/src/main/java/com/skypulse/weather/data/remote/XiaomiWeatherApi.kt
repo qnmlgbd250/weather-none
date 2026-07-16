@@ -1,4 +1,4 @@
-package com.skypulse.weather.data.remote
+﻿package com.skypulse.weather.data.remote
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -8,9 +8,10 @@ import retrofit2.http.Query
 /**
  * 小米天气实况接口。
  *
- * 用于校准彩云天气的"阴天"偏差：
- * 当彩云返回 CLOUDY 时，调用此接口获取中国气象局的实况天气编码，
- * 若气象局判定为"晴"或"多云"，则覆盖彩云的 skycon。
+ * 用于校准彩云天气的"阴天"和"多云"偏差：
+ * - 当彩云返回 CLOUDY 时，调用此接口获取中国气象局的实况天气编码。
+ * - 当彩云返回 PARTLY_CLOUDY_DAY 或 PARTLY_CLOUDY_NIGHT 时，同样进行校准。
+ * 若气象局判定为"晴"或不同天气，则覆盖彩云的 skycon。
  *
  * 数据源：中国气象局（weatherbj），与彩云独立。
  */
@@ -50,3 +51,4 @@ data class XiaomiWeatherResponse(
 data class XiaomiCurrentWeather(
     @Json(name = "weather") val weatherCode: String? = null
 )
+

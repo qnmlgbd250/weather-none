@@ -1,4 +1,4 @@
-package com.skypulse.weather.sync
+﻿package com.skypulse.weather.sync
 
 import android.util.Log
 import com.skypulse.weather.data.LocationManager
@@ -148,7 +148,7 @@ class WeatherSyncManager @Inject constructor(
             Log.i(TAG, "refreshWeather: 网络请求完成, success=${result.isSuccess}")
             result.fold(
                 onSuccess = { rawResponse ->
-                    // 当前定位城市：校准彩云的"阴天"偏差
+                    // 当前定位城市：校准彩云的"阴天"和"多云"偏差
                     val response = if (cityId == CURRENT_LOCATION_ID) {
                         calibrateSkyconIfNeeded(rawResponse, longitude, latitude)
                     } else {
@@ -477,8 +477,8 @@ class WeatherSyncManager @Inject constructor(
 
 
     /**
-     * 校准彩云天气的"阴天"偏差。
-     * 仅在 skycon == "CLOUDY" 时触发小米天气请求。
+     * 校准彩云天气的"阴天"和"多云"偏差。
+     * 在 skycon == "CLOUDY" 或 skycon == "PARTLY_CLOUDY_DAY/NIGHT" 时触发小米天气请求。
      * 校准成功则覆盖 skycon，失败则保持原值。
      */
     private suspend fun calibrateSkyconIfNeeded(
@@ -692,3 +692,4 @@ sealed class SyncResult {
 
     fun getOrNull(): WeatherResponse? = (this as? Success)?.weather
 }
+
