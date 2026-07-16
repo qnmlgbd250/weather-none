@@ -28,7 +28,9 @@
 - **GitHub Token**: GitHub 发版必须从 `local.properties` 读取 GitHub token，不得硬编码到源码、脚本输出或 Release 描述中
 - **GitHub 包体完整性**: GitHub 发版上传 APK 前必须记录本地 APK 文件大小和 SHA-256；上传后必须从 GitHub Release 下载该 APK 资产并重新计算文件大小和 SHA-256，二者完全一致才算发版成功；如不一致，删除损坏资产后重新上传并再次校验
 - **GitHub Release 描述**: GitHub 发版描述只写一条中文描述：`修复已知问题`
-- **GitHub Release 标题**: GitHub 发版标题只写版本号，例如 `v3.0.0`，不要有多余的文字
+- **GitHub Release 标题**: GitHub 发版标题只写版本号，例如 3.0.0，不要有多余的文字
+- **GitHub Release UTF-8 编码**: 创建或更新 GitHub Release 时，必须将 JSON body 手动转换为 UTF-8 字节数组后再发送，避免 PowerShell 默认使用 GBK 编码导致中文乱码。正确示例：$bytes = [System.Text.Encoding]::UTF8.GetBytes(); Invoke-RestMethod ... -Body  -ContentType "application/json; charset=utf-8"
+- **GitHub 版本清理**: 每次 GitHub 发版完成后，必须清理旧版本，只保留最近 3 个版本和 1.0 版本（包括 releases 和 tags）
 - 发版前必须清理 build.gradle.kts 和 CHANGELOG.md 的 UTF-8 BOM
 
 ## Git 操作规范
