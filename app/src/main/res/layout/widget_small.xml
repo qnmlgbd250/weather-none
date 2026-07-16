@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -22,9 +22,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
-        android:layout_marginTop="6dp"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:baselineAligned="false">
@@ -42,7 +42,7 @@
             android:letterSpacing="0.02"
             android:includeFontPadding="false"
             android:singleLine="true"
-            android:translationY="4dp" />
+            android:translationX="6dp" android:translationY="6dp" />
 
         <!-- Right: Icon on top, City below -->
         <LinearLayout
@@ -53,8 +53,7 @@
 
             <ImageView
                 android:id="@+id/widget_icon"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
+                android:layout_width="34dp" android:layout_height="34dp"
                 android:scaleType="fitCenter"
                 android:contentDescription="@string/app_name" />
 
@@ -77,9 +76,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:layout_marginBottom="6dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="10dp"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
         android:orientation="horizontal"
         android:weightSum="3">
 
@@ -103,8 +102,9 @@
 
             <ImageView
                 android:id="@+id/widget_icon_now"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginTop="-1dp"
                 android:scaleType="fitCenter"
                 android:contentDescription="@null" />
 
@@ -112,6 +112,7 @@
                 android:id="@+id/widget_temp_now"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="-1dp"
                 android:textColor="@android:color/white"
                 android:textSize="11sp"
                 android:fontFamily="sans-serif-medium"
@@ -139,8 +140,9 @@
 
             <ImageView
                 android:id="@+id/widget_icon_1h"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginTop="-1dp"
                 android:scaleType="fitCenter"
                 android:contentDescription="@null" />
 
@@ -148,6 +150,7 @@
                 android:id="@+id/widget_temp_1h"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="-1dp"
                 android:textColor="@android:color/white"
                 android:textSize="11sp"
                 android:fontFamily="sans-serif-medium"
@@ -175,8 +178,9 @@
 
             <ImageView
                 android:id="@+id/widget_icon_2h"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_marginTop="-1dp"
                 android:scaleType="fitCenter"
                 android:contentDescription="@null" />
 
@@ -184,6 +188,7 @@
                 android:id="@+id/widget_temp_2h"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="-1dp"
                 android:textColor="@android:color/white"
                 android:textSize="11sp"
                 android:fontFamily="sans-serif-medium"
