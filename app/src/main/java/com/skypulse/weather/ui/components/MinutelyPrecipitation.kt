@@ -1,4 +1,4 @@
-package com.skypulse.weather.ui.components
+﻿package com.skypulse.weather.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -44,7 +44,8 @@ fun MinutelyPrecipitationCard(
     if (raw.all { it == 0.0 }) return
 
     // Sample 120 entries down to 48 bins
-    val sampled = remember(raw) { sampleToBins(raw, BAR_COUNT) }
+    // Convert mm/min → mm/h (API returns mm/min, scale expects mm/h)
+    val sampled = remember(raw) { sampleToBins(raw, BAR_COUNT).map { it * 25.0 } }
     if (sampled.all { it == 0.0 }) return
 
     val skipAnimation = LocalSkipCardAnimation.current
@@ -86,8 +87,8 @@ private fun MinutelyBarChart(
     data: List<Double>,
     modifier: Modifier = Modifier
 ) {
-    // Perceptual scale: moderate rain (~2.5mm/h) = 90% fill, lower values expand
-    // 0→0%, 0.05→5%, 0.1→8%, 0.3→18%, 0.5→30%, 1.0→52%, 2.0→78%, 2.5→90%, 4.0→95%, 8.0+→100%
+    // Light(0-2.5)→0-40%, Moderate(2.5-8)→40-70%, Heavy(8-16)→70-90%, Torrential(16+)→90-100%
+    // 0->0%, 0.1->16%, 0.5->50%, 1.0->65%, 2.5->91%, 4.0->97%, 6.0+->100%
 
     val barWidthDp = BAR_WIDTH_DP.dp
     val barGapDp = BAR_GAP_DP.dp
@@ -114,15 +115,25 @@ private fun MinutelyBarChart(
 
             for (i in 0 until barCount) {
                 val value = data[i]
+                // Scale aligned with Chinese meteorological standards:
+                // Light: 0-2.5mm/h → 0-40%, Moderate: 2.5-8mm/h → 40-70%,
+                // Heavy: 8-16mm/h → 70-90%, Torrential: 16-30mm/h → 90-100%
+                // Scale aligned with Chinese meteorological standards (mm/h):
+                // Light(0-2.5)→0-38%, Moderate(2.5-8)→38-70%, Heavy(8-16)→70-90%, Torrential(16+)→90-100%
                 val fillRatio = when {
                     value <= 0.0 -> 0f
-                    value <= 0.1 -> (value / 0.1 * 0.08f).toFloat()                   // 0%~8%
-                    value <= 0.5 -> (0.08f + (value - 0.1) / 0.4 * 0.22f).toFloat()   // 8%~30%
-                    value <= 2.5 -> (0.30f + (value - 0.5) / 2.0 * 0.60f).toFloat()   // 30%~90%
-                    else -> (0.90f + (value - 2.5) / 5.5 * 0.10f).coerceIn(0.90, 1.0).toFloat() // 90%~100%
+                    value <= 0.1 -> (value / 0.1 * 0.03f).toFloat()                   // 0%~3%
+                    value <= 0.3 -> (0.03f + (value - 0.1) / 0.2 * 0.05f).toFloat()   // 3%~8%
+                    value <= 0.5 -> (0.08f + (value - 0.3) / 0.2 * 0.07f).toFloat()   // 8%~15%
+                    value <= 1.0 -> (0.15f + (value - 0.5) / 0.5 * 0.07f).toFloat()   // 15%~22%
+                    value <= 2.0 -> (0.22f + (value - 1.0) / 1.0 * 0.10f).toFloat()   // 22%~32%
+                    value <= 2.5 -> (0.32f + (value - 2.0) / 0.5 * 0.06f).toFloat()   // 32%~38%
+                    value <= 8.0 -> (0.38f + (value - 2.5) / 5.5 * 0.32f).toFloat()   // 38%~70%
+                    value <= 16.0 -> (0.70f + (value - 8.0) / 8.0 * 0.20f).toFloat()  // 70%~90%
+                    else -> (0.90f + (value - 16.0) / 14.0 * 0.10f).coerceIn(0.90, 1.0).toFloat() // 90%~100%
                 }
                 // Power curve: expand light rain visual area, compress heavy rain
-                val visualRatio = if (fillRatio > 0f) fillRatio.pow(0.55f) else 0f
+                val visualRatio = if (fillRatio > 0f) fillRatio.pow(0.70f) else 0f
                 val left = startX + i * step
                 val fillH = chartH * visualRatio
                 val fillTop = chartH - fillH
