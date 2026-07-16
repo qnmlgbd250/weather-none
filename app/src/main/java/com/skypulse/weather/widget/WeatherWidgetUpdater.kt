@@ -14,6 +14,8 @@ import com.skypulse.weather.ui.components.WeatherSvgRenderer
 import com.skypulse.weather.util.FileLogger
 import androidx.compose.ui.graphics.toArgb
 import com.skypulse.weather.util.WeatherUtils
+import java.text.SimpleDateFormat
+import java.util.*
 
 object WeatherWidgetUpdater {
 
@@ -35,15 +37,21 @@ object WeatherWidgetUpdater {
                 val views = RemoteViews(context.packageName, R.layout.widget_small)
                 views.setTextViewText(R.id.widget_city, cityText)
                 views.setTextViewText(R.id.widget_temp, "--")
-                views.setTextViewText(R.id.widget_detail, "\u5b9a\u4f4d\u4e2d...")
                 if (iconBitmap != null) {
                     views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
                 }
+                // Set placeholder for forecast items
+                views.setTextViewText(R.id.widget_time_now, "\u73b0\u5728")
+                views.setTextViewText(R.id.widget_time_1h, "--")
+                views.setTextViewText(R.id.widget_time_2h, "--")
+                views.setTextViewText(R.id.widget_temp_now, "--")
+                views.setTextViewText(R.id.widget_temp_1h, "--")
+                views.setTextViewText(R.id.widget_temp_2h, "--")
+
                 val (w, h) = getWidgetSizePx(context, widgetId)
                 val sizedBg = buildGradientBitmap(context, null, w, h)
                 views.setImageViewBitmap(R.id.widget_bg, sizedBg)
-                views.setImageViewResource(R.id.widget_pin, R.drawable.ic_widget_location)
-                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
+                                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
                 views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
 
                 val intent = Intent(context, MainActivity::class.java)
@@ -70,36 +78,90 @@ object WeatherWidgetUpdater {
 
             val realtime = weather?.result?.realtime
             val daily = weather?.result?.daily
+            val hourly = weather?.result?.hourly
             val skycon = realtime?.skycon
             val isDay = WeatherUtils.isCurrentlyDay(daily)
             val info = WeatherUtils.getWeatherInfo(skycon)
             val tempText = WeatherUtils.formatTemperature(realtime?.temperature)
-            val todayTemp = WeatherUtils.todayTemperature(daily)
-            val maxTemp = todayTemp?.max?.let { WeatherUtils.formatTemperature(it) } ?: "--"
-            val minTemp = todayTemp?.min?.let { WeatherUtils.formatTemperature(it) } ?: "--"
             val cityText = shortenLocation(cityName ?: "--")
-            val detailText = "${info.description}  $minTemp / $maxTemp"
-            FileLogger.i(TAG, "updateAll: \u6e32\u67d3\u6570\u636e \u2014 city=$cityText, temp=$tempText, " +
-                "detail=$detailText, skycon=$skycon, isDay=$isDay, icon=${info.icon}, " +
-                "widgetCount=${ids.size}")
+
+            // Get hourly forecast for now, +1h, +2h
+            val hourlyTemps = hourly?.temperature
+            val hourlySkycons = hourly?.skycon
+            val now = Calendar.getInstance()
+            val currentHour = now.get(Calendar.HOUR_OF_DAY)
+
+            // Find current hour index in hourly data
+            val nowIndex = findHourlyIndex(hourlyTemps, currentHour)
+            val h1Index = if (nowIndex >= 0) nowIndex + 1 else -1
+            val h2Index = if (nowIndex >= 0) nowIndex + 2 else -1
+
+            // Get temperatures
+            val tempNow = realtime?.temperature
+            val temp1h = getHourlyValue(hourlyTemps, h1Index)
+            val temp2h = getHourlyValue(hourlyTemps, h2Index)
+
+            // Get skycons
+            val skycon1h = getHourlySkycon(hourlySkycons, h1Index)
+            val skycon2h = getHourlySkycon(hourlySkycons, h2Index)
+
+            // Get weather info for each hour
+            val info1h = WeatherUtils.getWeatherInfo(skycon1h)
+            val info2h = WeatherUtils.getWeatherInfo(skycon2h)
+
+            // Format times
+            val timeNow = "\u73b0\u5728"
+            val time1h = formatHour(currentHour + 1)
+            val time2h = formatHour(currentHour + 2)
+
+            FileLogger.i(TAG, "updateAll: \u6e32\u67d3\u6570\u636e \u2014 city=$cityText, temp=$tempText, skycon=$skycon, isDay=$isDay")
+            FileLogger.d(TAG, "updateAll: \u5c0f\u65f6\u9884\u62a5 now=$tempNow/${info.icon}, 1h=$temp1h/${info1h.icon}, 2h=$temp2h/${info2h.icon}")
+
             val precipitationColor = WeatherUtils.getPrecipitationIconColor(skycon, isDay).toArgb()
             val iconBitmap = renderIcon(context, info.icon, precipitationColor)
+            val icon1hBitmap = renderIcon(context, info1h.icon, precipitationColor)
+            val icon2hBitmap = renderIcon(context, info2h.icon, precipitationColor)
+
             if (iconBitmap == null) {
                 FileLogger.w(TAG, "updateAll: \u56fe\u6807\u6e32\u67d3\u5931\u8d25 skycon=$skycon, icon=${info.icon}")
             }
+
             ids.forEach { widgetId ->
                 val views = RemoteViews(context.packageName, R.layout.widget_small)
-                views.setTextViewText(R.id.widget_city, cityText)
+                // Main temperature and city
                 views.setTextViewText(R.id.widget_temp, tempText)
-                views.setTextViewText(R.id.widget_detail, detailText)
+                views.setTextViewText(R.id.widget_city, cityText)
+
+                // Main icon
                 if (iconBitmap != null) {
                     views.setImageViewBitmap(R.id.widget_icon, iconBitmap)
                 }
+
+                // Forecast row - Now
+                views.setTextViewText(R.id.widget_time_now, timeNow)
+                if (iconBitmap != null) {
+                    views.setImageViewBitmap(R.id.widget_icon_now, iconBitmap)
+                }
+                views.setTextViewText(R.id.widget_temp_now, WeatherUtils.formatTemperature(tempNow))
+
+                // Forecast row - +1h
+                views.setTextViewText(R.id.widget_time_1h, time1h)
+                if (icon1hBitmap != null) {
+                    views.setImageViewBitmap(R.id.widget_icon_1h, icon1hBitmap)
+                }
+                views.setTextViewText(R.id.widget_temp_1h, WeatherUtils.formatTemperature(temp1h))
+
+                // Forecast row - +2h
+                views.setTextViewText(R.id.widget_time_2h, time2h)
+                if (icon2hBitmap != null) {
+                    views.setImageViewBitmap(R.id.widget_icon_2h, icon2hBitmap)
+                }
+                views.setTextViewText(R.id.widget_temp_2h, WeatherUtils.formatTemperature(temp2h))
+
                 val (w, h) = getWidgetSizePx(context, widgetId)
                 val sizedBg = buildGradientBitmap(context, skycon, w, h, isDay)
                 views.setImageViewBitmap(R.id.widget_bg, sizedBg)
-                views.setImageViewResource(R.id.widget_pin, R.drawable.ic_widget_location)
-                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
+                                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
                 views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
 
                 val intent = Intent(context, MainActivity::class.java)
@@ -109,27 +171,33 @@ object WeatherWidgetUpdater {
                 views.setOnClickPendingIntent(R.id.widget_root, pending)
                 manager.updateAppWidget(widgetId, views)
             }
-            FileLogger.i(TAG, "updateAll: \u2713 \u6e32\u67d3\u5b8c\u6210, \u66f4\u65b0\u4e86 ${ids.size} \u4e2a widget")
+            FileLogger.i(TAG, "updateAll: \u6e32\u67d3\u5b8c\u6210, widgetCount=${ids.size}")
         } catch (e: Exception) {
-            FileLogger.e(TAG, "updateAll: \u6e32\u67d3\u5f02\u5e38\uff0c\u5c1d\u8bd5\u663e\u793a\u9ed8\u8ba4\u72b6\u6001", e)
-            // Show default gradient even on error
+            FileLogger.e(TAG, "updateAll: \u6e32\u67d3\u5f02\u5e38", e)
             try {
                 val manager = AppWidgetManager.getInstance(context)
                 val ids = manager.getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
                 ids.forEach { widgetId ->
-                    val views = RemoteViews(context.packageName, R.layout.widget_small)
-                    val (w, h) = getWidgetSizePx(context, widgetId)
-                    val sizedBg = buildGradientBitmap(context, null, w, h)
-                    views.setImageViewBitmap(R.id.widget_bg, sizedBg)
-                    views.setBoolean(R.id.widget_root, "setClipToOutline", true)
-                    views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
-                    views.setTextViewText(R.id.widget_city, "--")
-                    views.setTextViewText(R.id.widget_temp, "--")
-                    views.setTextViewText(R.id.widget_detail, "\u52a0\u8f7d\u4e2d...")
-                    val intent = Intent(context, MainActivity::class.java)
-                    val pending = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                    views.setOnClickPendingIntent(R.id.widget_root, pending)
-                    manager.updateAppWidget(widgetId, views)
+                    try {
+                        val views = RemoteViews(context.packageName, R.layout.widget_small)
+                        views.setTextViewText(R.id.widget_city, "--")
+                        views.setTextViewText(R.id.widget_temp, "--")
+                        views.setTextViewText(R.id.widget_time_now, "\u73b0\u5728")
+                        views.setTextViewText(R.id.widget_time_1h, "--")
+                        views.setTextViewText(R.id.widget_time_2h, "--")
+                        views.setTextViewText(R.id.widget_temp_now, "--")
+                        views.setTextViewText(R.id.widget_temp_1h, "--")
+                        views.setTextViewText(R.id.widget_temp_2h, "--")
+                        val (w, h) = getWidgetSizePx(context, widgetId)
+                        val sizedBg = buildGradientBitmap(context, null, w, h)
+                        views.setImageViewBitmap(R.id.widget_bg, sizedBg)
+                                                views.setBoolean(R.id.widget_root, "setClipToOutline", true)
+                        views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_rounded_bg)
+                        val intent = Intent(context, MainActivity::class.java)
+                        val pending = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                        views.setOnClickPendingIntent(R.id.widget_root, pending)
+                        manager.updateAppWidget(widgetId, views)
+                    } catch (_: Exception) {}
                 }
                 FileLogger.i(TAG, "updateAll: \u9ed8\u8ba4\u72b6\u6001\u6e32\u67d3\u5b8c\u6210")
             } catch (e2: Exception) {
@@ -138,19 +206,51 @@ object WeatherWidgetUpdater {
         }
     }
 
+    private fun findHourlyIndex(hourlyTemps: List<com.skypulse.weather.model.HourlyValue>?, targetHour: Int): Int {
+        if (hourlyTemps == null) return -1
+        val targetSuffix = String.format("T%02d:", targetHour)
+        return hourlyTemps.indexOfFirst { it.datetime?.contains(targetSuffix) == true }
+    }
+
+    private fun getHourlyValue(hourlyTemps: List<com.skypulse.weather.model.HourlyValue>?, index: Int): Double? {
+        if (hourlyTemps == null || index < 0 || index >= hourlyTemps.size) return null
+        return hourlyTemps[index].value
+    }
+
+    private fun getHourlySkycon(hourlySkycons: List<com.skypulse.weather.model.HourlySkycon>?, index: Int): String? {
+        if (hourlySkycons == null || index < 0 || index >= hourlySkycons.size) return null
+        return hourlySkycons[index].value
+    }
+
+    private fun formatHour(hour: Int): String {
+        val h = ((hour % 24) + 24) % 24
+        return String.format("%02d:00", h)
+    }
+
     private fun shortenLocation(raw: String): String {
         val value = raw.trim()
         if (value.isEmpty()) return "--"
-        if (value == "定位中...") return value
+        if (value == "\u5b9a\u4f4d\u4e2d...") return value
 
-        val districtMatch = Regex("([^\u7701\u5e02\u533a\u53bf]+[\u533a\u53bf])").find(value)
+        val districtMatch = Regex("([\u5e02\u533a\u53bf]+[\u533a\u53bf])").find(value)
         if (districtMatch != null) return districtMatch.groupValues[1]
 
-        val cityMatch = Regex("([^\u7701\u5e02]+[\u5e02])").find(value)
+        val cityMatch = Regex("([\u5e02]+[\u5e02])").find(value)
         if (cityMatch != null) return cityMatch.groupValues[1]
 
-        val segment = value.split(Regex("[\\s,\uff0c\u3001\u3002]")).firstOrNull { it.length >= 2 } ?: value
+        val segment = value.split(Regex("[\u3001\u3002\uff0c]")).firstOrNull { it.length >= 2 } ?: value
         return if (segment.length > 4) segment.substring(0, 4) else segment
+    }
+
+    private fun getWidgetSizePx(context: Context, widgetId: Int): Pair<Int, Int> {
+        val manager = AppWidgetManager.getInstance(context)
+        val options = manager.getAppWidgetOptions(widgetId)
+        val widthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 180)
+        val heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 100)
+        val density = context.resources.displayMetrics.density
+        val width = (widthDp * density).toInt().coerceIn(200, 800)
+        val height = (heightDp * density).toInt().coerceIn(100, 500)
+        return width to height
     }
 
     private fun renderIcon(context: Context, icon: String, precipitationColor: Int? = null): Bitmap? {
@@ -160,125 +260,67 @@ object WeatherWidgetUpdater {
             "clear-night" -> renderMoonBitmap(context)
             else -> renderSvgIcon(context, icon, precipitationColor)
         }
-        if (bitmap != null) iconCache.put(cacheKey, bitmap)
+        if (bitmap != null) {
+            iconCache.put(cacheKey, bitmap)
+        }
         return bitmap
     }
 
     private fun renderSvgIcon(context: Context, icon: String, precipitationColor: Int?): Bitmap? {
-        val size = (96 * context.resources.displayMetrics.density).toInt().coerceAtLeast(1)
-        return WeatherSvgRenderer.renderBitmap(context, icon, size, precipitationColor)
-    }
-
-    /**
-     * Hand-drawn moon icon matching the Compose MoonIcon in WeatherIcon.kt.
-     * Uses the same preserved Meteocons moon bezier path with warm golden gradient.
-     */
-    private fun renderMoonBitmap(context: Context): Bitmap? {
         return try {
-            val density = context.resources.displayMetrics.density
-            val size = (96 * density).toInt()
-            val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            val scale = size / 128f
-
-            // Preserved Meteocons moon path (128x128 canvas)
-            val v = arrayOf(
-                floatArrayOf(60.3018f, 32.582f),
-                floatArrayOf(95.3252f, 72.5146f),
-                floatArrayOf(64.5361f, 95.5f),
-                floatArrayOf(32.5f, 63.8984f),
-                floatArrayOf(60.3018f, 32.582f)
-            )
-            val o = arrayOf(
-                floatArrayOf(-5.0201f, 21.1179f),
-                floatArrayOf(-3.8059f, 13.2556f),
-                floatArrayOf(-17.6986f, 0f),
-                floatArrayOf(0f, -16.0296f),
-                floatArrayOf(0f, 0f)
-            )
-            val inn = arrayOf(
-                floatArrayOf(0f, 0f),
-                floatArrayOf(-21.7251f, 1.8331f),
-                floatArrayOf(14.6625f, -0.0002f),
-                floatArrayOf(0.0001f, 17.446f),
-                floatArrayOf(-15.6952f, 2.0458f)
-            )
-
-            val path = Path().apply {
-                moveTo(v[0][0] * scale, v[0][1] * scale)
-                for (i in 0 until 4) {
-                    val p0 = v[i]
-                    val p1 = v[i + 1]
-                    cubicTo(
-                        (p0[0] + o[i][0]) * scale,
-                        (p0[1] + o[i][1]) * scale,
-                        (p1[0] + inn[i + 1][0]) * scale,
-                        (p1[1] + inn[i + 1][1]) * scale,
-                        p1[0] * scale,
-                        p1[1] * scale
-                    )
-                }
-                close()
-            }
-
-            // Gradient fill: warm yellow matching WeatherIcon MoonIcon
-            val gradient = LinearGradient(
-                0f, 32f * scale,
-                0f, 96f * scale,
-                intArrayOf(Color.parseColor("#FFFFD54F"), Color.parseColor("#FFFFCA28")),
-                null,
-                Shader.TileMode.CLAMP
-            )
-            val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.FILL
-                shader = gradient
-            }
-            canvas.drawPath(path, fillPaint)
-
-            // Gold stroke matching original
-            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                color = Color.parseColor("#FFF9AF03")
-                strokeWidth = 1f * density
-                strokeCap = Paint.Cap.ROUND
-                strokeJoin = Paint.Join.ROUND
-            }
-            canvas.drawPath(path, strokePaint)
-
-            bitmap
-        } catch (_: Exception) {
+            val sizePx = (48 * context.resources.displayMetrics.density).toInt()
+            WeatherSvgRenderer.renderBitmap(context, icon, sizePx, precipitationColor)
+        } catch (e: Exception) {
+            FileLogger.e(TAG, "renderSvgIcon failed: icon=$icon", e)
             null
         }
     }
 
-    /**
-     * Get the actual pixel size of a widget instance from system options.
-     * Falls back to a sensible default if options are not yet available.
-     */
-    private fun getWidgetSizePx(context: Context, widgetId: Int): Pair<Int, Int> {
-        val density = context.resources.displayMetrics.density
-        return try {
-            val options = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
-            val wDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 180)
-            val hDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 180)
-            val w = (wDp * density).toInt().coerceAtLeast((110 * density).toInt())
-            val h = (hDp * density).toInt().coerceAtLeast((110 * density).toInt())
-            Pair(w, h)
-        } catch (_: Exception) {
-            val fallback = (180 * density).toInt()
-            Pair(fallback, fallback)
+    private fun renderMoonBitmap(context: Context): Bitmap {
+        val size = (48 * context.resources.displayMetrics.density).toInt()
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val cx = size / 2f
+        val cy = size / 2f
+        val r = size * 0.36f
+
+        // Outer glow
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(40, 200, 220, 255)
+            canvas.drawCircle(cx, cy, r * 1.3f, this)
         }
+
+        // Moon base
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(240, 240, 250)
+            canvas.drawCircle(cx, cy, r, this)
+        }
+
+        // Crescent shadow
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(180, 15, 25, 55)
+            canvas.drawCircle(cx + r * 0.4f, cy - r * 0.1f, r * 0.82f, this)
+        }
+
+        // Craters
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(50, 180, 190, 210)
+            canvas.drawCircle(cx - r * 0.3f, cy + r * 0.1f, r * 0.15f, this)
+            canvas.drawCircle(cx - r * 0.15f, cy - r * 0.35f, r * 0.1f, this)
+            canvas.drawCircle(cx + r * 0.1f, cy + r * 0.4f, r * 0.08f, this)
+        }
+
+        return bitmap
     }
 
-    /** Build an opaque, flat weather gradient sized to the actual widget dimensions. */
     /**
-     * Build an opaque, flat weather gradient sized to the actual widget dimensions.
+     * Build a weather-appropriate gradient background bitmap.
      *
-     * Layer structure (bottom → top):
-     *   1. Radial gradient base – center biased upward for natural sky depth
-     *   2. Top highlight – focused light simulating zenith sun / moon glow
-     *   3. Bottom shadow – subtle ground-level darkening for contrast
-     *   4. Rain streaks (optional) – decorative rain lines for rainy weather
+     * Uses 4 visual layers for natural sky simulation:
+     *   1. Radial gradient base center biased upward for natural sky depth
+     *   2. Top highlight focused light simulating zenith sun / moon glow
+     *   3. Bottom shadow subtle ground-level darkening for contrast
+     *   4. Rain streaks (optional) decorative rain lines for rainy weather
      */
     private fun buildGradientBitmap(context: Context, skycon: String?, width: Int, height: Int, isDay: Boolean = true): Bitmap {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -289,8 +331,7 @@ object WeatherWidgetUpdater {
         val isRain = isRainSkycon(skycon)
         val gradientColors = weatherWidgetGradient(skycon, isDay)
 
-        // ── Layer 1: Radial gradient base ──
-        // Center biased to upper-third for natural sky depth; colors fan out from zenith
+        // Layer 1: Radial gradient base
         val cx = width * 0.48f
         val cy = height * 0.32f
         val gradRadius = maxOf(width, height) * 0.82f
@@ -299,8 +340,7 @@ object WeatherWidgetUpdater {
             canvas.drawRoundRect(rect, radius, radius, this)
         }
 
-        // ── Layer 2: Top highlight ──
-        // Focused zenith glow that fades quickly, simulating overhead skylight
+        // Layer 2: Top highlight
         val highlightAlpha = if (isDay) 48 else 22
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
@@ -312,8 +352,7 @@ object WeatherWidgetUpdater {
             canvas.drawRoundRect(rect, radius, radius, this)
         }
 
-        // ── Layer 3: Bottom shadow ──
-        // Subtle ground-level darkening to anchor text and add depth
+        // Layer 3: Bottom shadow
         val shadowAlpha = if (isDay) 38 else 56
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = LinearGradient(
@@ -330,7 +369,6 @@ object WeatherWidgetUpdater {
         }
 
         return bitmap
-
     }
 
     private fun isRainSkycon(skycon: String?): Boolean {
@@ -384,3 +422,4 @@ object WeatherWidgetUpdater {
         canvas.restore()
     }
 }
+
