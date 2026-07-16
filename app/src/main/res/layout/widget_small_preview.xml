@@ -44,7 +44,7 @@
             android:includeFontPadding="false"
             android:singleLine="true"
             android:text="26°"
-            android:translationY="2dp" />
+            android:translationY="4dp" />
 
         <!-- Right: Icon on top, City below -->
         <LinearLayout

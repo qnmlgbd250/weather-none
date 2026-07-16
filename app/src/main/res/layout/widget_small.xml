@@ -42,7 +42,7 @@
             android:letterSpacing="0.02"
             android:includeFontPadding="false"
             android:singleLine="true"
-            android:translationY="2dp" />
+            android:translationY="4dp" />
 
         <!-- Right: Icon on top, City below -->
         <LinearLayout
