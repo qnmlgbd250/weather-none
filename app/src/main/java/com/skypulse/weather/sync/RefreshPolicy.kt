@@ -1,4 +1,4 @@
-package com.skypulse.weather.sync
+﻿package com.skypulse.weather.sync
 
 /**
  * Centralized refresh timing policy.
@@ -8,13 +8,13 @@ package com.skypulse.weather.sync
  */
 object RefreshPolicy {
     /** Global minimum interval for RefreshManager requests. */
-    const val GLOBAL_SYNC_INTERVAL_MS = 120_000L
+    const val GLOBAL_SYNC_INTERVAL_MS = 90_000L
 
     /** Foreground/app-level cache TTL used by RefreshManager. */
     const val WEATHER_TTL_MS = 5 * 60 * 1000L
 
     /** Per-city freshness window used by WeatherSyncManager and UI refresh checks. */
-    const val CITY_RATE_LIMIT_MS = 120_000L
+    const val CITY_RATE_LIMIT_MS = 90_000L
 
     /** Short dedupe window for queued same-city same-coordinate refreshes. */
     const val SAME_COORDINATE_DEDUPE_MS = 5_000L
