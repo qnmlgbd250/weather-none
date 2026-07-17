@@ -1,8 +1,7 @@
 name: Publish Draft Releases
 
 on:
-  schedule:
-    - cron: "0 5 * * *"
+
   workflow_dispatch:
 
 permissions:
